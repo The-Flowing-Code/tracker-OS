@@ -17,11 +17,13 @@ Y acordate de que **el historial no se olvida**: borrar el archivo después no
 lo saca de los commits viejos. Se arregla antes de commitear, no después.
 
 ## La app
-`index.html` y, desde el 17/10/2026, partes separadas en `js/` (por ahora
-`js/fathom.js`, todo lo de llamadas de Fathom). JS de navegador, sin build ni
+`index.html` y, desde el 17/10/2026, partes separadas en `js/`: `js/fathom.js`
+(llamadas de Fathom) y `js/meta.js` (Meta Ads: uso de la API, gasto, rango,
+columnas de metricas y la sincronizacion de anuncios). JS de navegador, sin build ni
 framework: cada `js/*.js` es un `<script src>` clasico que se carga ANTES del
 principal, con funciones globales (los `onclick=""` las siguen encontrando).
-En `js/` solo van declaraciones: nada que al cargar use algo del principal.
+En `js/` solo van declaraciones: nada que al cargar use algo del principal
+(lo controla `tests/modulos.test.js`, que carga cada modulo solo).
 Se separa de a una parte por vez con `tools/separar.mjs` (mismo codigo, mismo
 orden; se comprueba que no falte ni sobre ninguna declaracion).
 **Nunca reescribas un archivo entero: solo el bloque que te pida.**
