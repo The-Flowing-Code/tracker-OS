@@ -36,11 +36,37 @@ async function sb(ruta: string) {
   return await r.json();
 }
 
+/* ⚠️  LA SINCRONIZACION DE ANUNCIOS HACE DECENAS DE PEDIDOS SEGUIDOS. Medido
+   el 17/10: verificar la sesion y buscar el token en cada uno llevaba cada
+   llamada a ~2,2 s (directo a Meta son ~0,5) y la sync de Teiki de 18 a 70 s.
+   Por eso se recuerdan unos minutos, en la memoria de esta instancia: una
+   sesion ya verificada (5 min) y el token de cada cliente (1 min, asi un
+   token cambiado se toma rapido). Si la instancia se recicla, se vuelve a
+   mirar y listo. */
+const SESIONES = new Map<string, number>();
+const TOKENS = new Map<string, { t: string; at: number }>();
+
+async function tokenDe(cid: string) {
+  const c = TOKENS.get(cid);
+  if (c && Date.now() - c.at < 60_000) return c.t;
+  const f = await sb("tokens_clientes?select=meta_token&cliente_id=eq." + cid);
+  const t = Array.isArray(f) && f[0] && f[0].meta_token ? String(f[0].meta_token) : "";
+  if (t) TOKENS.set(cid, { t, at: Date.now() });
+  return t;
+}
+
 // Rol agencia, mirado del lado del servidor: el JWT dice quien es, `perfiles`
 // dice que puede.
 async function esAgencia(req: Request) {
   const tk = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!tk) return false;
+  const vista = SESIONES.get(tk);
+  if (vista && vista > Date.now()) return true;
+  const ok = await esAgenciaSinMemoria(tk);
+  if (ok) SESIONES.set(tk, Date.now() + 5 * 60_000);
+  return ok;
+}
+async function esAgenciaSinMemoria(tk: string) {
   if (tk === SB_KEY) return true;
   // Otra clave de nivel servicio (los scripts usan la del Llavero, que puede
   // tener otro formato que la de este entorno): si con ella se lee la tabla
@@ -64,8 +90,6 @@ const USO = ["x-business-use-case-usage", "x-app-usage", "x-ad-account-usage", "
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return responder({ error: "Solo POST." }, 405);
-  if (!(await esAgencia(req).catch(() => false))) return responder({ error: "Sin permiso." }, 403);
-
   let b: any;
   try { b = await req.json(); } catch { return responder({ error: "JSON invalido" }, 400); }
   const cid = String(b?.cliente_id || "").replace(/\D/g, "");
@@ -76,8 +100,9 @@ Deno.serve(async (req) => {
   }
   if (!cid) return responder({ error: "Falta el cliente." }, 400);
 
-  const f = await sb("tokens_clientes?select=meta_token&cliente_id=eq." + cid);
-  const token = Array.isArray(f) && f[0] && f[0].meta_token;
+  // La sesion y el token a la vez: son dos consultas que no dependen una de la otra.
+  const [ok, token] = await Promise.all([esAgencia(req).catch(() => false), tokenDe(cid).catch(() => "")]);
+  if (!ok) return responder({ error: "Sin permiso." }, 403);
   if (!token) return responder({ error: "Ese cliente no tiene token de Meta cargado." }, 404);
 
   url.searchParams.delete("access_token");
