@@ -44,7 +44,11 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
   `mcp_registro` (040): las claves del conector «Evolve OS · consulta»
   (función `evolve-mcp`, solo lectura, para el Claude de cada persona del
   equipo). Una clave se apaga con `activa=false`; la clave en sí vive en el
-  Llavero (`evolve-mcp-<persona>`), en la tabla solo su sha256.
+  Llavero (`evolve-mcp-<persona>`), en la tabla solo su sha256. Y
+  `tokens_clientes` (041): los tokens de Meta y GHL de cada cliente. Por
+  ahora es una COPIA que mantiene un disparador desde `clientes.datos`; los
+  que usan tokens pasan de a uno a leer de ahi (con la ficha de respaldo) y
+  al final se sacan de las fichas.
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.
