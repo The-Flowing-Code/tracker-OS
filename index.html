@@ -3287,18 +3287,59 @@ var CFG_EQUIPO=[
 
 
 
+/* ── Meta sin token en el navegador (17/10/2026, Fase 3 del plan) ─────────
+   Toda llamada a graph.facebook.com pasa por aca. Si el token de la URL es
+   el de un cliente (o la marca `cli:<id>` que devuelve la funcion en los
+   links de paginacion), se le pide a la funcion `meta` de Supabase, que
+   tiene el token en `tokens_clientes`. Asi no hay que tocar los 13 lugares
+   que arman URLs de Meta.
+
+   ⚠️  NADA DEJA DE ANDAR. Si la funcion falla por lo que sea (sin sesion,
+   caida, sin token cargado alla) y la URL trae el token de verdad, se hace
+   la llamada directa de siempre. Para apagar el desvio en un navegador:
+   localStorage 'evold-meta-directo' = '1'. */
+function _metaCliDeUrl(url){
+  var m=/[?&]access_token=([^&#]+)/.exec(String(url||''));
+  if(!m) return null;
+  var t=decodeURIComponent(m[1]);
+  var k=/^cli:(\d+)$/.exec(t);
+  if(k) return {id:k[1], marca:true};
+  var c=(DB.clients||[]).find(function(x){ return x && x.metaToken && x.metaToken===t; });
+  return c ? {id:String(c.id), marca:false} : null;
+}
 (function(){
   if(!window.fetch || window.__metaUsoPuesto) return;
   window.__metaUsoPuesto=true;
   var orig=window.fetch.bind(window);
+  var anotar=function(url){ return function(r){
+    try{ if(r&&r.headers) _metaUsoAnotar(url, r.headers); }catch(e){}
+    return r;      // el mismo objeto, intacto
+  }; };
   window.fetch=function(u, o){
     var url=(typeof u==='string')?u:((u&&u.url)||'');
-    var p=orig(u, o);
-    if(String(url).indexOf('graph.facebook.com')<0) return p;
-    return p.then(function(r){
-      try{ if(r&&r.headers) _metaUsoAnotar(url, r.headers); }catch(e){}
-      return r;      // el mismo objeto, intacto
-    });
+    if(String(url).indexOf('graph.facebook.com')<0) return orig(u, o);
+    var metodo=String((o&&o.method)||'GET').toUpperCase();
+    var directo=false; try{ directo=localStorage.getItem('evold-meta-directo')==='1'; }catch(e){}
+    var cli=(!directo && metodo==='GET' && typeof u==='string' && SB && SB.listo && SB.token) ? _metaCliDeUrl(url) : null;
+    if(!cli) return orig(u, o).then(anotar(url));
+    return orig(SB_URL+'/functions/v1/meta', {method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB.token,'Content-Type':'application/json'},
+        body:JSON.stringify({cliente_id:cli.id, url:url})})
+      .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('meta '+r.status)); })
+      .then(function(d){ return new Response(d.body, {status:d.status||200, headers:d.headers||{}}); })
+      .catch(function(e){
+        if(cli.marca){
+          // Una pagina siguiente: si la ficha todavia tiene el token, se va
+          // directo con ese. Si ya no lo tiene, no hay con que: el error.
+          var c0=(DB.clients||[]).find(function(x){ return String(x.id)===cli.id; });
+          if(c0 && c0.metaToken && !/^cli:/.test(c0.metaToken))
+            return orig(url.replace(/([?&]access_token=)[^&#]+/, '$1'+encodeURIComponent(c0.metaToken)), o);
+          return new Response(JSON.stringify({error:{message:'No pude pedirle a Meta: '+((e&&e.message)||'')}}),
+            {status:502, headers:{'content-type':'application/json'}});
+        }
+        return orig(u, o);
+      })
+      .then(anotar(url));
   };
 })();
 
