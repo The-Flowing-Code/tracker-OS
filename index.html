@@ -3307,6 +3307,26 @@ function _metaCliDeUrl(url){
   var c=(DB.clients||[]).find(function(x){ return x && x.metaToken && x.metaToken===t; });
   return c ? {id:String(c.id), marca:false} : null;
 }
+/* Lo mismo para GHL (17/10/2026): un pedido directo a services.leadconnectorhq.com
+   cuyo "Authorization: Bearer" sea el token de un cliente (o `cli:<id>`) va
+   por la funcion `ghl-api`. Llave para apagarlo: localStorage
+   'evold-ghl-directo' = '1'. El intermediario de Apps Script (proxyFetch)
+   todavia no pasa por aca: se migra aparte, accion por accion. */
+function _hdrDe(o, k){
+  var h=o&&o.headers; if(!h) return '';
+  if(typeof h.get==='function') return h.get(k)||'';
+  var kl=String(k).toLowerCase();
+  for(var x in h){ if(String(x).toLowerCase()===kl) return String(h[x]||''); }
+  return '';
+}
+function _ghlCliDeAuth(o){
+  var t=_hdrDe(o,'Authorization').replace(/^Bearer\s+/i,'').trim();
+  if(!t) return null;
+  var k=/^cli:(\d+)$/.exec(t);
+  if(k) return {id:k[1], marca:true};
+  var c=(DB.clients||[]).find(function(x){ return x && x.ghl && x.ghl.token && x.ghl.token===t; });
+  return c ? {id:String(c.id), marca:false} : null;
+}
 (function(){
   if(!window.fetch || window.__metaUsoPuesto) return;
   window.__metaUsoPuesto=true;
@@ -3317,6 +3337,35 @@ function _metaCliDeUrl(url){
   }; };
   window.fetch=function(u, o){
     var url=(typeof u==='string')?u:((u&&u.url)||'');
+    if(typeof u==='string' && url.indexOf('https://services.leadconnectorhq.com/')===0){
+      var gDir=false; try{ gDir=localStorage.getItem('evold-ghl-directo')==='1'; }catch(e){}
+      var gc=(!gDir && SB && SB.listo && SB.token) ? _ghlCliDeAuth(o) : null;
+      if(!gc) return orig(u, o);
+      var cuerpo=(o&&o.body!=null)?o.body:null, gMet=String((o&&o.method)||'GET').toUpperCase();
+      return orig(SB_URL+'/functions/v1/ghl-api', {method:'POST',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB.token,'Content-Type':'application/json'},
+          body:JSON.stringify({cliente_id:gc.id, metodo:gMet,
+            ruta:url.slice('https://services.leadconnectorhq.com'.length), cuerpo:cuerpo,
+            version:_hdrDe(o,'Version')||undefined})})
+        // ⚠️  NUNCA DOS VECES. Se vuelve al pedido directo solo si la funcion
+        // contesto que NO llamo a GHL (400/403/404: sin permiso, sin token) o
+        // si un GET fallo en el camino. Un POST/PUT/DELETE que pudo haber
+        // llegado no se repite: crearia la nota o el contacto dos veces.
+        .then(function(r){
+          if(r.ok) return r.json().then(function(d){
+            var st=d.status||200, sinCuerpo=(st===204||st===205||st===304);
+            return new Response(sinCuerpo?null:d.body, {status:st, headers:d.headers||{}});
+          });
+          var antes=(r.status===400||r.status===403||r.status===404);
+          if(!gc.marca && (antes || gMet==='GET')) return orig(u, o);
+          return new Response(JSON.stringify({message:'No pude pedirle a GHL (funcion '+r.status+')'}),
+            {status:502, headers:{'content-type':'application/json'}});
+        }, function(e){
+          if(!gc.marca && gMet==='GET') return orig(u, o);
+          return new Response(JSON.stringify({message:'No pude pedirle a GHL: '+((e&&e.message)||'')}),
+            {status:502, headers:{'content-type':'application/json'}});
+        });
+    }
     if(String(url).indexOf('graph.facebook.com')<0) return orig(u, o);
     var metodo=String((o&&o.method)||'GET').toUpperCase();
     var directo=false; try{ directo=localStorage.getItem('evold-meta-directo')==='1'; }catch(e){}
