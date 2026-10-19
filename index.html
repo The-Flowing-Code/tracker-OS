@@ -3477,7 +3477,26 @@ function _cfgEquipoNota(){
 async function sbBajar(){
   // Lo que hay ahora, antes de que lo de la nube lo reemplace.
   try{ await _copiaAntesDeBajar(DB); }catch(e){}
-  var filas=await sbFetch('clientes?select=id,datos,maquina,datos_at&order=id');
+  /* ⚠️  EN TANDAS, NO TODO DE UNA (19/10/2026). Las fichas ya suman 16,7 MB
+     (la mitad son transcripciones de Fathom) y la consulta entera tardaba mas
+     que los 8 segundos que la base le da a una sesion: «canceling statement
+     due to statement timeout», la app arrancaba «Sin sincronizar» y nadie
+     podia guardar. De a 2 clientes por pedido y 3 pedidos a la vez: medido en
+     vivo, la tanda mas lenta tarda 2,8 s y todo, unos 11 s (con 4 por pedido
+     la peor llegaba a 6 s, demasiado cerca del limite). */
+  var _ids=await sbFetch('clientes?select=id&order=id')||[];
+  var _tandas=[];
+  for(var _i=0;_i<_ids.length;_i+=2) _tandas.push(_ids.slice(_i,_i+2).map(function(f){ return f.id; }));
+  var filas=[], _sig=0;
+  async function _bajarTandas(){
+    while(_sig<_tandas.length){
+      var _t=_tandas[_sig++];
+      var _p=await sbFetch('clientes?select=id,datos,maquina,datos_at&id=in.('+_t.join(',')+')');
+      filas=filas.concat(_p||[]);
+    }
+  }
+  await Promise.all([_bajarTandas(),_bajarTandas(),_bajarTandas()]);
+  filas.sort(function(x,y){ return (+x.id)-(+y.id); });
   var cfg=await sbFetch('config?select=clave,valor');
   if(!filas||!filas.length) return false;   // base vacia: se queda con lo local
   var nuevo={clients:filas.map(_clienteDeFila)};
