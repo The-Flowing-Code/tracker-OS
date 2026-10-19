@@ -159,6 +159,18 @@ function _bv2Grupos(){
     }
     try{ al=alarmStatus(c); }catch(e){}
     var dia=(L.dias!=null)?('día '+L.dias):'al aire';
+    /* Subir presupuesto (Angie, 19/10/2026): si hay un «escalar-» sin decidir,
+       eso es lo que importa del cliente, no el CPM. El embudo rinde y falta
+       volumen: va arriba, con su propio boton. */
+    var dec=c.cambiosDecisiones||{};
+    var esc=((c.cambiosPropuestos||{}).items||[]).filter(function(x){
+      return x && /^escalar-/.test(String(x.id||'')) && !(dec[x.id] && dec[x.id].estado && dec[x.id].estado!=='pendiente'); })[0];
+    if(esc){
+      var tx=String(esc.texto||'').replace(new RegExp('^'+String(c.name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+':\\s*'),'');
+      it.q=dia+' · '+tx; it.acc='Subir presupuesto'; it.urg=true; it.escalar=true; it.plata=0; it.orden=-50;
+      G.alar.push(it);
+      return;
+    }
     if(al && al.breached>0){
       var u=_bv2Urgencia(c, al);
       it.urg=u.urg; it.plata=u.plata;
@@ -203,7 +215,8 @@ function _bv2Sugeridos(G){
        sin resultado (los AAA+ adelante), despues lo que esta parado o frenado
        para lanzar, y al final la reunion con un cliente. */
     G.alar.filter(function(x){ return x.urg; }).forEach(function(x){
-      if(x.pausada) poner(x.c.id, 'Decidir si se reactiva la campaña de '+x.n, x.q);
+      if(x.escalar) poner(x.c.id, 'Subir el presupuesto de '+x.n+': rinde y le falta volumen', x.q);
+      else if(x.pausada) poner(x.c.id, 'Decidir si se reactiva la campaña de '+x.n, x.q);
       else poner(x.c.id, 'Frenar la plata que se va en '+x.n, x.q);
     });
     G.fren.forEach(function(x){ poner(x.c.id, 'Destrabar el lanzamiento de '+x.n, x.q); });
