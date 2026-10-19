@@ -49,6 +49,10 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
   ahora es una COPIA que mantiene un disparador desde `clientes.datos`; los
   que usan tokens pasan de a uno a leer de ahi (con la ficha de respaldo) y
   al final se sacan de las fichas.
+- `llamadas_grupales` (042): las capacitaciones con varios clientes, una fila
+  por cliente que estuvo, con los minutos y tramos de SU caso. La escribe solo
+  la rutina `pendientes-de-llamadas` (service key); el equipo la lee. Un tramo
+  dudoso no se carga: se le pregunta a Angie.
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.

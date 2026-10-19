@@ -2166,6 +2166,77 @@ async function fathomTraerHistorial(clientId){
            +' en la ficha. Busque por '+f.mails.join(', ')
            +'. Si hubo mas, entraron con otro mail.'))));
 }
+/* ── Llamadas grupales (042, Angie 19/10/2026) ─────────────────────────
+   Las capacitaciones con varios clientes (el bootcamp de Software Partners)
+   no son de UN cliente, asi que no entran en `fathomCalls`. La rutina de
+   llamadas deja en `llamadas_grupales` una fila por cliente que estuvo: si
+   asistio y cuanto de la llamada fue sobre SU caso, en tramos.
+   ⚠️  "Tiempo de su caso" NO es cuanto estuvo conectado: Fathom no guarda a
+   que hora entra y sale cada uno. Es lo que se hablo de el, que es lo que se
+   puede medir. */
+var _grupalesPorCli={}, _grupalesPidiendo={};
+async function _grupalesCargar(c){
+  var k=String((c&&c.id)||'');
+  if(!k || _grupalesPidiendo[k]) return;
+  _grupalesPidiendo[k]=true;
+  try{
+    _grupalesPorCli[k]=await sbFetch('llamadas_grupales?cliente_id=eq.'+encodeURIComponent(k)
+      +'&order=fecha.desc&limit=100')||[];
+  }catch(e){ _grupalesPorCli[k]=[]; }
+  _grupalesPidiendo[k]=false;
+  if(typeof renderClient==='function'){ try{ renderClient(); }catch(e){} }
+}
+// null mientras llega de la base: el panel muestra "..." y se repinta solo.
+function _grupalesDe(c){
+  var v=_grupalesPorCli[String((c&&c.id)||'')];
+  if(!Array.isArray(v)){ try{ _grupalesCargar(c); }catch(e){} return null; }
+  return v.filter(function(g){ return g && g.asistio; });
+}
+function _grupalesTiles(c){
+  var g=_grupalesDe(c);
+  var caja='background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center';
+  var min=g?g.reduce(function(s,x){ return s+(Number(x.minutos_caso)||0); },0):0;
+  return '<div style="'+caja+'" title="Capacitaciones y llamadas con varios clientes a las que fue alguien de su contacto o su equipo">'
+      +'<div style="font-size:18px;font-weight:500;color:'+(g&&g.length?'var(--text)':'var(--text3)')+'">'
+      +(g?g.length:'\u2026')+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">Llamadas grupales</div></div>'
+    +'<div style="'+caja+'" title="Cuanto de esas llamadas fue sobre su caso. No es cuanto estuvo conectado: eso Fathom no lo guarda.">'
+      +'<div style="font-size:18px;font-weight:500;color:'+(min?'var(--text)':'var(--text3)')+'">'
+      +(g?(min?_horasTexto(min):'-'):'\u2026')+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">Tiempo de su caso en grupales</div></div>';
+}
+function _grupalesListaHtml(c){
+  var g=_grupalesDe(c);
+  if(!g || !g.length) return '';
+  var mmss=function(x){ x=Math.max(0,Math.round(Number(x)||0));
+    var h=Math.floor(x/3600), m=Math.floor(x%3600/60), s=x%60;
+    return (h?(h+':'+String(m).padStart(2,'0')):m)+':'+String(s).padStart(2,'0'); };
+  return g.map(function(x){
+    var tr=Array.isArray(x.tramos)?x.tramos:[];
+    var f=x.fecha?new Date(x.fecha).toLocaleDateString('es-AR'):'';
+    var cab='<span style="font-size:10px;font-weight:600;letter-spacing:.07em;color:var(--accent2);'
+        +'text-transform:uppercase;margin-right:8px">Grupal</span>'
+      +'<span style="color:var(--text)">'+esc(x.titulo||'Llamada grupal')+'</span>'
+      +'<span style="color:var(--text3)"> \u00b7 '+esc(f)+' \u00b7 '
+      +(tr.length?(_horasTexto(x.minutos_caso)+' de su caso'):'estuvo, no se hablo de su caso')+'</span>';
+    if(!tr.length){
+      return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);'
+        +'padding:11px 14px;margin-bottom:8px;font-size:12.5px">'+cab+'</div>';
+    }
+    return '<details style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);'
+        +'padding:11px 14px;margin-bottom:8px;font-size:12.5px">'
+      +'<summary style="cursor:pointer;list-style-position:inside">'+cab+'</summary>'
+      +tr.map(function(t){
+        return '<div style="display:flex;gap:10px;margin-top:9px;line-height:1.55">'
+          +'<span style="flex:none;font-variant-numeric:tabular-nums;color:var(--text3);font-size:11.5px;padding-top:1px">'
+            +mmss(t.desde)+'\u2013'+mmss(t.hasta)+'</span>'
+          +'<span style="color:var(--text2)">'+esc(t.resumen||'')
+          +(t.cita?('<span style="display:block;color:var(--text3);font-style:italic;margin-top:2px">\u201c'
+            +esc(t.cita)+'\u201d</span>'):'')+'</span></div>';
+      }).join('')
+      +'</details>';
+  }).join('');
+}
 function fathomCallsHTML(c){
   const calls = c.fathomCalls||[];
   const _dup=_fathomDuplicadas(c);
@@ -2187,6 +2258,7 @@ function fathomCallsHTML(c){
       +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.55">Se sincronizan solas, pero solo las que pasaron desde que se conecto Fathom. Si son anteriores, traelas del historial.</div>'
       +btnAgregar
       +'</div>'
+      +(_grupalesListaHtml(c)?('<div style="margin-top:10px">'+_grupalesListaHtml(c)+'</div>'):'')
       +_ticketsDe(c).sort(function(a,b){ return _tsTicket(b)-_tsTicket(a); })
         .map(function(t){ return '<div style="margin-top:8px">'+renderTaskRow(t, c.id, 'tl')+'</div>'; }).join('')
       +sug
@@ -2214,7 +2286,9 @@ function fathomCallsHTML(c){
       +(minTotal?('Horas en llamada'+(sinDur?(' \u00b7 faltan '+sinDur):''))
         :'Horas en llamada \u00b7 cargala al editar')+'</div></div>'
     +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center"><div style="font-size:14px;font-weight:500;color:var(--text)">'+(lastCall?lastCall.date:'--')+'</div><div style="font-size:10px;color:var(--text3)">Ultima llamada</div></div>'
-    +'</div>';
+    +_grupalesTiles(c)
+    +'</div>'
+    +_grupalesListaHtml(c);
   // Se dibujan todas y las que pasan de 3 arrancan ocultas. Mostrarlas es
   // cambiar un display, no volver a construir la lista.
   // Con cuatro o mas, las llamadas van en una rueda que gira sin fin (Angie,
