@@ -71,13 +71,58 @@ function _bv2Dia(){
   return {n:R.length, total:total, libre:Math.max(0,libre), a:a, prox:prox};
 }
 
+// Los clientes de quien mira: toda la cartera, o solo la suya si ve su cartera.
+function _bv2Base(){
+  var base=(typeof activeClients==='function')?activeClients():[];
+  try{ if(typeof soloCartera==='function' && soloCartera() && typeof esDeMiCartera==='function') base=base.filter(esDeMiCartera); }catch(e){}
+  return base;
+}
+// Los avisos y seguimientos abiertos del CSM (js/avisos.js), del que vence primero.
+var _BV2_CSM_SRC={'Aviso al cliente':1, 'Tarea del cliente':1, 'Seguimiento al cliente':1};
+function _bv2Avisos(){
+  var me=String((SB&&SB.email)||'').toLowerCase(), out=[];
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    (c.tasks||[]).forEach(function(t){
+      if(!t || t.done || t.deleted || t.archivada || !_BV2_CSM_SRC[t.source]) return;
+      if(String(t.responsible||'').toLowerCase()!==me) return;
+      out.push({c:c, t:t, due:t.due||'9999-12-31'});
+    });
+  });
+  return out.sort(function(a,b){ return a.due<b.due?-1:(a.due>b.due?1:0); });
+}
+function _bv2Vence(due){
+  if(!due || due==='9999-12-31') return 'sin fecha';
+  var h=rvISO(new Date()); if(due<h) return 'vencido'; if(due===h) return 'vence hoy';
+  var d=Math.round((new Date(due+'T12:00:00')-new Date(h+'T12:00:00'))/864e5);
+  return 'vence en '+d+' d';
+}
+
+/* Que tan urgente es una alarma. Urgente = se esta yendo plata sin resultado:
+   gasto con cero agendas, opt-in por el piso, o registros/agendas en cero. La
+   frecuencia y el CPM son ajuste fino: pueden esperar. */
+var _BV2_URG={optInLinea:1, registros:1, agendas:1, costoRegistro:1, costoAgenda:1, sqls:1};
+function _bv2Urgencia(c, al){
+  var R=[]; try{ R=effectiveAlarmRules(c)||[]; }catch(e){}
+  var urg=[], fino=[], plata=0;
+  (al.detalle||[]).forEach(function(d){
+    var r=R.filter(function(x){ return x.id===d.rid; })[0]||{};
+    var esPlata=(r.metric==='adSpent' && r.metric2 && /agendas|registros|sqls/.test(r.metric2));
+    if(esPlata){ plata=Math.max(plata, +d.n||0);
+      urg.unshift('gastó '+d.valor+' en 7 días y '+(r.metric2==='agendas'?'ninguna agenda':(r.metric2==='registros'?'ningún registro':'ninguna llamada calificada'))); }
+    else if(_BV2_URG[r.metric]) urg.push(d.label+': '+d.valor+(d.limite?(' (límite '+d.limite+')'):''));
+    else fino.push(d.label+' '+d.valor);
+  });
+  var t=urg.length?urg.join(' · ')+(fino.length?(' · también '+fino.join(', ')):''):fino.join(' · ');
+  return {urg:urg.length>0, plata:plata, texto:t||'alarma'};
+}
+
 /* La cartera en cuatro: lo que se mira primero va arriba. Se apoya en lo que
    ya decide la app: _yaLanzo (hay campaña nuestra al aire), _lanzaCuenta (la
    fecha de lanzar), alarmStatus y la tarea sin tildar de la etapa actual. */
 function _bv2Grupos(){
   var G={fren:[], alar:[], prog:[], bien:[]};
-  var base=(typeof activeClients==='function')?activeClients():[];
-  try{ if(typeof soloCartera==='function' && soloCartera() && typeof esDeMiCartera==='function') base=base.filter(esDeMiCartera); }catch(e){}
+  var base=_bv2Base();
   var hace30=Date.now()-30*86400000;
   base.forEach(function(c){
     var L=null, q=null, ea=null, al=null;
@@ -95,7 +140,7 @@ function _bv2Grupos(){
     var pu=c.metaPulso||null, gasto=pu?((+pu.gasto||0)+(+((pu.anterior||{}).gasto)||0)):0;
     if(!L && gasto>0 && pu && !(+pu.activos)){
       it.q='campaña pausada · sin anuncios al aire'+(pu.at?(' · pulso del '+new Date(pu.at).getDate()+'/'+(new Date(pu.at).getMonth()+1)):'');
-      it.acc='Ver campaña'; it.orden=-99; G.alar.push(it);
+      it.acc='Ver campaña'; it.orden=-99; it.urg=true; it.pausada=true; it.plata=0; G.alar.push(it);
       return;
     }
     if(!L){
@@ -111,9 +156,10 @@ function _bv2Grupos(){
     try{ al=alarmStatus(c); }catch(e){}
     var dia=(L.dias!=null)?('día '+L.dias):'al aire';
     if(al && al.breached>0){
-      var d0=al.detalle[0]||{};
-      it.q=dia+' · '+(d0.label||'alarma')+(d0.valor?(': '+d0.valor+(d0.limite?(' (límite '+d0.limite+')'):'')):'')+(al.breached>1?(' · '+al.breached+' alarmas'):'');
-      it.acc='Ver alarmas'; it.orden=-al.breached; G.alar.push(it);
+      var u=_bv2Urgencia(c, al);
+      it.urg=u.urg; it.plata=u.plata;
+      it.q=dia+' · '+u.texto;
+      it.acc='Ver alarmas'; it.orden=-u.plata; G.alar.push(it);
     } else {
       it.q=dia+' · sin alarmas'; it.orden=-(L.dias||0); G.bien.push(it);
     }
@@ -121,6 +167,15 @@ function _bv2Grupos(){
   // Los AAA+ primero en cada tarjeta (Angie, 19/10/2026): con ellos no alcanza
   // con que funcione, tienen que estar cerca del resultado.
   Object.keys(G).forEach(function(k){ G[k].sort(function(a,b){ return ((b.aaa?1:0)-(a.aaa?1:0)) || (a.orden-b.orden); }); });
+  /* Las alarmas en dos (Angie, 19/10/2026): arriba las urgentes y de los
+     clientes que mas importan (AAA+), abajo las que pueden esperar. Dentro de
+     las urgentes: AAA+ con plata en juego, despues el resto por plata, y al
+     final los AAA+ que solo tienen ajuste fino. */
+  G.alar.forEach(function(x){ x.tier=(x.urg||x.aaa)?1:2; });
+  G.alar.sort(function(a,b){
+    var ka=(a.aaa&&a.urg)?0:(a.urg?1:(a.aaa?2:3)), kb=(b.aaa&&b.urg)?0:(b.urg?1:(b.aaa?2:3));
+    return (ka-kb) || ((b.plata||0)-(a.plata||0));
+  });
   return G;
 }
 
@@ -129,14 +184,26 @@ function _bv2Grupos(){
    por persona y por día. */
 function _bv2NNKey(){ return 'evold-bv2-nn-'+String((SB&&SB.email)||'x')+'-'+rvISO(new Date()); }
 function _bv2Sugeridos(G){
-  var s=[], aaa=function(L){ return L.filter(function(x){ return x.aaa; })[0]||L[0]; };
-  var f=aaa(G.fren), a=aaa(G.alar);
-  var r=(_BV2.reun||[]).filter(function(x){ return x.cliId && _bv2Min(x.ini)+x.min>_bv2Min(new Date()); })[0];
-  if(f) s.push({t:'Destrabar '+f.n+(f.acc&&f.acc!=='Abrir'?(': '+f.acc.charAt(0).toLowerCase()+f.acc.slice(1)):''), por:f.q, cid:f.c.id});
-  if(a) s.push({t:'Resolver la alarma de '+a.n, por:a.q, cid:a.c.id});
-  if(r) s.push({t:'Llegar preparada a '+r.w+((r.c && String(r.w).toLowerCase().indexOf(String(r.c).toLowerCase())<0)?(' con '+r.c):'')+' ('+_bv2Hora(r.ini)+')', por:'tu próxima reunión con un cliente', cid:r.cliId});
-  var p=G.prog[0];
-  if(s.length<3 && p) s.push({t:'Dejar listo el lanzamiento de '+p.n, por:p.q, cid:p.c.id});
+  var s=[], ya={};
+  var poner=function(cid, t, por){ if(s.length>=3 || (cid && ya[cid])) return; if(cid) ya[cid]=1; s.push({t:t, por:por||'', cid:cid||null}); };
+  if(typeof _soyCsm==='function' && _soyCsm()){
+    // El CSM: lo que tiene que avisar o seguir con el cliente, lo que vence primero.
+    _bv2Avisos().forEach(function(x){
+      var tx=String(x.t.text||'').replace(/^(Avisarle al cliente|Seguir con el cliente|Seguimiento):\s*/,'').split(' \u2014 ')[0];
+      poner(x.c.id, x.c.name+': '+(tx.length>90?tx.slice(0,88)+'…':tx), _bv2Vence(x.due));
+    });
+  } else {
+    /* El criterio acordado con Angie (19/10/2026): primero donde se va plata
+       sin resultado (los AAA+ adelante), despues lo que esta parado o frenado
+       para lanzar, y al final la reunion con un cliente. */
+    G.alar.filter(function(x){ return x.urg; }).forEach(function(x){
+      if(x.pausada) poner(x.c.id, 'Decidir si se reactiva la campaña de '+x.n, x.q);
+      else poner(x.c.id, 'Frenar la plata que se va en '+x.n, x.q);
+    });
+    G.fren.forEach(function(x){ poner(x.c.id, 'Destrabar el lanzamiento de '+x.n, x.q); });
+    var r=(_BV2.reun||[]).filter(function(x){ return x.cliId && _bv2Min(x.ini)+x.min>_bv2Min(new Date()); })[0];
+    if(r) poner(r.cliId, 'Llegar preparada a '+r.w+((r.c && String(r.w).toLowerCase().indexOf(String(r.c).toLowerCase())<0)?(' con '+r.c):'')+' ('+_bv2Hora(r.ini)+')', 'tu próxima reunión con un cliente');
+  }
   while(s.length<3) s.push({t:'Elegí qué no puede quedar sin hacer hoy', por:'', vacio:true});
   return s.slice(0,3).map(function(x){ return {t:x.t, por:x.por, cid:x.cid||null, ok:false, mio:false, vacio:!!x.vacio}; });
 }
@@ -245,6 +312,7 @@ var _BV2_CSS=''
   +'#bv2 .it .nm{display:grid;gap:2px;min-width:0;text-align:left;padding:0}'
   +'#bv2 .it .nm b{font-weight:500;font-size:14px;letter-spacing:-.01em} #bv2 .it .nm:hover b{text-decoration:underline;text-underline-offset:3px}'
   +'#bv2 .it .nm span{color:var(--t3);font-size:12.5px;line-height:1.45}'
+  +'#bv2 .sub{font-size:11px;letter-spacing:.06em;color:var(--t3);padding:12px 0 4px;border-top:1px solid var(--ln)} #bv2 .sub:first-child{border-top:0;padding-top:0} #bv2 .sub.urg{color:var(--amb)}'
   +'#bv2 .it .aaa{font-size:10px;font-weight:600;color:#080A0F;background:var(--ok);border-radius:4px;padding:0 5px;margin-left:7px;vertical-align:1px}'
   +'#bv2 .it .nv{font-size:10.5px;color:var(--ok);margin-left:6px;font-weight:400}'
   +'#bv2 .acc{font-size:12.5px;font-weight:500;padding:7px 12px;min-height:34px;border-radius:99px;border:1px solid var(--c);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}'
@@ -299,7 +367,7 @@ function _bv2Html(){
         +(sig?'<div class="sig num">Después: '+_bv2Hora(sig.ini)+' · '+esc(sig.w)+(sig.c?' · '+esc(sig.c):'')+'</div>':'<div class="sig">Es la última del día.</div>')
       : '<div class="lbl">Próxima reunión</div><div class="w">No quedan reuniones hoy</div><div class="sig">Las horas libres se cuentan hasta las 19:00, con 10 min de respiro después de cada reunión.</div>')
     +'</div></div>';
-  var act=(typeof activeClients==='function')?activeClients():[];
+  var act=_bv2Base();
   var nuevos=act.filter(function(c){ var t=new Date(c.altaAt||c.createdAt||0).getTime(); return t && t>=Date.now()-30*86400000; }).length;
   var linea='<div class="linea"><span><b class="num">'+act.length+'</b> cliente'+(act.length===1?' activo':'s activos')+'</span><span><b class="num">'+nuevos+'</b> nuevo'+(nuevos===1?'':'s')+' en los últimos 30 días</span></div>';
   var DEF=[['fren','frenado para lanzar','frenados para lanzar','Ninguno pasó su fecha de lanzar sin campaña al aire.'],
@@ -309,9 +377,15 @@ function _bv2Html(){
   var cuadro='<div class="q4">'+DEF.map(function(d){
       var L=G[d[0]], t=(L.length===1?d[1]:d[2]);
       return '<div class="card g '+d[0]+'"><div class="gh"><span class="x"><i></i>'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span><span class="k num">'+L.length+'</span></div>'
-        +(L.length?'<div class="lst" tabindex="0" aria-label="'+esc(t)+'">'+L.map(function(it){
+        +(L.length?'<div class="lst" tabindex="0" aria-label="'+esc(t)+'">'+L.map(function(it, ix){
+          // En alarmas, un rotulo al empezar cada grupo: urgentes / pueden esperar.
+          var sub='';
+          if(d[0]==='alar' && (ix===0 || L[ix-1].tier!==it.tier)){
+            var nT=L.filter(function(z){ return z.tier===it.tier; }).length;
+            sub='<div class="sub'+(it.tier===1?' urg':'')+'">'+(it.tier===1?'Urgentes y AAA+':'Pueden esperar · ajuste fino')+' · '+nT+'</div>';
+          }
           var acc=(it.acc&&d[0]!=='bien')?'<button class="acc" data-bv2cli="'+it.c.id+'" title="'+esc(it.acc)+'">'+esc(it.acc)+'</button>':'<span></span>';
-          return '<div class="it"><button class="nm" data-bv2cli="'+it.c.id+'" title="Abrir '+esc(it.n)+'"><b>'+esc(it.n)+(it.aaa?'<span class="aaa">AAA+</span>':'')+(it.nuevo?'<span class="nv">nuevo</span>':'')+'</b><span>'+esc(it.q)+'</span></button>'+acc+'</div>';
+          return sub+'<div class="it"><button class="nm" data-bv2cli="'+it.c.id+'" title="Abrir '+esc(it.n)+'"><b>'+esc(it.n)+(it.aaa?'<span class="aaa">AAA+</span>':'')+(it.nuevo?'<span class="nv">nuevo</span>':'')+'</b><span>'+esc(it.q)+'</span></button>'+acc+'</div>';
         }).join('')+'</div>':'<div class="vac">'+d[3]+'</div>')+'</div>';
     }).join('')+'</div>';
   var U=_bv2Tiempo(), tot=U.reduce(function(t,u){ return t+u.m; },0);
@@ -325,7 +399,21 @@ function _bv2Html(){
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+cuadro+'<div class="tiempo">'+usos+pend+'</div></div>';
+    +'<div class="in">'+top+hero+linea+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div></div>';
+}
+
+// Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
+function _bv2AvisosHtml(){
+  if(!(typeof _soyCsm==='function' && _soyCsm())) return '';
+  var A=_bv2Avisos();
+  var cuenta=function(src){ return A.filter(function(x){ return x.t.source===src; }).length; };
+  return '<div class="card g prog"><div class="gh"><span class="x"><i></i>Avisos y seguimientos al cliente</span><span class="k num">'+A.length+'</span></div>'
+    +'<div class="subl" style="margin:-6px 0 8px">'+cuenta('Aviso al cliente')+' avisos · '+cuenta('Tarea del cliente')+' tareas del cliente · '+cuenta('Seguimiento al cliente')+' seguimientos</div>'
+    +(A.length?'<div class="lst" tabindex="0" aria-label="Avisos y seguimientos">'+A.map(function(x){
+        var tx=String(x.t.text||'').split(' \u2014 ')[0], v=_bv2Vence(x.due);
+        return '<div class="it"><button class="nm" data-bv2cli="'+x.c.id+'" title="Abrir '+esc(x.c.name)+'"><b>'+esc(x.c.name)+(x.c.categoria==='AAA+'?'<span class="aaa">AAA+</span>':'')+'</b><span>'+esc(tx)+'</span></button>'
+          +'<span class="acc" style="border-color:'+(v==='vencido'||v==='vence hoy'?'var(--red)':'rgba(242,240,235,.18)')+'">'+esc(v)+'</span></div>';
+      }).join('')+'</div>':'<div class="vac">No tenés avisos ni seguimientos abiertos.</div>')+'</div>';
 }
 
 function _bv2Pintar(){
