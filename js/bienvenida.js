@@ -89,6 +89,15 @@ function _bv2Grupos(){
     var etapa=(ea&&ea.etapa)||'';
     var t0=new Date(c.altaAt||c.createdAt||0).getTime(), nuevo=!!(t0 && t0>=hace30);
     var it={c:c, n:c.name, nuevo:nuevo};
+    /* Sin nada prendido pero con gasto reciente en el pulso de Meta: lanzo y la
+       campana esta pausada. No es «frenado para lanzar» (paso con Logical Minds,
+       pausada desde el 16/10, que salia frenada hace 75 dias). */
+    var pu=c.metaPulso||null, gasto=pu?((+pu.gasto||0)+(+((pu.anterior||{}).gasto)||0)):0;
+    if(!L && gasto>0 && pu && !(+pu.activos)){
+      it.q='campaña pausada · sin anuncios al aire'+(pu.at?(' · pulso del '+new Date(pu.at).getDate()+'/'+(new Date(pu.at).getMonth()+1)):'');
+      it.acc='Ver campaña'; it.orden=-99; G.alar.push(it);
+      return;
+    }
     if(!L){
       if(q && q.faltan<0){
         it.q=[etapa, 'la fecha de lanzar pasó hace '+(-q.faltan)+' d', tarea?('falta: '+tarea.t):''].filter(Boolean).join(' · ');
@@ -122,7 +131,7 @@ function _bv2Sugeridos(G){
   var r=(_BV2.reun||[]).filter(function(x){ return x.cliId && _bv2Min(x.ini)+x.min>_bv2Min(new Date()); })[0];
   if(f) s.push({t:'Destrabar '+f.n+(f.acc&&f.acc!=='Abrir'?(': '+f.acc.charAt(0).toLowerCase()+f.acc.slice(1)):''), por:f.q, cid:f.c.id});
   if(a) s.push({t:'Resolver la alarma de '+a.n, por:a.q, cid:a.c.id});
-  if(r) s.push({t:'Llegar preparada a '+r.w+(r.c?(' con '+r.c):'')+' ('+_bv2Hora(r.ini)+')', por:'tu próxima reunión con un cliente', cid:r.cliId});
+  if(r) s.push({t:'Llegar preparada a '+r.w+((r.c && String(r.w).toLowerCase().indexOf(String(r.c).toLowerCase())<0)?(' con '+r.c):'')+' ('+_bv2Hora(r.ini)+')', por:'tu próxima reunión con un cliente', cid:r.cliId});
   var p=G.prog[0];
   if(s.length<3 && p) s.push({t:'Dejar listo el lanzamiento de '+p.n, por:p.q, cid:p.c.id});
   while(s.length<3) s.push({t:'Elegí qué no puede quedar sin hacer hoy', por:'', vacio:true});
