@@ -298,14 +298,42 @@ Deno.serve(async (req) => {
     for (const q of quienes) {
       const tk = await accessToken(q);
       if (!tk.ok) { fallos.push(tk.error || q); continue; }
+      /* ⚠️  TODAS LAS AGENDAS DE LA CUENTA, NO SOLO LA PRINCIPAL (19/10/2026).
+         Desde el 8/10 GHL escribe las reuniones de Angie en otra agenda de su
+         Google: ella las ve, pero aca solo se leia `primary`, asi que ninguna
+         aparecia y al equipo del cliente habia que invitarlo a mano. Se miran
+         las agendas donde la cuenta puede editar (`writer` para arriba), que
+         son las unicas donde despues se puede sumar gente. La principal va
+         primero; si un evento aparece en dos (la copia de un invitado), queda
+         el de la agenda que lo organiza. */
+      let agendas: string[] = ['primary'];
+      try {
+        const rl = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?' +
+          new URLSearchParams({ minAccessRole: 'writer', maxResults: '50' }).toString(),
+          { headers: { Authorization: 'Bearer ' + tk.token } });
+        if (rl.ok) {
+          const dl: any = await rl.json().catch(() => ({}));
+          for (const c of (dl.items || [])) {
+            if (c.deleted || c.primary || !c.id) continue;
+            agendas.push(String(c.id));
+          }
+        } else fallos.push('Google ' + rl.status + ' al listar las agendas de ' + q);
+      } catch (_e) { fallos.push('no pude listar las agendas de ' + q); }
+      const vistos: Record<string, number> = {};
+      for (const cal of agendas) {
       const p = new URLSearchParams({
         timeMin: desde, timeMax: hasta,
         singleEvents: 'true', orderBy: 'startTime', maxResults: '250',
       });
-      const r = await fetch(CAL + '?' + p.toString(),
+      const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/' +
+        encodeURIComponent(cal) + '/events?' + p.toString(),
         { headers: { Authorization: 'Bearer ' + tk.token } });
       const txt = await r.text();
-      if (!r.ok) { fallos.push('Google ' + r.status + ' en ' + q); continue; }
+      if (!r.ok) {
+        // Una agenda secundaria que falla no tapa a las demas.
+        if (cal === 'primary') fallos.push('Google ' + r.status + ' en ' + q);
+        continue;
+      }
       let d: any = {};
       try { d = JSON.parse(txt); } catch (_e) { fallos.push('respuesta rara en ' + q); continue; }
 
@@ -315,11 +343,26 @@ Deno.serve(async (req) => {
         // Sin titulo vienen todos; con titulo, los que lo contienen. Es
         // `includes` y no igualdad porque las series suelen llevar sufijos.
         if (titulo && t.toLowerCase().indexOf(titulo) < 0) continue;
+        const ini = String((ev.start && (ev.start.dateTime || ev.start.date)) || '');
+        const organizaEsta = !!(ev.organizer && ev.organizer.self);
+        const clave = String(ev.iCalUID || ev.id || '') + '|' + ini;
+        if (clave in vistos) {
+          // Ya estaba en otra agenda de la misma cuenta: se queda con la que
+          // organiza, que es la unica desde donde invitar le llega a alguien.
+          const prev = out[vistos[clave]];
+          if (organizaEsta && !prev.organizaEsta) {
+            prev.eventId = String(ev.id || ''); prev.calendario = cal; prev.organizaEsta = true;
+          }
+          continue;
+        }
+        vistos[clave] = out.length;
         out.push({
           eventId: String(ev.id || ''),
           titulo: t,
-          inicio: String((ev.start && (ev.start.dateTime || ev.start.date)) || ''),
+          inicio: ini,
           agenda: q,
+          calendario: cal,
+          organizaEsta,
           // `self` es la cuenta conectada y `resource` son las salas: ninguno
           // de los dos es una persona invitada.
           invitados: (ev.attendees || [])
@@ -332,6 +375,7 @@ Deno.serve(async (req) => {
             }))
             .filter((a: any) => a.mail),
         });
+      }
       }
     }
     out.sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
