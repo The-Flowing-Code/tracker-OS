@@ -1,8 +1,8 @@
 /* ── Parte del día v2: la bienvenida nueva (Angie, 19/10/2026) ─────────────
    Modelo: el artifact 4JBuYqxuwiYxb2JfduZsiZ («Propuesta», fondo Faro).
-   Mientras Angie la revisa, sale SOLO en el navegador que tiene la llave
-   localStorage 'evold-bienvenida-v2' = '1'; el resto sigue viendo la de antes
-   (bienvenidaMostrar, en index.html).
+   Sale para el CSM y en el navegador con la llave localStorage
+   'evold-bienvenida-v2' = '1' (Angie); el resto sigue viendo la de antes
+   (bienvenidaMostrar, en index.html). Con la llave en '0' no sale.
 
    ⚠️  NADA INVENTADO. El modelo traía horas por tipo de trabajo y horas que
    «te sacás de encima»: la app no guarda ninguna de las dos. En su lugar va
@@ -11,8 +11,14 @@
 
    Solo declaraciones: todo lo de la app se usa recién al abrirla. */
 
+/* Sale para el CSM (Santi, desde el 19/10/2026) y en el navegador que tenga
+   la llave en '1'. Con la llave en '0' no sale para nadie de ese navegador:
+   es la vuelta atras sin tocar codigo. */
 function _bv2On(){
-  try{ return localStorage.getItem('evold-bienvenida-v2')==='1'; }catch(e){ return false; }
+  var k=null; try{ k=localStorage.getItem('evold-bienvenida-v2'); }catch(e){}
+  if(k==='0') return false;
+  if(k==='1') return true;
+  try{ return typeof _soyCsm==='function' && _soyCsm(); }catch(e){ return false; }
 }
 
 var _BV2={ reun:null, gcal:false, edit:-1 };
