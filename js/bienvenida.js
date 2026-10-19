@@ -11,14 +11,18 @@
 
    Solo declaraciones: todo lo de la app se usa recién al abrirla. */
 
-/* Sale para el CSM (Santi, desde el 19/10/2026) y en el navegador que tenga
-   la llave en '1'. Con la llave en '0' no sale para nadie de ese navegador:
+/* Sale para el CSM (Santi), para las socias en cualquier dispositivo (desde el
+   19/10/2026) y en el navegador que tenga la llave en '1'. Con la llave en '0' no sale para nadie de ese navegador:
    es la vuelta atras sin tocar codigo. */
 function _bv2On(){
   var k=null; try{ k=localStorage.getItem('evold-bienvenida-v2'); }catch(e){}
   if(k==='0') return false;
   if(k==='1') return true;
-  try{ return typeof _soyCsm==='function' && _soyCsm(); }catch(e){ return false; }
+  try{ if(typeof _soyCsm==='function' && _soyCsm()) return true; }catch(e){}
+  // Y las socias, en cualquier dispositivo (Angie, 19/10/2026): socioId ya está en
+  // la base, así no queda ningún mail escrito en el código.
+  var me=String((typeof SB==='object' && SB.email)||'').toLowerCase();
+  return !!me && (DB.personas||[]).some(function(p){ return p && p.socioId && String(p.email||'').toLowerCase()===me; });
 }
 
 var _BV2={ reun:null, gcal:false, edit:-1 };

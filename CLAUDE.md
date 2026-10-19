@@ -20,7 +20,7 @@ lo saca de los commits viejos. Se arregla antes de commitear, no después.
 `index.html` y, desde el 17/10/2026, partes separadas en `js/`: `js/fathom.js`
 (llamadas de Fathom), `js/meta.js` (Meta Ads: uso de la API, gasto, rango,
 columnas de metricas y la sincronizacion de anuncios) y `js/bienvenida.js` (el
-parte del dia nuevo, 19/10/2026: sale para el CSM y con la llave localStorage
+parte del dia nuevo, 19/10/2026: sale para el CSM, las socias (socioId) y con la llave localStorage
 `evold-bienvenida-v2` = '1'; con '0' no sale). `js/avisos.js` pasa a ticket del CSM (rolId 'csm') los cambios
 propuestos con `para:'csm'` (avisos y tareas del cliente), con `tambien` = las
 socias (personas con `socioId`). JS de navegador, sin build ni
