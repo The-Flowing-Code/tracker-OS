@@ -2841,6 +2841,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/fathom.js?v=DEV"></script>
 <script src="js/meta.js?v=DEV"></script>
 <script src="js/bienvenida.js?v=DEV"></script>
+<script src="js/avisos.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -8214,6 +8215,8 @@ async function procesarEntrega(){
 }
 
 function _tkEsMio(t){
+  // «Tambien lo ve» (js/avisos.js): los avisos al cliente van al CSM y Angie los sigue.
+  if(typeof _tkTambienYo==='function' && _tkTambienYo(t)) return true;
   var r=String((t&&t.responsible)||'').trim(); if(!r) return false;
   try{ if(soyYo(r)) return true; }catch(e){}
   try{ return typeof _respMail==='function' && soyYo(_respMail(r)); }catch(e){ return false; }
@@ -8232,7 +8235,8 @@ function _ticketRows(){
       // Mientras el follow-up no vencio, viven solo en la pestana Tareas del cliente.
       if(t.ownerCliente && !t.done){
         const venc=t.followUpDue && new Date(t.followUpDue)<now;
-        if(!venc) return; // todavia no toca seguir: no ensucia el tablero
+        // El CSM las ve siempre: seguir al cliente es su trabajo (Angie, 19/10/2026).
+        if(!venc && !(typeof _soyCsm==='function' && _soyCsm())) return; // todavia no toca seguir: no ensucia el tablero
       }
       rows.push({t:t,c:c});
     });
@@ -13701,7 +13705,7 @@ function _bvMias(){
     (c.tasks||[]).forEach(function(t){
       if(t.done||t.deleted||t.archivada) return;
       var r=String(t.responsible||'').toLowerCase();
-      if(!r || r===mail || (nom&&r===nom)) out.push({c:c,t:t});
+      if(!r || r===mail || (nom&&r===nom) || (typeof _tkTambienYo==='function' && _tkTambienYo(t))) out.push({c:c,t:t});
     });
   });
   return out;
@@ -73732,6 +73736,7 @@ async function arrancarConSesion(){
   // faro de carga y se ven las dos pantallas encimadas.
   try{
     focoArrancar();
+    if(typeof avisosArrancar==='function') avisosArrancar();
     if(bienvenidaPendiente()) setTimeout(bienvenidaMostrar, 420);
   }catch(e){}
   // Un link de revision en la URL manda mas que la posicion guardada: si te
