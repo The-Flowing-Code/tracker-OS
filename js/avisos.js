@@ -73,8 +73,51 @@ function avisosACsm(){
   }
   return n;
 }
+/* Una tarea que tiene que hacer el CLIENTE (ownerCliente) genera un ticket de
+   seguimiento para el CSM (Angie, 19/10/2026): la del cliente queda como está,
+   y el CSM tiene la suya para perseguirla. Cuando la del cliente se tilda, el
+   seguimiento se cierra solo; si se borra, también. */
+function seguimientosCsm(){
+  if(typeof SB!=='object' || !SB.listo) return 0;
+  var csm=_csmMail(); if(!csm) return 0;
+  var copia=_avisosCopia().filter(function(m){ return m!==csm; });
+  var n=0, cerradas=0, ahora=new Date();
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    var ts=c.tasks||[];
+    var porOrigen={};
+    ts.forEach(function(f){ if(f && f.seguimientoDe!=null) porOrigen[String(f.seguimientoDe)]=f; });
+    ts.slice().forEach(function(t){
+      if(!t || !t.ownerCliente) return;
+      var f=porOrigen[String(t.id)];
+      if(t.done || t.deleted || t.archivada){
+        if(f && !f.done && !f.deleted){
+          f.done=true; f.doneAt=ahora.toISOString();
+          f.cierre=t.done?'el cliente la cumplió':'se sacó la tarea del cliente'; cerradas++;
+        }
+        return;
+      }
+      if(f) return;
+      var due='';
+      if(t.followUpDue){ var d=new Date(t.followUpDue); if(!isNaN(d)) due=rvISO(d); }
+      if(!due){ var v=new Date(ahora.getTime()); v.setDate(v.getDate()+3); due=rvISO(v); }
+      c.tasks.unshift({ id:Date.now()+Math.floor(Math.random()*100000)+n,
+        text:'Seguimiento: que '+String(t.responsible||'el cliente')+' haga: '+String(t.text||''),
+        responsible:csm, tambien:copia, done:false, source:'Seguimiento al cliente', due:due,
+        delegated:true, delegatedAt:ahora.toISOString(), ticket:'#'+nextTicketFromApp(), seguimientoDe:t.id });
+      n++;
+    });
+  });
+  if(n || cerradas){
+    save();
+    if(n && typeof toast==='function') toast(n+' seguimiento'+(n===1?'':'s')+' al cliente para el CSM');
+    try{ if(S.view==='tickets' && typeof showTickets==='function') showTickets(); }catch(e){}
+  }
+  return n;
+}
+function _avisosCiclo(){ try{ avisosACsm(); }catch(e){} try{ seguimientosCsm(); }catch(e){} }
 function avisosArrancar(){
   if(window._avisosT) return;
-  setTimeout(avisosACsm, 2500);
-  window._avisosT=setInterval(avisosACsm, 5*60000);
+  setTimeout(_avisosCiclo, 2500);
+  window._avisosT=setInterval(_avisosCiclo, 5*60000);
 }
