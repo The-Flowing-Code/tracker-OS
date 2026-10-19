@@ -38521,8 +38521,11 @@ async function _citaInvitarEquipo(c, inicio, mails){
     var conCliente=cands.filter(function(e){
       return (e.invitados||[]).some(function(a){ return a.mail===mailC; })
         || (nom && String(e.titulo||'').toLowerCase().indexOf(nom)>=0); });
+    // `organizaEsta` lo dice Google por agenda: hace falta cuando la reunion
+    // vive en una agenda secundaria, donde el organizador no es el mail de
+    // la cuenta sino el de esa agenda (19/10/2026).
     ev=conCliente.filter(function(e){
-        return (e.invitados||[]).some(function(a){
+        return e.organizaEsta || (e.invitados||[]).some(function(a){
           return a.organiza && a.mail===String(e.agenda||'').toLowerCase(); }); })[0]
       || conCliente.filter(function(e){ return !esCopiaInvitado(e); })[0] || null;
     if(!ev && conCliente.length) soloInvitado=conCliente[0];
@@ -38539,7 +38542,8 @@ async function _citaInvitarEquipo(c, inicio, mails){
     +(ultimoError?(' ('+ultimoError+')'):'. Si la toma alguien que no conectó su Google en Integraciones, que lo conecte; si recién se agendó, probá en un minuto.')
     +aMano};
   var ri=null;
-  try{ ri=await post('invitar', {quien:ev.agenda, eventId:ev.eventId, mails:mails}); }
+  try{ ri=await post('invitar', {quien:ev.agenda, calendarId:ev.calendario||'primary',
+                                   eventId:ev.eventId, mails:mails}); }
   catch(e){ ri={ok:false, error:(e&&e.message)||''}; }
   if(!ri||!ri.ok) return {ok:false, texto:'Google no dejó sumar al equipo: '
     +((ri&&ri.error)||'sin respuesta')+'.'+aMano};
@@ -38553,7 +38557,8 @@ async function _citaInvitarEquipo(c, inicio, mails){
       faltan=mails.filter(function(m){ return !hay[String(m).toLowerCase()]; }); }
   }catch(e){}
   if(faltan.length) return {ok:false, texto:'Google dijo que sí, pero en la reunión no aparecen: '
-    +faltan.join(', ')+'. Invitalos a mano desde el Google Calendar de '+ev.agenda+'.'};
+    +faltan.join(', ')+'. Invitalos a mano desde el Google Calendar de '+ev.agenda
+    +(ev.calendario&&ev.calendario!=='primary'?(' (agenda '+ev.calendario+')'):'')+'.'};
   return {ok:true, texto:(ri.sumados||[]).length
     ? ('Invitados en Google: '+ri.sumados.join(', ')+'.')
     : 'Ya estaban invitados.'};
