@@ -88,7 +88,7 @@ function _bv2Grupos(){
     var tarea=pend.filter(function(t){ return t.b; })[0]||pend[0]||null;
     var etapa=(ea&&ea.etapa)||'';
     var t0=new Date(c.altaAt||c.createdAt||0).getTime(), nuevo=!!(t0 && t0>=hace30);
-    var it={c:c, n:c.name, nuevo:nuevo};
+    var it={c:c, n:c.name, nuevo:nuevo, aaa:(c.categoria==='AAA+')};
     /* Sin nada prendido pero con gasto reciente en el pulso de Meta: lanzo y la
        campana esta pausada. No es «frenado para lanzar» (paso con Logical Minds,
        pausada desde el 16/10, que salia frenada hace 75 dias). */
@@ -118,7 +118,9 @@ function _bv2Grupos(){
       it.q=dia+' · sin alarmas'; it.orden=-(L.dias||0); G.bien.push(it);
     }
   });
-  Object.keys(G).forEach(function(k){ G[k].sort(function(a,b){ return a.orden-b.orden; }); });
+  // Los AAA+ primero en cada tarjeta (Angie, 19/10/2026): con ellos no alcanza
+  // con que funcione, tienen que estar cerca del resultado.
+  Object.keys(G).forEach(function(k){ G[k].sort(function(a,b){ return ((b.aaa?1:0)-(a.aaa?1:0)) || (a.orden-b.orden); }); });
   return G;
 }
 
@@ -127,7 +129,8 @@ function _bv2Grupos(){
    por persona y por día. */
 function _bv2NNKey(){ return 'evold-bv2-nn-'+String((SB&&SB.email)||'x')+'-'+rvISO(new Date()); }
 function _bv2Sugeridos(G){
-  var s=[], f=G.fren[0], a=G.alar[0];
+  var s=[], aaa=function(L){ return L.filter(function(x){ return x.aaa; })[0]||L[0]; };
+  var f=aaa(G.fren), a=aaa(G.alar);
   var r=(_BV2.reun||[]).filter(function(x){ return x.cliId && _bv2Min(x.ini)+x.min>_bv2Min(new Date()); })[0];
   if(f) s.push({t:'Destrabar '+f.n+(f.acc&&f.acc!=='Abrir'?(': '+f.acc.charAt(0).toLowerCase()+f.acc.slice(1)):''), por:f.q, cid:f.c.id});
   if(a) s.push({t:'Resolver la alarma de '+a.n, por:a.q, cid:a.c.id});
@@ -242,6 +245,7 @@ var _BV2_CSS=''
   +'#bv2 .it .nm{display:grid;gap:2px;min-width:0;text-align:left;padding:0}'
   +'#bv2 .it .nm b{font-weight:500;font-size:14px;letter-spacing:-.01em} #bv2 .it .nm:hover b{text-decoration:underline;text-underline-offset:3px}'
   +'#bv2 .it .nm span{color:var(--t3);font-size:12.5px;line-height:1.45}'
+  +'#bv2 .it .aaa{font-size:10px;font-weight:600;color:#080A0F;background:var(--ok);border-radius:4px;padding:0 5px;margin-left:7px;vertical-align:1px}'
   +'#bv2 .it .nv{font-size:10.5px;color:var(--ok);margin-left:6px;font-weight:400}'
   +'#bv2 .acc{font-size:12.5px;font-weight:500;padding:7px 12px;min-height:34px;border-radius:99px;border:1px solid var(--c);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}'
   +'#bv2 .acc:hover{background:rgba(242,240,235,.06)}'
@@ -307,7 +311,7 @@ function _bv2Html(){
       return '<div class="card g '+d[0]+'"><div class="gh"><span class="x"><i></i>'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span><span class="k num">'+L.length+'</span></div>'
         +(L.length?'<div class="lst" tabindex="0" aria-label="'+esc(t)+'">'+L.map(function(it){
           var acc=(it.acc&&d[0]!=='bien')?'<button class="acc" data-bv2cli="'+it.c.id+'" title="'+esc(it.acc)+'">'+esc(it.acc)+'</button>':'<span></span>';
-          return '<div class="it"><button class="nm" data-bv2cli="'+it.c.id+'" title="Abrir '+esc(it.n)+'"><b>'+esc(it.n)+(it.nuevo?'<span class="nv">nuevo</span>':'')+'</b><span>'+esc(it.q)+'</span></button>'+acc+'</div>';
+          return '<div class="it"><button class="nm" data-bv2cli="'+it.c.id+'" title="Abrir '+esc(it.n)+'"><b>'+esc(it.n)+(it.aaa?'<span class="aaa">AAA+</span>':'')+(it.nuevo?'<span class="nv">nuevo</span>':'')+'</b><span>'+esc(it.q)+'</span></button>'+acc+'</div>';
         }).join('')+'</div>':'<div class="vac">'+d[3]+'</div>')+'</div>';
     }).join('')+'</div>';
   var U=_bv2Tiempo(), tot=U.reduce(function(t,u){ return t+u.m; },0);
