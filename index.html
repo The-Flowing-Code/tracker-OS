@@ -26277,8 +26277,21 @@ function saveDefaultAlarms(){
   toast('Reglas por defecto guardadas - se aplican a todos los clientes');
 }
 
+/* Una regla de MONTO (CPC, CPM, inversion...) tiene el limite en dolares. Si la
+   cuenta factura en otra moneda y no tiene la tasa cargada, los valores llegan
+   en esa moneda y la comparacion no tiene sentido: Goltia y PlayWith (ARS sin
+   tasa) marcaban «CPC $466 (limite $1)» y mandaban el mail (Angie, 19/10/2026).
+   Con tasa, la app ya compara en dolares. Sin tasa, la regla no se evalua. */
+function _reglaMontoSinTasa(c, r){
+  var mon=String((c&&c.metaCurrency)||'');
+  if(!mon || mon==='USD' || (typeof fxActiva==='function' && fxActiva(c))) return false;
+  var fmt=function(id){ if(!id) return '';
+    var m=(r.scope==='ad' && typeof _metAd==='function')?_metAd(id):ALARM_METRICS.find(function(x){return x.id===id;});
+    return (m&&m.fmt)||''; };
+  return fmt(r.metric)==='money' || fmt(r.metric2)==='money';
+}
 function alarmStatus(c){
-  const rules=effectiveAlarmRules(c).filter(function(r){return r.enabled;});
+  const rules=effectiveAlarmRules(c).filter(function(r){return r.enabled && !_reglaMontoSinTasa(c, r);});
   if(!rules.length) return {active:0,breached:0,detalle:[]};
   const M=computeAlarmMetrics(c);
   let breached=0; const detalle=[];
@@ -26332,6 +26345,7 @@ function checkAlarms(c){
   var _ads=null;
   _rules.forEach(function(r){
     if(!r.enabled) return;
+    if(_reglaMontoSinTasa(c, r)) return;   // monto en pesos contra limite en dolares
     if((Date.now()-(a.lastSent[r.id]||0))<=24*3600000) return;   // ya avisada hoy
     if(r.scope==='ad'){
       if(_ads===null) _ads=computeAdMetrics(c);
