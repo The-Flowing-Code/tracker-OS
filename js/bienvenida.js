@@ -194,6 +194,8 @@ function _bv2Sugeridos(G){
     // El CSM: lo que tiene que avisar o seguir con el cliente, lo que vence primero.
     _bv2Avisos().forEach(function(x){
       var tx=String(x.t.text||'').replace(/^(Avisarle al cliente|Seguir con el cliente|Seguimiento):\s*/,'').split(' \u2014 ')[0];
+      // El texto ya suele empezar con el cliente («PlayWith: …»): no se repite.
+      if(tx.toLowerCase().indexOf(String(x.c.name).toLowerCase()+':')===0) tx=tx.slice(String(x.c.name).length+1).trim();
       poner(x.c.id, x.c.name+': '+(tx.length>90?tx.slice(0,88)+'…':tx), _bv2Vence(x.due));
     });
   } else {
