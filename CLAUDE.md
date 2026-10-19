@@ -18,8 +18,10 @@ lo saca de los commits viejos. Se arregla antes de commitear, no después.
 
 ## La app
 `index.html` y, desde el 17/10/2026, partes separadas en `js/`: `js/fathom.js`
-(llamadas de Fathom) y `js/meta.js` (Meta Ads: uso de la API, gasto, rango,
-columnas de metricas y la sincronizacion de anuncios). JS de navegador, sin build ni
+(llamadas de Fathom), `js/meta.js` (Meta Ads: uso de la API, gasto, rango,
+columnas de metricas y la sincronizacion de anuncios) y `js/bienvenida.js` (el
+parte del dia nuevo, 19/10/2026: sale solo con la llave localStorage
+`evold-bienvenida-v2` = '1' mientras Angie lo revisa). JS de navegador, sin build ni
 framework: cada `js/*.js` es un `<script src>` clasico que se carga ANTES del
 principal, con funciones globales (los `onclick=""` las siguen encontrando).
 En `js/` solo van declaraciones: nada que al cargar use algo del principal

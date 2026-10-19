@@ -2840,6 +2840,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 
 <script src="js/fathom.js?v=DEV"></script>
 <script src="js/meta.js?v=DEV"></script>
+<script src="js/bienvenida.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -13734,6 +13735,9 @@ function _bvDatos(){
 }
 
 function bienvenidaMostrar(){
+  // La version nueva (js/bienvenida.js) sale solo donde esta prendida su llave,
+  // mientras Angie la revisa con datos reales (19/10/2026).
+  if(typeof _bv2On==='function' && _bv2On()) return bienvenida2Mostrar();
   var d=_bvDatos();
   var min=focoMin();
   // El arco se llena sobre 120 minutos: mas que eso ya no dice nada nuevo.
