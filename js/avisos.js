@@ -8,7 +8,7 @@
    `tipo:'cliente'` (algo que tiene que hacer el cliente). Acá se convierten
    solos en ticket:
    - responsable: el CSM, la persona con rolId 'csm' (no un mail fijo);
-   - `tambien`: quienes lo ven igual, de DB.agencia.avisosCopia;
+   - `tambien`: quienes lo ven igual: las socias (personas con socioId);
    - la decisión queda guardada como cualquier «Crear ticket», así no se repite.
 
    Solo declaraciones: todo lo de la app se usa recién al correr. */
@@ -17,9 +17,15 @@ function _csmMail(){
   var p=(DB.personas||[]).filter(function(x){ return x && x.rolId==='csm' && x.email; })[0];
   return p?String(p.email).toLowerCase():'';
 }
+/* Quiénes lo ven igual: las socias (personas con socioId). Se probó guardarlo
+   en DB.agencia y en la persona, y esa configuración no viaja a la nube con el
+   guardado común: se perdía al recargar. socioId ya está en la base. */
 function _avisosCopia(){
   var a=(DB.agencia && DB.agencia.avisosCopia) || [];
-  return (Array.isArray(a)?a:[]).map(function(x){ return String(x||'').toLowerCase().trim(); }).filter(Boolean);
+  a=(Array.isArray(a)?a:[]).map(function(x){ return String(x||'').toLowerCase().trim(); }).filter(Boolean);
+  if(a.length) return a;
+  return (DB.personas||[]).filter(function(p){ return p && p.socioId && p.email && p.rolId!=='csm'; })
+    .map(function(p){ return String(p.email).toLowerCase(); });
 }
 // Quien figura en «también lo ve» cuenta como si fuera suyo (bienvenida, cartera).
 function _tkTambienYo(t){

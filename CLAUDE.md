@@ -22,8 +22,8 @@ lo saca de los commits viejos. Se arregla antes de commitear, no después.
 columnas de metricas y la sincronizacion de anuncios) y `js/bienvenida.js` (el
 parte del dia nuevo, 19/10/2026: sale solo con la llave localStorage
 `evold-bienvenida-v2` = '1' mientras Angie lo revisa). `js/avisos.js` pasa a ticket del CSM (rolId 'csm') los cambios
-propuestos con `para:'csm'` (avisos y tareas del cliente), con `tambien` =
-`DB.agencia.avisosCopia`. JS de navegador, sin build ni
+propuestos con `para:'csm'` (avisos y tareas del cliente), con `tambien` = las
+socias (personas con `socioId`). JS de navegador, sin build ni
 framework: cada `js/*.js` es un `<script src>` clasico que se carga ANTES del
 principal, con funciones globales (los `onclick=""` las siguen encontrando).
 En `js/` solo van declaraciones: nada que al cargar use algo del principal
