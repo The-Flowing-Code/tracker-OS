@@ -245,6 +245,9 @@ var _BV2_CSS=''
   +'#bv2 .it .nv{font-size:10.5px;color:var(--ok);margin-left:6px;font-weight:400}'
   +'#bv2 .acc{font-size:12.5px;font-weight:500;padding:7px 12px;min-height:34px;border-radius:99px;border:1px solid var(--c);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}'
   +'#bv2 .acc:hover{background:rgba(242,240,235,.06)}'
+  +'#bv2 .lst{max-height:404px;overflow-y:auto;overscroll-behavior:contain;margin-right:-10px;padding-right:10px;scrollbar-width:thin;scrollbar-color:rgba(242,240,235,.2) transparent}'
+  +'#bv2 .lst::-webkit-scrollbar{width:6px} #bv2 .lst::-webkit-scrollbar-thumb{background:rgba(242,240,235,.2);border-radius:3px}'
+  +'#bv2 .lst:focus-visible{outline:2px solid var(--ok);outline-offset:4px;border-radius:8px}'
   +'#bv2 .vac{padding:12px 0;border-top:1px solid var(--ln);font-size:12.5px;color:var(--t3)}'
   +'#bv2 .tiempo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:12px} @media (max-width:820px){#bv2 .tiempo{grid-template-columns:minmax(0,1fr)}}'
   +'#bv2 .tt{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:16px;font-size:13px;color:var(--t3)}'
@@ -302,10 +305,10 @@ function _bv2Html(){
   var cuadro='<div class="q4">'+DEF.map(function(d){
       var L=G[d[0]], t=(L.length===1?d[1]:d[2]);
       return '<div class="card g '+d[0]+'"><div class="gh"><span class="x"><i></i>'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span><span class="k num">'+L.length+'</span></div>'
-        +(L.length?L.slice(0,6).map(function(it){
+        +(L.length?'<div class="lst" tabindex="0" aria-label="'+esc(t)+'">'+L.map(function(it){
           var acc=(it.acc&&d[0]!=='bien')?'<button class="acc" data-bv2cli="'+it.c.id+'" title="'+esc(it.acc)+'">'+esc(it.acc)+'</button>':'<span></span>';
           return '<div class="it"><button class="nm" data-bv2cli="'+it.c.id+'" title="Abrir '+esc(it.n)+'"><b>'+esc(it.n)+(it.nuevo?'<span class="nv">nuevo</span>':'')+'</b><span>'+esc(it.q)+'</span></button>'+acc+'</div>';
-        }).join('')+(L.length>6?'<div class="vac">y '+(L.length-6)+' más</div>':''):'<div class="vac">'+d[3]+'</div>')+'</div>';
+        }).join('')+'</div>':'<div class="vac">'+d[3]+'</div>')+'</div>';
     }).join('')+'</div>';
   var U=_bv2Tiempo(), tot=U.reduce(function(t,u){ return t+u.m; },0);
   var usos='<div class="card"><div class="tt">En qué se te fue el tiempo <small>7 días · '+_bv2Dur(tot)+'</small></div>'
