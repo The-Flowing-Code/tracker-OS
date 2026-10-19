@@ -243,9 +243,15 @@ async function fathomWebhookSync(silent){
        El tope de vueltas es para que un error del lado del servidor no deje
        el bucle girando; 12 tandas de 200 son 2400 llamadas, muy por encima de
        lo que la agencia acumula entre sincronizaciones. */
+    /* ⚠️  DE A 25, NO DE A 200 (19/10/2026). Cada fila trae la transcripcion
+       entera: con 97 sin procesar, la tanda de 200 pasaba el limite de tiempo
+       de la base («canceling statement due to statement timeout») y la
+       sincronizacion se cortaba en silencio. Ninguna llamada entraba sola a
+       las fichas: asi se perdio el onboarding de Metrodev. 40 vueltas de 25
+       siguen siendo 1000 llamadas por sincronizacion. */
     filas=[];
-    var _tanda=200, _desde=0, _vuelta=0;
-    while(_vuelta<12){
+    var _tanda=25, _desde=0, _vuelta=0;
+    while(_vuelta<40){
       var _p=await sbFetch('llamadas_fathom?procesada=eq.false&order=recibida_at.desc'
         +'&limit='+_tanda+'&offset='+_desde);
       if(!_p||!_p.length) break;
