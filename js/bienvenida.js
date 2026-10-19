@@ -137,9 +137,13 @@ function _bv2Grupos(){
     /* Sin nada prendido pero con gasto reciente en el pulso de Meta: lanzo y la
        campana esta pausada. No es «frenado para lanzar» (paso con Logical Minds,
        pausada desde el 16/10, que salia frenada hace 75 dias). */
+    /* Y si el pulso no pudo leer Meta, el reporte de campañas manda: un cliente
+       que ya tiene reporte lanzo (Logical Minds, 19/10: el pulso dio error y
+       volvia a «frenado hace 75 dias»). */
     var pu=c.metaPulso||null, gasto=pu?((+pu.gasto||0)+(+((pu.anterior||{}).gasto)||0)):0;
-    if(!L && gasto>0 && pu && !(+pu.activos)){
-      it.q='campaña pausada · sin anuncios al aire'+(pu.at?(' · pulso del '+new Date(pu.at).getDate()+'/'+(new Date(pu.at).getMonth()+1)):'');
+    var yaTuvo=!!(c.reporteCampana && c.reporteCampana.url);
+    if(!L && ((gasto>0 && pu && !(+pu.activos)) || yaTuvo)){
+      it.q='campaña pausada · sin anuncios al aire'+((pu && pu.error)?' · el pulso de Meta no pudo leer la cuenta':(pu&&pu.at?(' · pulso del '+new Date(pu.at).getDate()+'/'+(new Date(pu.at).getMonth()+1)):''));
       it.acc='Ver campaña'; it.orden=-99; it.urg=true; it.pausada=true; it.plata=0; G.alar.push(it);
       return;
     }
