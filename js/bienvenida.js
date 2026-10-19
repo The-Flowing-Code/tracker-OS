@@ -1,8 +1,7 @@
 /* ── Parte del día v2: la bienvenida nueva (Angie, 19/10/2026) ─────────────
    Modelo: el artifact 4JBuYqxuwiYxb2JfduZsiZ («Propuesta», fondo Faro).
-   Sale para el CSM y en el navegador con la llave localStorage
-   'evold-bienvenida-v2' = '1' (Angie); el resto sigue viendo la de antes
-   (bienvenidaMostrar, en index.html). Con la llave en '0' no sale.
+   Es la bienvenida de todo el equipo; la de antes (bienvenidaMostrar, en
+   index.html) vuelve solo donde la llave 'evold-bienvenida-v2' esté en '0'.
 
    ⚠️  NADA INVENTADO. El modelo traía horas por tipo de trabajo y horas que
    «te sacás de encima»: la app no guarda ninguna de las dos. En su lugar va
@@ -11,18 +10,12 @@
 
    Solo declaraciones: todo lo de la app se usa recién al abrirla. */
 
-/* Sale para el CSM (Santi), para las socias en cualquier dispositivo (desde el
-   19/10/2026) y en el navegador que tenga la llave en '1'. Con la llave en '0' no sale para nadie de ese navegador:
-   es la vuelta atras sin tocar codigo. */
+/* Es la bienvenida de todo el equipo desde el 19/10/2026 (Angie: «que todos
+   tengan la nueva»). Con la llave localStorage 'evold-bienvenida-v2' = '0' no
+   sale en ese navegador y vuelve la de antes: es la vuelta atrás sin tocar código. */
 function _bv2On(){
   var k=null; try{ k=localStorage.getItem('evold-bienvenida-v2'); }catch(e){}
-  if(k==='0') return false;
-  if(k==='1') return true;
-  try{ if(typeof _soyCsm==='function' && _soyCsm()) return true; }catch(e){}
-  // Y las socias, en cualquier dispositivo (Angie, 19/10/2026): socioId ya está en
-  // la base, así no queda ningún mail escrito en el código.
-  var me=String((typeof SB==='object' && SB.email)||'').toLowerCase();
-  return !!me && (DB.personas||[]).some(function(p){ return p && p.socioId && String(p.email||'').toLowerCase()===me; });
+  return k!=='0';
 }
 
 var _BV2={ reun:null, gcal:false, edit:-1 };
