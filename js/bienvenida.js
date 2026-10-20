@@ -356,6 +356,23 @@ var _BV2_CSS=''
   +'#bv2 .reco button{font-size:12px;font-weight:500;padding:6px 11px;border-radius:99px;border:1px solid rgba(242,240,235,.18);white-space:nowrap} #bv2 .reco button:hover{border-color:var(--ok)}'
   +'#bv2 .agente{--c:var(--ok)} #bv2 .delegar{--c:var(--prog)} #bv2 .auto{--c:rgba(242,240,235,.6)}';
 
+/* «Cómo van los clientes» (Angie, 20/10/2026): la lectura de resultados que arma el
+   reporte de campañas cada mañana (maquina.carteraEstado, migración 044). Es un
+   juicio sobre registros, costo, calificados y agendas; NO es lo mismo que
+   «sin alarmas», que solo dice que ninguna regla saltó. */
+function _bv2CarteraHtml(){
+  var e=null; (DB.clients||[]).forEach(function(c){ if(c && c.carteraEstado && Array.isArray(c.carteraEstado.bien)) e=c.carteraEstado; });
+  if(!e) return '';
+  var f=String(e.fecha||''), fd=f?(f.slice(8,10)+'/'+f.slice(5,7)):'';
+  var viejo=(f && f!==rvISO(new Date()));
+  var fila=function(c, a, b){ return '<div class="it"><span class="nm" style="cursor:default"><b>'+esc(c||'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'')+'</span><span></span></div>'; };
+  var tarj=function(cls,t,L,vacio,pinta){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div>'
+    +(L.length?'<div class="lst" tabindex="0" aria-label="'+t+'">'+L.map(pinta).join('')+'</div>':'<div class="vac">'+vacio+'</div>')+'</div>'; };
+  var B=e.bien||[], M=e.mal||[];
+  return '<div class="tt" style="margin:0 2px -8px;font-size:12px;letter-spacing:.14em;color:var(--t2)">CÓMO VAN LOS CLIENTES <small style="letter-spacing:0;text-transform:none">· '+(viejo?('lectura del '+fd+', no es de hoy'):'lectura de hoy, del reporte de campañas')+'</small></div>'
+    +'<div class="q4">'+tarj('bien','Van bien',B,'Hoy ningún cliente cumple lo que pide el reporte.',function(x){ return fila(x.cliente, x.numeros, x.lectura); })
+    +tarj('fren','No van bien',M,'Ninguno con problemas de resultados hoy.',function(x){ return fila(x.cliente, x.motivo, ''); })+'</div>';
+}
 function _bv2Html(){
   var G=_bv2Grupos(), D=_bv2Dia(), R=_BV2.reun||[], NN=_bv2NN(G);
   var nom=String(personaNombre((SB&&SB.email)||'')||'');
@@ -421,7 +438,7 @@ function _bv2Html(){
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div></div>';
+    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div></div>';
 }
 
 // Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
