@@ -290,6 +290,14 @@ var _BV2_CSS=''
   +'#bv2 .esq{position:absolute;top:0;right:0;display:flex;gap:14px;align-items:center}'
   +'#bv2 .sello{font-family:Geist,Inter,system-ui,sans-serif;font-size:14px;font-weight:400;letter-spacing:.01em;color:var(--t2);display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums}'
   +'#bv2 .sello i{box-shadow:0 0 0 4px rgba(200,255,71,.14)}'
+  +'body:has(#bv2) #modal-root .modal-overlay{z-index:10001}'
+  +'#bv2 .prp{display:flex;flex-direction:column;gap:10px;margin:2px 0 10px;padding:12px 14px;border-radius:12px;background:rgba(242,240,235,.04);border:1px solid var(--ln)}'
+  +'#bv2 .prp .t{font-size:13.5px;line-height:1.45;color:var(--t2)} #bv2 .prp .p{font-size:12px;color:var(--t3);margin-top:2px}'
+  +'#bv2 .prp .o{font-family:"Geist Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.06em;color:var(--t3);text-transform:uppercase}'
+  +'#bv2 .prp .ac{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}'
+  +'#bv2 .bAcc{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid rgba(242,240,235,.18)!important;font-size:12.5px;color:var(--t2)} #bv2 .bAcc:hover{border-color:rgba(242,240,235,.4)!important;color:#F2F0EB}'
+  +'#bv2 .bAcc.ok{background:var(--ok)!important;border-color:var(--ok)!important;color:#080A0F;font-weight:600}'
+  +'#bv2 .nm .prn{display:inline-block;margin-left:8px;font-weight:400;font-size:12px;color:var(--amb)}'
   +'#bv2 .pieBv{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--ln)}'
   +'#bv2 .sello i{width:6px;height:6px;border-radius:50%;background:var(--ok)}'
   +'#bv2 .btnE{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border-radius:99px;background:var(--ok);color:#080A0F;font-family:Geist,Inter,system-ui,sans-serif;font-weight:600;font-size:14.5px;letter-spacing:-.005em}'
@@ -362,12 +370,39 @@ var _BV2_CSS=''
    reporte de campañas cada mañana (maquina.carteraEstado, migración 044). Es un
    juicio sobre registros, costo, calificados y agendas; NO es lo mismo que
    «sin alarmas», que solo dice que ninguna regla saltó. */
+function _bv2PropDe(c){
+  var out=[]; try{ out=dashCambiosPendientes().filter(function(x){ return String(x.c.id)===String(c.id); }); }catch(e){}
+  return out;
+}
+function _bv2PropHtml(L){
+  var tipoDe=function(x){ return x.tipo||(x.origen==='revision'?'revision':'rutina'); };
+  return '<div class="prp">'+L.map(function(x){
+    var iid=esc(String(x.it.id)), rid=esc(String((x.r&&x.r.id)||'')), cid=x.c.id;
+    var crear=x.origen==='rutina'?"dashTicketModal('rutina',"+cid+",'','"+iid+"')":(x.origen==='etapa'?"dashTicketModal('etapa',"+cid+",'','"+iid+"')":"dashTicketModal('revision',"+cid+",'"+rid+"','"+iid+"')");
+    var desc=x.origen==='rutina'?"dashRutinaDecidir("+cid+",'"+iid+"','descartado')":(x.origen==='etapa'?"dashEtapaDecidir("+cid+",'"+iid+"','descartado')":"dashDescartar("+cid+",'"+rid+"','"+iid+"')");
+    return '<div><div class="o">'+esc({llamada:'llamada',rutina:'rutina',etapa:'etapa',revision:'revisión'}[tipoDe(x)]||'')+'</div>'
+      +'<div class="t">'+esc(x.it.texto)+'</div>'+(x.it.porque?'<div class="p">'+esc(x.it.porque)+'</div>':'')
+      +'<div class="ac"><button class="bAcc ok" onclick="'+crear+'">Crear ticket</button>'
+      +'<button class="bAcc" onclick="propEditarModal(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')">Editar</button>'
+      +'<button class="bAcc" onclick="dashAgenteMandar(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')">Mandar al agente</button>'
+      +'<button class="bAcc" onclick="'+desc+'">Descartar</button></div></div>';
+  }).join('')+'</div>';
+}
 function _bv2CarteraHtml(){
   var e=null; (DB.clients||[]).forEach(function(c){ if(c && c.carteraEstado && Array.isArray(c.carteraEstado.bien)) e=c.carteraEstado; });
   if(!e) return '';
   var f=String(e.fecha||''), fd=f?(f.slice(8,10)+'/'+f.slice(5,7)):'';
   var viejo=(f && f!==rvISO(new Date()));
-  var fila=function(c, a, b){ return '<div class="it"><span class="nm" style="cursor:default"><b>'+esc(c||'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'')+'</span><span></span></div>'; };
+  var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return (DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null; };
+  // Cada cliente con propuestas sin decidir se abre al tocarlo y trae sus mismos botones.
+  var fila=function(nombre, a, b){
+    var c=porNombre(nombre), P=c?_bv2PropDe(c):[], abierto=!!(c && _BV2.exp && _BV2.exp[c.id]);
+    var cuerpo='<b>'+esc(nombre||'')+(P.length?'<span class="prn">'+P.length+' propuesta'+(P.length===1?'':'s')+' '+(abierto?'▴':'▾')+'</span>':'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'');
+    return '<div class="it" style="display:block"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+      +(P.length?'<button class="nm" data-bv2exp="'+c.id+'" aria-expanded="'+(abierto?'true':'false')+'" title="Ver las propuestas de '+esc(nombre)+'">'+cuerpo+'</button>':'<span class="nm" style="cursor:default">'+cuerpo+'</span>')
+      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir '+esc(nombre)+'">Abrir</button>':'<span></span>')+'</div>'
+      +(abierto?_bv2PropHtml(P):'')+'</div>';
+  };
   var tarj=function(cls,t,L,vacio,pinta){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div>'
     +(L.length?'<div class="lst" tabindex="0" aria-label="'+t+'">'+L.map(pinta).join('')+'</div>':'<div class="vac">'+vacio+'</div>')+'</div>'; };
   var B=e.bien||[], M=e.mal||[];
@@ -467,7 +502,7 @@ function _bv2Pintar(){
 function bienvenida2Cerrar(luego){
   var el=document.getElementById('bv2'); if(!el) return;
   if(_BV2.noche){ buenasNochesVista(); } else { try{ bienvenidaVista(); }catch(e){} }
-  clearInterval(_BV2.reloj); document.removeEventListener('keydown', _bv2Tecla);
+  clearInterval(_BV2.reloj); document.removeEventListener('keydown', _bv2Tecla); try{ if(_BV2.mo) _BV2.mo.disconnect(); }catch(e){}
   el.style.opacity='0';
   setTimeout(function(){ _BV2.noche=false; if(el.parentNode) el.parentNode.removeChild(el); if(typeof luego==='function') luego(); }, 300);
 }
@@ -508,11 +543,15 @@ function bienvenida2Mostrar(){
     if((b=e.target.closest('[data-bv2ed]'))){ var j=+b.dataset.bv2ed; _BV2.edit=(_BV2.edit===j)?-1:j; _bv2Pintar(); var inp=document.getElementById('bv2I'); if(inp){ inp.focus(); inp.select(); } return; }
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
+    if((b=e.target.closest('[data-bv2exp]'))){ var k=b.dataset.bv2exp; _BV2.exp=_BV2.exp||{}; _BV2.exp[k]=!_BV2.exp[k]; _bv2Pintar(); return; }
     if((b=e.target.closest('[data-bv2cli]'))){ var id=+b.dataset.bv2cli; bienvenida2Cerrar(function(){ try{ selectClient(id); }catch(err){} }); return; }
     if((b=e.target.closest('[data-bv2go]'))){ var go=b.dataset.bv2go;
       bienvenida2Cerrar(function(){ try{ if(go==='showTickets()') showTickets(); else { var m=/^irTorre\('(\w+)'\)$/.exec(go); if(m) irTorre(m[1]); } }catch(err){} }); return; }
   });
   document.addEventListener('keydown', _bv2Tecla);
+  // Al cerrarse un cuadro (crear ticket, editar, descartar) la lista se vuelve a dibujar sola.
+  var _mr=document.getElementById('modal-root');
+  if(_mr && window.MutationObserver){ try{ if(_BV2.mo) _BV2.mo.disconnect(); }catch(e){} _BV2.mo=new MutationObserver(function(){ if(!_mr.firstChild) setTimeout(_bv2Pintar, 300); }); _BV2.mo.observe(_mr,{childList:true}); }
   // El reloj y las horas libres se mueven solos; mientras se escribe un no
   // negociable solo cambia la hora, para no borrar lo que se está tipeando.
   _BV2.reloj=setInterval(_bv2Tic, 60000);
