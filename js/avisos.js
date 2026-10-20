@@ -46,22 +46,41 @@ function avisosACsm(){
     if(!c || c.archived) return;
     var dec=c.cambiosDecisiones||{};
     ((c.cambiosPropuestos||{}).items||[]).forEach(function(it){
-      if(!it || !it.id || !it.texto || it.para!=='csm') return;
+      var _llam=(it && it.crear==='ticket');   // nace de una llamada: ticket directo (Angie, 20/10/2026)
+      if(!it || !it.id || !it.texto || (it.para!=='csm' && !_llam)) return;
       if(dec[it.id] && dec[it.id].estado && dec[it.id].estado!=='pendiente') return;
       // Cinturón: si ya hay un ticket que salió de este cambio, no se crea otro
       // (dos navegadores abiertos a la vez pueden llegar antes que la decisión).
       if((c.tasks||[]).some(function(t){ return t && t.desdeCambio===it.id; })) return;
       var aviso=(it.tipo!=='cliente');
       var venc=new Date(ahora.getTime()); venc.setDate(venc.getDate()+(aviso?2:7));
-      var t={ id:Date.now()+Math.floor(Math.random()*100000)+n,
+      var t;
+      if(_llam){
+        /* De una llamada: el ticket sale directo, a nombre de quien la tomó la llamada
+           (nombre o mail en `responsable`); si no se reconoce, el responsable del cliente
+           y, al final, el CSM. Vence en `vence` (AAAA-MM-DD) o a los 3 días. */
+        var q=String(it.responsable||'').toLowerCase().trim(), resp='';
+        if(q){ var pp=(DB.personas||[]).filter(function(x){ return x && x.email && (String(x.email).toLowerCase()===q || (x.nombre && String(x.nombre).toLowerCase().split(' ')[0]===q.split(' ')[0])); })[0]; if(pp) resp=String(pp.email).toLowerCase(); }
+        if(!resp){ try{ resp=String(responsableDe(c)||'').toLowerCase(); }catch(e){} }
+        if(!resp) resp=csm;
+        var v3=new Date(ahora.getTime()); v3.setDate(v3.getDate()+3);
+        var due=/^\d{4}-\d{2}-\d{2}$/.test(String(it.vence||''))?String(it.vence):rvISO(v3);
+        t={ id:Date.now()+Math.floor(Math.random()*100000)+n,
+          text:String(it.texto)+(it.porque?(' — '+it.porque):''),
+          responsible:resp, tambien:copia.filter(function(m){ return m!==resp; }), done:false,
+          source:'Llamada', due:due, delegated:true, delegatedAt:ahora.toISOString(),
+          ticket:'#'+nextTicketFromApp(), desdeCambio:it.id };
+      } else {
+      t={ id:Date.now()+Math.floor(Math.random()*100000)+n,
         text:(aviso?'Avisarle al cliente: ':'Seguir con el cliente: ')+it.texto+(it.porque?(' — '+it.porque):''),
         responsible:csm, tambien:copia, done:false,
         source:aviso?'Aviso al cliente':'Tarea del cliente', due:rvISO(venc),
         delegated:true, delegatedAt:ahora.toISOString(),
         ticket:'#'+nextTicketFromApp(), desdeCambio:it.id };
+      }
       c.tasks=c.tasks||[]; c.tasks.unshift(t);
       c.cambiosDecisiones=c.cambiosDecisiones||{};
-      c.cambiosDecisiones[it.id]={estado:'tarea', at:ahora.toISOString(), por:'automático · CSM', taskId:t.id};
+      c.cambiosDecisiones[it.id]={estado:'tarea', at:ahora.toISOString(), por:(_llam?'automático · llamada':'automático · CSM'), taskId:t.id};
       dec=c.cambiosDecisiones;
       n++;
     });
