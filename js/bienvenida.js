@@ -440,14 +440,14 @@ function _bv2AvisosHtml(){
 
 function _bv2Pintar(){
   var el=document.getElementById('bv2'); if(!el) return;
-  var y=el.scrollTop; el.innerHTML=_bv2Html(); el.scrollTop=y;
+  var y=el.scrollTop; el.innerHTML=_BV2.noche?_bv2HtmlNoche():_bv2Html(); el.scrollTop=y;
 }
 function bienvenida2Cerrar(luego){
   var el=document.getElementById('bv2'); if(!el) return;
-  try{ bienvenidaVista(); }catch(e){}
+  if(_BV2.noche){ buenasNochesVista(); } else { try{ bienvenidaVista(); }catch(e){} }
   clearInterval(_BV2.reloj); document.removeEventListener('keydown', _bv2Tecla);
   el.style.opacity='0';
-  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); if(typeof luego==='function') luego(); }, 300);
+  setTimeout(function(){ _BV2.noche=false; if(el.parentNode) el.parentNode.removeChild(el); if(typeof luego==='function') luego(); }, 300);
 }
 function _bv2Tecla(e){
   if(e.key!=='Escape') return;
@@ -492,4 +492,115 @@ function bienvenida2Mostrar(){
     _bv2Pintar();
   }, 60000);
   _bv2SumarGoogle();
+}
+
+/* ── Buenas noches (Angie, 19/10/2026) ───────────────────────────────────────
+   El cierre del día, con la misma pantalla que la bienvenida. NADA INVENTADO:
+   todo sale de lo que la app ya guarda (tickets tildados hoy, llamadas de
+   Fathom, decisiones sobre cambios propuestos, lo que vence y lo que espera
+   al cliente). Lo que pasó fuera de la app (GHL, Meta, archivos) no se mide
+   acá: eso lo cuenta el EOD de la rutina de cierre. */
+function _bv2HechoHoy(){
+  var out=[];
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    (c.tasks||[]).forEach(function(t){
+      if(!t || !t.done || t.deleted || !t.doneAt) return;
+      var d=new Date(t.doneAt); if(isNaN(d) || !_bv2Hoy(d)) return;
+      out.push({c:c, t:t, at:d});
+    });
+  });
+  return out.sort(function(a,b){ return b.at-a.at; });
+}
+function _bv2LlamadasHoy(){
+  var mail=String((SB&&SB.email)||'').toLowerCase(), out=[];
+  (DB.clients||[]).forEach(function(c){
+    (c.fathomCalls||[]).forEach(function(l){
+      if(String(l.grabo||'').toLowerCase()!==mail) return;
+      var d=(typeof _calFechaFathom==='function')?_calFechaFathom(l.date):null;
+      if(!d || !_bv2Hoy(d)) return;
+      out.push({c:c, l:l, at:d, m:(typeof _durMin==='function')?_durMin(l.duration):0});
+    });
+  });
+  return out.sort(function(a,b){ return a.at-b.at; });
+}
+function _bv2DecididoHoy(){
+  var n={tarea:0, descartado:0, otro:0};
+  (DB.clients||[]).forEach(function(c){
+    var dec=(c&&c.cambiosDecisiones)||{};
+    Object.keys(dec).forEach(function(k){
+      var x=dec[k], d=x&&x.at?new Date(x.at):null;
+      if(!d || isNaN(d) || !_bv2Hoy(d)) return;
+      if(x.estado==='tarea') n.tarea++; else if(x.estado==='descartado') n.descartado++; else n.otro++;
+    });
+  });
+  return n;
+}
+function _bv2ParaManana(){
+  var man=new Date(Date.now()+864e5), lim=rvISO(man), out=[];
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    (c.tasks||[]).forEach(function(t){
+      if(!t || t.done || t.deleted || t.archivada || !t.due || t.due>lim || !_bv2Mio(t.responsible)) return;
+      out.push({c:c, t:t, due:t.due});
+    });
+  });
+  return out.sort(function(a,b){ return a.due<b.due?-1:(a.due>b.due?1:0); });
+}
+function _bv2EsperaTercero(){
+  var out=[];
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    (c.tasks||[]).forEach(function(t){
+      if(!t || t.done || t.deleted || t.archivada || !(t.ownerCliente || t.source==='Seguimiento al cliente' || t.source==='Aviso al cliente' || t.source==='Tarea del cliente')) return;
+      out.push({c:c, t:t, due:t.due||'9999-12-31'});
+    });
+  });
+  return out.sort(function(a,b){ return a.due<b.due?-1:(a.due>b.due?1:0); });
+}
+function _bv2HtmlNoche(){
+  var H=_bv2HechoHoy(), LL=_bv2LlamadasHoy(), DE=_bv2DecididoHoy(), MA=_bv2ParaManana(), ET=_bv2EsperaTercero();
+  var pend=0; try{ pend=dashCambiosPendientes().length; }catch(e){}
+  var nom=String(personaNombre((SB&&SB.email)||'')||''); nom=(nom.indexOf('@')>=0)?'':nom.split(' ')[0];
+  var min=LL.reduce(function(t,x){ return t+(x.m||0); },0);
+  var corto=function(t){ return String((t&&t.text)||'').split(' — ')[0]; };
+  var fila=function(c, tx, der){ return '<div class="it"><button class="nm" data-bv2cli="'+c.id+'" title="Abrir '+esc(c.name)+'"><b>'+esc(c.name)+'</b><span>'+esc(tx)+'</span></button>'+(der?'<span class="acc" style="border-color:rgba(242,240,235,.18)">'+esc(der)+'</span>':'<span></span>')+'</div>'; };
+  var lista=function(arr, vacio, pinta, max){
+    if(!arr.length) return '<div class="vac">'+vacio+'</div>';
+    var corte=arr.slice(0,max||12), mas=arr.length-corte.length;
+    return '<div class="lst" tabindex="0">'+corte.map(pinta).join('')+(mas>0?'<div class="vac" style="border:0;padding:6px 0">y '+mas+' más</div>':'')+'</div>';
+  };
+  var tarj=function(cls, titulo, n, cuerpo){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+titulo+'</span><span class="k num">'+n+'</span></div>'+cuerpo+'</div>'; };
+  var resumen=H.length+' ticket'+(H.length===1?'':'s')+' cerrado'+(H.length===1?'':'s')+' · '+LL.length+' llamada'+(LL.length===1?'':'s')+(min?' ('+_bv2Dur(min)+')':'');
+  var top='<div class="sal"><div class="esq"><span class="sello"><i></i>actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">Cerrar el día →</button></div>'
+    +'<div class="reloj num" id="bv2reloj">'+_bv2Hora()+'</div><div class="hola">'+esc(_bvSaludo())+(nom?(', '+esc(nom)):'')+'.</div>'
+    +'<div class="subl num" style="margin-top:22px;font-size:15px;color:var(--t2)">Hoy: '+resumen+'</div>'
+    +'<div class="bajar">Lo que quedó hecho y lo que sigue, más abajo ↓</div></div>';
+  var hecho=tarj('bien','Lo que quedó hecho hoy',H.length,lista(H,'Hoy no se tildó ningún ticket en la app.',function(x){ return fila(x.c, corto(x.t), x.t.ticket||''); },10));
+  var llam=tarj('prog','Llamadas de hoy',LL.length,lista(LL,'No grabaste llamadas hoy en Fathom.',function(x){ return fila(x.c, String(x.l.title||'Llamada'), x.m?_bv2Dur(x.m):''); },10));
+  var dec=tarj('prog','Lo que decidiste hoy sobre cambios propuestos',DE.tarea+DE.descartado+DE.otro,
+    (DE.tarea+DE.descartado+DE.otro)?'<div class="subl">'+DE.tarea+' pasaron a ticket · '+DE.descartado+' se descartaron'+(DE.otro?' · '+DE.otro+' otras':'')+'</div>':'<div class="vac">Hoy no decidiste ningún cambio propuesto.</div>');
+  var man=tarj('alar','Queda para mañana',MA.length+(pend?pend:0),
+    (pend?'<div class="subl" style="margin-bottom:8px">'+pend+' cambio'+(pend===1?'':'s')+' propuesto'+(pend===1?'':'s')+' sin decidir</div>':'')
+    +lista(MA,'No tenés tickets que venzan hasta mañana.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },10));
+  var esp=tarj('fren','Esperando a terceros',ET.length,lista(ET,'No hay nada esperando al cliente o a otra persona.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },8));
+  return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
+    +'<div class="in">'+top+'<div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
+    +'<div class="vac" style="border:0;padding:0 4px">Esto cuenta lo que la app sabe. Lo hecho fuera de ella (GHL, Meta, archivos) está en el EOD de la rutina de cierre.</div></div>';
+}
+function buenasNochesMostrar(){
+  if(document.getElementById('bv2')) return;
+  _BV2.noche=true; bienvenida2Mostrar();
+  var el=document.getElementById('bv2'); if(el) el.setAttribute('aria-label','Cierre del día');
+}
+
+// Sale sola una vez por día, la primera vez que se abre la app después de las 19:00
+// (si ya viste el «buen día» de hoy). Con la llave de la bienvenida apagada, no sale.
+function _bnKey(){ return 'evold-buenas-noches-'+String((SB&&SB.email)||'x'); }
+function buenasNochesToca(){
+  if(!_bv2On() || new Date().getHours()<19) return false;
+  try{ return localStorage.getItem(_bnKey())!==rvISO(new Date()); }catch(e){ return false; }
+}
+function buenasNochesVista(){
+  try{ localStorage.setItem(_bnKey(), rvISO(new Date())); }catch(e){}
 }

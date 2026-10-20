@@ -21,7 +21,7 @@ lo saca de los commits viejos. Se arregla antes de commitear, no después.
 (llamadas de Fathom), `js/meta.js` (Meta Ads: uso de la API, gasto, rango,
 columnas de metricas y la sincronizacion de anuncios) y `js/bienvenida.js` (el
 parte del dia nuevo, 19/10/2026: es la bienvenida de todo el equipo; con la llave localStorage
-`evold-bienvenida-v2` = '0' vuelve la de antes). `js/avisos.js` pasa a ticket del CSM (rolId 'csm') los cambios
+`evold-bienvenida-v2` = '0' vuelve la de antes; ahi mismo vive «Buenas noches», el cierre del dia: `buenasNochesMostrar()`, sale sola una vez al abrir la app despues de las 19:00 y con el boton de la luna del menu). `js/avisos.js` pasa a ticket del CSM (rolId 'csm') los cambios
 propuestos con `para:'csm'` (avisos y tareas del cliente), con `tambien` = las
 socias (personas con `socioId`). JS de navegador, sin build ni
 framework: cada `js/*.js` es un `<script src>` clasico que se carga ANTES del
