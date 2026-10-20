@@ -397,7 +397,7 @@ function _bv2Popup(cid){
   var mr=document.getElementById('modal-root'); if(!mr) return;
   mr.innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="bv2-pop" style="max-width:780px;width:min(780px,94vw);max-height:84vh;overflow:auto">'
     +(typeof DASH_CSS==='string'?DASH_CSS:'')
-    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px"><div class="modal-title" style="margin:0">'+esc(c.name)+' · '+P.length+' cambio'+(P.length===1?'':'s')+' propuesto'+(P.length===1?'':'s')+' sin decidir</div>'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px"><div class="modal-title" style="margin:0">'+esc(c.name)+' · '+(P.length?(P.length+' cambio'+(P.length===1?'':'s')+' propuesto'+(P.length===1?'':'s')+' sin decidir'):'sin cambios propuestos')+'</div>'
     +'<a class="cta" onclick="closeModal();selectClient('+c.id+')" style="flex:none">Ver ficha</a></div>'
     +'<div class="dsh">'+(P.length?P.map(_bv2PropFila).join(''):'<div class="ks" style="padding:14px 0">No hay cambios propuestos sin decidir para este cliente.</div>')+'</div>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cerrar</button></div></div></div>';
@@ -561,6 +561,8 @@ function bienvenida2Mostrar(){
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
     if(!e.target.closest('[data-bv2cli]') && (b=e.target.closest('[data-bv2pop]'))){ _bv2Popup(+b.dataset.bv2pop); return; }
+    // El nombre de un cliente, en cualquier tarjeta, abre el popup con sus propuestas; la ficha queda en los botones.
+    if((b=e.target.closest('.nm[data-bv2cli]'))){ _bv2Popup(+b.dataset.bv2cli); return; }
     if((b=e.target.closest('[data-bv2cli]'))){ var id=+b.dataset.bv2cli; bienvenida2Cerrar(function(){ try{ selectClient(id); }catch(err){} }); return; }
     if((b=e.target.closest('[data-bv2go]'))){ var go=b.dataset.bv2go;
       bienvenida2Cerrar(function(){ try{ if(go==='showTickets()') showTickets(); else { var m=/^irTorre\('(\w+)'\)$/.exec(go); if(m) irTorre(m[1]); } }catch(err){} }); return; }
