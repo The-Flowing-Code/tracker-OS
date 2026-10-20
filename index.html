@@ -3697,6 +3697,9 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                        filtro: la corrida siguiente los vuelve a escribir. Las
                        decisiones NO: viven en `datos.cambiosDecisiones`. */
                     'cambiosPropuestos',
+                    /* El EOD del dia, para «Buenas noches» (migracion 043). Lo escribe la
+                       rutina de cierre; el del dia siguiente lo pisa. */
+                    'eod',
                     /* Los cambios de la cuenta que detecta la rutina (Meta y
                        GHL), uno por linea de conversion (migracion 035).
                        Cumple el filtro: se reconstruyen del historial. Los que
@@ -3713,7 +3716,7 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.

@@ -561,9 +561,10 @@ function _bv2EsperaTercero(){
 // Los no negociables que elegiste a la mañana, tal como los dejaste (se pueden
 // tildar desde acá). Si no los elegiste, se dice, sin inventar ninguno.
 function _bv2NNNoche(){
-  var n=null; try{ n=JSON.parse(localStorage.getItem(_bv2NNKey())||'null'); }catch(e){}
+  // Igual que a la mañana: si no elegiste los tuyos, quedan los que te propuso la pantalla.
+  var n=null; try{ n=_bv2NN(_bv2Grupos()); }catch(e){}
   var items=(n&&Array.isArray(n.items))?n.items.filter(function(x){ return x && !x.vacio; }):[];
-  if(!items.length) return '<div class="nnB"><h2>NO NEGOCIABLES DE HOY</h2><div class="subl" style="font-size:14px;color:var(--t2)">Hoy no elegiste no negociables en el «buen día».</div></div>';
+  if(!items.length) return '<div class="nnB"><h2>NO NEGOCIABLES DE HOY</h2><div class="subl" style="font-size:14px;color:var(--t2)">Hoy no había no negociables para mostrar.</div></div>';
   var tilde='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>';
   var hechas=items.filter(function(x){ return x.ok; }).length;
   return '<div class="nnB"><h2>NO NEGOCIABLES DE HOY · '+hechas+' DE '+items.length+'</h2><ol class="nnL">'+n.items.map(function(it,i){
@@ -571,6 +572,21 @@ function _bv2NNNoche(){
     return '<li class="nn'+(it.ok?' hecha':'')+'"><button class="ck" data-bv2ck="'+i+'" aria-pressed="'+(it.ok?'true':'false')+'" aria-label="'+(it.ok?'Desmarcar':'Marcar como hecho')+'">'+(it.ok?tilde:'')+'</button>'
       +'<span class="tx">'+esc(it.t)+'</span><span></span></li>';
   }).join('')+'</ol>'+(hechas===items.length?'<div class="pie num"><span class="bravo">Cumpliste los de hoy.</span></div>':'')+'</div>';
+}
+// El EOD que deja la rutina de cierre (maquina.eod, migración 043): lo que se hizo
+// hoy a grandes rasgos, incluido lo que pasó fuera de la app. Solo cuenta si es de hoy.
+function _bv2EodHoy(){
+  var hoy=rvISO(new Date()), e=null;
+  (DB.clients||[]).forEach(function(c){ if(c && c.eod && c.eod.fecha===hoy) e=c.eod; });
+  return e;
+}
+function _bv2EodHtml(){
+  var e=_bv2EodHoy();
+  var cab=function(n){ return '<div class="gh"><span class="x"><i></i>Lo que hiciste hoy</span><span class="k num">'+n+'</span></div>'; };
+  if(!e) return '<div class="card g bien">'+cab(0)+'<div class="vac">El EOD de hoy todavía no está: lo arma la rutina de cierre a las 18:30.</div></div>';
+  var L=(e.lineas||[]).map(function(x){ return '<div class="it"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'')+'</b><span>'+esc(x.texto||'')+'</span></span><span></span></div>'; }).join('');
+  var lista=function(t,a){ return (a&&a.length)?'<div class="sub" style="margin-top:14px">'+t+'</div>'+a.map(function(x){ return '<div class="it"><span class="nm" style="cursor:default"><span>'+esc(x)+'</span></span><span></span></div>'; }).join(''):''; };
+  return '<div class="card g bien">'+cab((e.lineas||[]).length)+'<div class="lst" tabindex="0" aria-label="Lo que hiciste hoy">'+L+lista('Queda para mañana',e.manana)+lista('Esperando a terceros',e.esperando)+'</div></div>';
 }
 function _bv2HtmlNoche(){
   var H=_bv2HechoHoy(), LL=_bv2LlamadasHoy(), DE=_bv2DecididoHoy(), MA=_bv2ParaManana(), ET=_bv2EsperaTercero();
@@ -585,7 +601,8 @@ function _bv2HtmlNoche(){
     return '<div class="lst" tabindex="0">'+corte.map(pinta).join('')+(mas>0?'<div class="vac" style="border:0;padding:6px 0">y '+mas+' más</div>':'')+'</div>';
   };
   var tarj=function(cls, titulo, n, cuerpo){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+titulo+'</span><span class="k num">'+n+'</span></div>'+cuerpo+'</div>'; };
-  var resumen=H.length+' ticket'+(H.length===1?'':'s')+' cerrado'+(H.length===1?'':'s')+' · '+LL.length+' llamada'+(LL.length===1?'':'s')+(min?' ('+_bv2Dur(min)+')':'');
+  var EOD=_bv2EodHoy();
+  var resumen=(EOD?(EOD.lineas||[]).length+' cosas hechas · ':'')+H.length+' ticket'+(H.length===1?'':'s')+' cerrado'+(H.length===1?'':'s')+' · '+LL.length+' llamada'+(LL.length===1?'':'s')+(min?' ('+_bv2Dur(min)+')':'');
   var top='<div class="sal"><div class="esq"><span class="sello"><i></i>actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">Cerrar el día →</button></div>'
     +'<div class="reloj num" id="bv2reloj">'+_bv2Hora()+'</div><div class="hola">'+esc(_bvSaludo())+(nom?(', '+esc(nom)):'')+'.</div>'
     +'<div class="subl num" style="margin-top:22px;font-size:15px;color:var(--t2)">Hoy: '+resumen+'</div>'
@@ -600,8 +617,8 @@ function _bv2HtmlNoche(){
     +lista(MA,'No tenés tickets que venzan hasta mañana.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },10));
   var esp=tarj('fren','Esperando a terceros',ET.length,lista(ET,'No hay nada esperando al cliente o a otra persona.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },8));
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+'<div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
-    +'<div class="vac" style="border:0;padding:0 4px">Esto cuenta lo que la app sabe. Lo hecho fuera de ella (GHL, Meta, archivos) está en el EOD de la rutina de cierre.</div></div>';
+    +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div><div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
+    +'<div class="vac" style="border:0;padding:0 4px">Las tarjetas de abajo cuentan lo que la app sabe; lo hecho fuera de ella (GHL, Meta, archivos) está en «Lo que hiciste hoy», que arma la rutina de cierre.</div></div>';
 }
 function buenasNochesMostrar(){
   if(document.getElementById('bv2')) return;
