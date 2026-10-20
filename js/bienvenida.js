@@ -288,9 +288,11 @@ var _BV2_CSS=''
   +'#bv2 .in{position:relative;z-index:2;max-width:1004px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-left,0px)) 48px;display:flex;flex-direction:column;gap:28px}'
   +'#bv2 .sal{position:relative;min-height:calc(100vh - 56px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;padding-top:40px}'
   +'#bv2 .esq{position:absolute;top:0;right:0;display:flex;gap:14px;align-items:center}'
-  +'#bv2 .sello{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;color:var(--t3);display:flex;align-items:center;gap:7px}'
+  +'#bv2 .sello{font-family:Geist,Inter,system-ui,sans-serif;font-size:14px;font-weight:400;letter-spacing:.01em;color:var(--t2);display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums}'
+  +'#bv2 .sello i{box-shadow:0 0 0 4px rgba(200,255,71,.14)}'
+  +'#bv2 .pieBv{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--ln)}'
   +'#bv2 .sello i{width:6px;height:6px;border-radius:50%;background:var(--ok)}'
-  +'#bv2 .btnE{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border-radius:99px;background:var(--ok);color:#080A0F;font-weight:600;font-size:13.5px}'
+  +'#bv2 .btnE{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border-radius:99px;background:var(--ok);color:#080A0F;font-family:Geist,Inter,system-ui,sans-serif;font-weight:600;font-size:14.5px;letter-spacing:-.005em}'
   +'#bv2 .reloj{font-size:clamp(84px,15vw,176px);font-weight:500;letter-spacing:-.045em;line-height:1;text-shadow:0 2px 40px rgba(0,0,0,.5)}'
   +'#bv2 .hola{font-size:clamp(28px,4.6vw,52px);font-weight:500;letter-spacing:-.03em;line-height:1.15;text-shadow:0 2px 24px rgba(0,0,0,.5)}'
   +'#bv2 .nnB{margin-top:48px;width:min(640px,100%);display:flex;flex-direction:column;align-items:center;gap:12px}'
@@ -373,6 +375,9 @@ function _bv2CarteraHtml(){
     +'<div class="q4">'+tarj('bien','Van bien',B,'Hoy ningún cliente cumple lo que pide el reporte.',function(x){ return fila(x.cliente, x.numeros, x.lectura); })
     +tarj('fren','No van bien',M,'Ninguno con problemas de resultados hoy.',function(x){ return fila(x.cliente, x.motivo, ''); })+'</div>';
 }
+function _bv2PieHtml(txt){
+  return '<div class="pieBv"><span class="sello"><i></i>Actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">'+txt+'</button></div>';
+}
 function _bv2Html(){
   var G=_bv2Grupos(), D=_bv2Dia(), R=_BV2.reun||[], NN=_bv2NN(G);
   var nom=String(personaNombre((SB&&SB.email)||'')||'');
@@ -389,7 +394,7 @@ function _bv2Html(){
     }).join('')+'</ol><div class="pie num"><span class="pts">'+NN.items.map(function(x){ return '<i class="'+(x.ok?'on':'')+'"></i>'; }).join('')+'</span>'
     +(hechas===3?'<span class="bravo">Listo por hoy.</span>':'')
     +(NN.items.some(function(x){ return x.mio; })?'<button data-bv2reset="1">Volver a las sugerencias</button>':'')+'</div></div>';
-  var top='<div class="sal"><div class="esq"><span class="sello"><i></i>actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">Entrar →</button></div>'
+  var top='<div class="sal"><div class="esq"><button class="btnE" data-bv2entrar="1">Entrar →</button></div>'
     +'<div class="reloj num" id="bv2reloj">'+_bv2Hora()+'</div><div class="hola">'+esc(_bvSaludo().replace('Buen dia','Buen día'))+(nom?(', '+esc(nom)):'')+'.</div>'+nn
     +'<div class="bajar">Tu día y tus clientes, más abajo ↓</div></div>';
   var X=function(m){ var L=_BV2_JORNADA.hasta-_BV2_JORNADA.desde; return Math.max(0,Math.min(100,(m-_BV2_JORNADA.desde)/L*100)); };
@@ -438,7 +443,7 @@ function _bv2Html(){
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div></div>';
+    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
 }
 
 // Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
@@ -623,7 +628,7 @@ function _bv2HtmlNoche(){
   var tarj=function(cls, titulo, n, cuerpo){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+titulo+'</span><span class="k num">'+n+'</span></div>'+cuerpo+'</div>'; };
   var EOD=_bv2EodHoy();
   var resumen=(EOD?(EOD.lineas||[]).length+' cosas hechas · ':'')+H.length+' ticket'+(H.length===1?'':'s')+' cerrado'+(H.length===1?'':'s')+' · '+LL.length+' llamada'+(LL.length===1?'':'s')+(min?' ('+_bv2Dur(min)+')':'');
-  var top='<div class="sal"><div class="esq"><span class="sello"><i></i>actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">Cerrar el día →</button></div>'
+  var top='<div class="sal"><div class="esq"><button class="btnE" data-bv2entrar="1">Cerrar el día →</button></div>'
     +'<div class="reloj num" id="bv2reloj">'+_bv2Hora()+'</div><div class="hola">'+esc(_bvSaludo())+(nom?(', '+esc(nom)):'')+'.</div>'
     +'<div class="subl num" style="margin-top:22px;font-size:15px;color:var(--t2)">Hoy: '+resumen+'</div>'
     +_bv2NNNoche()
@@ -638,7 +643,7 @@ function _bv2HtmlNoche(){
   var esp=tarj('fren','Esperando a terceros',ET.length,lista(ET,'No hay nada esperando al cliente o a otra persona.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },8));
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
     +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div><div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
-    +'<div class="vac" style="border:0;padding:0 4px">Las tarjetas de abajo cuentan lo que la app sabe; lo hecho fuera de ella (GHL, Meta, archivos) está en «Lo que hiciste hoy», que arma la rutina de cierre.</div></div>';
+    +'<div class="vac" style="border:0;padding:0 4px">Las tarjetas de abajo cuentan lo que la app sabe; lo hecho fuera de ella (GHL, Meta, archivos) está en «Lo que hiciste hoy», que arma la rutina de cierre.</div>'+_bv2PieHtml('Cerrar el día →')+'</div>';
 }
 function buenasNochesMostrar(){
   if(document.getElementById('bv2')) return;
