@@ -412,7 +412,7 @@ function _bv2Html(){
   var DEF=[['fren','frenado para lanzar','frenados para lanzar','Ninguno pasó su fecha de lanzar sin campaña al aire.'],
            ['alar','lanzado con alarmas','lanzados con alarmas','Ningún cliente al aire tiene alarmas saltadas.'],
            ['prog','programado para lanzar','programados para lanzar','No hay lanzamientos por delante.'],
-           ['bien','viene bien','vienen bien','Todavía no hay clientes al aire sin alarmas.']];
+           ['bien','sin alarmas','sin alarmas','Todavía no hay clientes al aire sin alarmas. Eso no dice que rindan: mirá «Cómo van los clientes».']];
   var cuadro='<div class="q4">'+DEF.map(function(d){
       var L=G[d[0]], t=(L.length===1?d[1]:d[2]);
       return '<div class="card g '+d[0]+'"><div class="gh"><span class="x"><i></i>'+esc(t.charAt(0).toUpperCase()+t.slice(1))+'</span><span class="k num">'+L.length+'</span></div>'
