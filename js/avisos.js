@@ -134,7 +134,42 @@ function seguimientosCsm(){
   }
   return n;
 }
-function _avisosCiclo(){ try{ avisosACsm(); }catch(e){} try{ seguimientosCsm(); }catch(e){} }
+/* Acciones sobre tickets que llegan de afuera (Angie, 20/10/2026): el Claude de Santi
+   (conector evolve-mcp) y las rutinas dejan en maquina.accionesTickets pedidos de
+   «cerrar» o «reabrir» un ticket por su numero (migracion 045). Se aplican UNA vez
+   (el id queda en `accionesAplicadas`) y dejan constancia en el ticket: quien lo
+   pidio y cuando. No se borra nada y se puede revertir a mano. */
+function accionesTicketsAplicar(){
+  if(typeof SB!=='object' || !SB.listo) return 0;
+  var n=0, ahora=new Date();
+  (DB.clients||[]).forEach(function(c){
+    if(!c) return;
+    var L=(c.accionesTickets&&c.accionesTickets.items)||[];
+    if(!L.length) return;
+    c.accionesAplicadas=c.accionesAplicadas||{};
+    L.forEach(function(a){
+      if(!a || !a.id || c.accionesAplicadas[a.id]) return;
+      var num=String(a.ticket||'').replace(/[^0-9]/g,'');
+      var t=(c.tasks||[]).filter(function(x){ return x && !x.deleted && String(x.ticket||'').replace(/[^0-9]/g,'')===num; })[0];
+      c.accionesAplicadas[a.id]=ahora.toISOString();   // aunque no se encuentre: no se reintenta para siempre
+      if(!t) return;
+      var por=String(a.por||'su Claude');
+      if(a.accion==='cerrar' && !t.done){
+        t.done=true; t.doneAt=ahora.toISOString();
+        t.cierre='hecho por '+por+' desde su Claude'+(a.nota?(' — '+a.nota):''); n++;
+      } else if(a.accion==='reabrir' && t.done){
+        t.done=false; delete t.doneAt; t.cierre=''; t.reabiertoPor=por; n++;
+      }
+    });
+  });
+  if(n){
+    save();
+    if(typeof toast==='function') toast(n+' ticket'+(n===1?'':'s')+' actualizado'+(n===1?'':'s')+' desde afuera');
+    try{ if(S.view==='tickets' && typeof showTickets==='function') showTickets(); }catch(e){}
+  }
+  return n;
+}
+function _avisosCiclo(){ try{ avisosACsm(); }catch(e){} try{ seguimientosCsm(); }catch(e){} try{ accionesTicketsAplicar(); }catch(e){} }
 function avisosArrancar(){
   if(window._avisosT) return;
   setTimeout(_avisosCiclo, 2500);

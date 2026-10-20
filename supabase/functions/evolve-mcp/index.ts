@@ -5,7 +5,11 @@
 //  el mismo contexto que el de Angie: las llamadas de todos, con su
 //  transcripcion, y en que anda cada cliente. Sin la clave maestra.
 //
-//  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES. Es a proposito, y es lo que
+//  20/10/2026: dos escrituras mas, solo para claves con alcance.tareas='escribir'
+//  (Santi, el CSM): crear_tarea y cambiar_estado_tarea. Suman a una lista; no
+//  borran ni pisan nada (migracion 045).
+//
+//  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
 //  existe con que. La UNICA escritura es `pedir_cambio_app` (17/10/2026): deja
 //  un pedido en la cola de agente_pedidos, igual que "Nueva tarea -> Evolve
@@ -300,6 +304,20 @@ const HERRAMIENTAS = [
       que: { type: "string", description: "Qué cambiarías o qué no anda, en una o dos líneas" },
       detalle: { type: "string", description: "Pantalla, pasos, qué esperabas y qué pasó (opcional)" },
       links: { type: "array", items: { type: "string" }, description: "Links de capturas o videos (opcional)" } } } },
+  { name: "crear_tarea",
+    description: "Crea una tarea (ticket) para un cliente en Evolve OS. La app la convierte en ticket a nombre de quien indiques (o del responsable del cliente si no decís). Solo para quien tiene permiso de escribir tareas. Tope diario compartido con cambiar_estado_tarea. Se puede deshacer desde la app.",
+    inputSchema: { type: "object", required: ["cliente", "texto"], properties: {
+      cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
+      texto: { type: "string", description: "Qué hay que hacer, una línea (hasta 200 caracteres)" },
+      responsable: { type: "string", description: "Quién lo hace: primer nombre o mail de alguien del equipo (opcional)" },
+      vence: { type: "string", description: "AAAA-MM-DD (opcional; si no, 3 días)" },
+      detalle: { type: "string", description: "Por qué o contexto (opcional, hasta 300 caracteres)" } } } },
+  { name: "cambiar_estado_tarea",
+    description: "Marca un ticket como hecho o lo reabre, por su número (por ejemplo #123, el que se ve en la ficha del cliente y en Tickets). La app lo aplica la próxima vez que se abre. Solo para quien tiene permiso de escribir tareas. No borra nada.",
+    inputSchema: { type: "object", required: ["ticket", "estado"], properties: {
+      ticket: { type: "string", description: "Número del ticket, con o sin #" },
+      estado: { type: "string", description: "hecha o abierta" },
+      nota: { type: "string", description: "Por qué (opcional, hasta 200 caracteres)" } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -335,8 +353,71 @@ async function pedirCambio(c: Clave, a: any) {
   return { ok: true, pedido: id, nota: "Quedó en Tickets → Pedidos al agente. La rutina de la mañana lo revisa contra el código y deja el plan; se hace recién cuando Angie lo aprueba." };
 }
 
+/* ── Tareas: las dos escrituras de Santi y el CSM (20/10/2026) ──────────────
+   Solo con alcance.tareas = 'escribir'. Escriben por add_cambio_propuesto y
+   add_accion_ticket (migracion 045): suman a una lista, no pisan nada. */
+const TOPE_TAREAS_DIA = 30;
+async function puedeEscribirTareas(c: Clave) {
+  if ((c.alcance || {}).tareas !== "escribir") return "Tu clave no tiene permiso para escribir tareas. Pedile a Angie que te lo active.";
+  const hoy = new Date(); hoy.setUTCHours(0, 0, 0, 0);
+  const hechos = await sb("mcp_registro?select=id&clave_id=eq." + c.id + "&herramienta=in.(crear_tarea,cambiar_estado_tarea)&at=gte." + hoy.toISOString());
+  if (Array.isArray(hechos) && hechos.length >= TOPE_TAREAS_DIA)
+    return "Ya se hicieron " + TOPE_TAREAS_DIA + " cambios de tareas hoy desde este conector. Seguí mañana o hacelo desde el tracker.";
+  return "";
+}
+async function rpc(nombre: string, cuerpo: unknown) {
+  return await sb("rpc/" + nombre, { method: "POST", body: JSON.stringify(cuerpo) });
+}
+async function crearTarea(c: Clave, a: any) {
+  const veto = await puedeEscribirTareas(c); if (veto) return { error: veto };
+  const texto = String(a?.texto || "").replace(/\s+/g, " ").trim();
+  if (texto.length < 6) return { error: "Contá qué hay que hacer, en una línea." };
+  if (texto.length > 200) return { error: "El texto pasa de 200 caracteres: acortalo y poné el resto en detalle." };
+  const cl = await buscarClienteIds(c, a?.cliente);
+  if (!cl.length) return { error: "No encontré ese cliente." };
+  if (cl.length > 1) return { error: "Hay más de un cliente que coincide: " + cl.slice(0, 6).map((x: any) => x.nombre).join(", ") + ". Decime cuál." };
+  const quien = String((c.alcance || {}).email || c.persona || "");
+  const hoy = new Date().toISOString().slice(0, 10);
+  const item: any = {
+    id: ("mcp-" + String(c.persona || "x").toLowerCase().replace(/[^a-z0-9]/g, "") + "-" + Date.now()).slice(0, 80),
+    texto,
+    porque: ((String(a?.detalle || "").trim() + (a?.detalle ? " " : "") + "(Cargada por " + c.persona + " desde su Claude, " + hoy + ")")).slice(0, 400),
+    crear: "ticket",
+  };
+  const resp = limpio(a?.responsable); if (resp) item.responsable = resp;
+  if (fecha(a?.vence)) item.vence = fecha(a?.vence);
+  const ok = await rpc("add_cambio_propuesto", { p_id: Number(cl[0].id), p_item: item });
+  if (ok !== true) return { error: "No se pudo cargar (la lista del cliente está llena o ya existe)." };
+  return { ok: true, cliente: cl[0].nombre, tarea: texto, responsable: resp || "el responsable del cliente",
+           nota: "Quedó cargada. La app la convierte en ticket cuando alguien la abre (en unos minutos). Se puede deshacer desde Tickets." };
+}
+async function cambiarEstadoTarea(c: Clave, a: any) {
+  const veto = await puedeEscribirTareas(c); if (veto) return { error: veto };
+  const num = String(a?.ticket || "").replace(/[^0-9]/g, "");
+  if (!num) return { error: "Falta el número del ticket (por ejemplo #123)." };
+  const est = String(a?.estado || "").toLowerCase();
+  const accion = /^(hech|cerr|final|listo|ok)/.test(est) ? "cerrar" : (/^(abier|reabr|pend)/.test(est) ? "reabrir" : "");
+  if (!accion) return { error: "El estado tiene que ser «hecha» o «abierta»." };
+  const filas = await sb("clientes?select=id,n:datos->>name,t:datos->tasks&order=id");
+  let hallado: any = null, tarea: any = null;
+  for (const f of (filas || [])) {
+    const t = (Array.isArray(f.t) ? f.t : []).find((x: any) => x && String(x.ticket || "").replace(/[^0-9]/g, "") === num && !x.deleted);
+    if (t) { hallado = f; tarea = t; break; }
+  }
+  if (!hallado) return { error: "No encontré el ticket #" + num + ". Revisá el número en Tickets." };
+  const hoyAccion = { id: ("mcp-" + String(c.persona || "x").toLowerCase().replace(/[^a-z0-9]/g, "") + "-" + Date.now()).slice(0, 80),
+    accion, ticket: "#" + num, por: String(c.persona || "").slice(0, 80), nota: String(a?.nota || "").slice(0, 200), at: new Date().toISOString() };
+  const ok = await rpc("add_accion_ticket", { p_id: Number(hallado.id), p_accion: hoyAccion });
+  if (ok !== true) return { error: "No se pudo anotar la acción." };
+  return { ok: true, cliente: hallado.n, ticket: "#" + num, tarea: String(tarea.text || "").slice(0, 120),
+           pedido: accion === "cerrar" ? "marcar como hecho" : "reabrir",
+           nota: "Quedó anotado. La app lo aplica la próxima vez que alguien la abre. Se puede revertir desde el ticket." };
+}
+
 async function correr(c: Clave, nombre: string, a: any) {
   if (nombre === "pedir_cambio_app") return await pedirCambio(c, a);
+  if (nombre === "crear_tarea") return await crearTarea(c, a);
+  if (nombre === "cambiar_estado_tarea") return await cambiarEstadoTarea(c, a);
   if (nombre === "buscar_llamadas") return await buscarLlamadas(c, a);
   if (nombre === "leer_llamada") return await leerLlamada(c, a);
   if (nombre === "listar_clientes") return await listarClientes(c, a);
@@ -378,7 +459,7 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.0.0" },
+      serverInfo: { name: "evolve-os-consulta", version: "1.1.0" },
       instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Lo único que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
