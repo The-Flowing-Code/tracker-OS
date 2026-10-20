@@ -558,6 +558,20 @@ function _bv2EsperaTercero(){
   });
   return out.sort(function(a,b){ return a.due<b.due?-1:(a.due>b.due?1:0); });
 }
+// Los no negociables que elegiste a la mañana, tal como los dejaste (se pueden
+// tildar desde acá). Si no los elegiste, se dice, sin inventar ninguno.
+function _bv2NNNoche(){
+  var n=null; try{ n=JSON.parse(localStorage.getItem(_bv2NNKey())||'null'); }catch(e){}
+  var items=(n&&Array.isArray(n.items))?n.items.filter(function(x){ return x && !x.vacio; }):[];
+  if(!items.length) return '<div class="nnB"><h2>NO NEGOCIABLES DE HOY</h2><div class="subl" style="font-size:14px;color:var(--t2)">Hoy no elegiste no negociables en el «buen día».</div></div>';
+  var tilde='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>';
+  var hechas=items.filter(function(x){ return x.ok; }).length;
+  return '<div class="nnB"><h2>NO NEGOCIABLES DE HOY · '+hechas+' DE '+items.length+'</h2><ol class="nnL">'+n.items.map(function(it,i){
+    if(!it || it.vacio) return '';
+    return '<li class="nn'+(it.ok?' hecha':'')+'"><button class="ck" data-bv2ck="'+i+'" aria-pressed="'+(it.ok?'true':'false')+'" aria-label="'+(it.ok?'Desmarcar':'Marcar como hecho')+'">'+(it.ok?tilde:'')+'</button>'
+      +'<span class="tx">'+esc(it.t)+'</span><span></span></li>';
+  }).join('')+'</ol>'+(hechas===items.length?'<div class="pie num"><span class="bravo">Cumpliste los de hoy.</span></div>':'')+'</div>';
+}
 function _bv2HtmlNoche(){
   var H=_bv2HechoHoy(), LL=_bv2LlamadasHoy(), DE=_bv2DecididoHoy(), MA=_bv2ParaManana(), ET=_bv2EsperaTercero();
   var pend=0; try{ pend=dashCambiosPendientes().length; }catch(e){}
@@ -575,6 +589,7 @@ function _bv2HtmlNoche(){
   var top='<div class="sal"><div class="esq"><span class="sello"><i></i>actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">Cerrar el día →</button></div>'
     +'<div class="reloj num" id="bv2reloj">'+_bv2Hora()+'</div><div class="hola">'+esc(_bvSaludo())+(nom?(', '+esc(nom)):'')+'.</div>'
     +'<div class="subl num" style="margin-top:22px;font-size:15px;color:var(--t2)">Hoy: '+resumen+'</div>'
+    +_bv2NNNoche()
     +'<div class="bajar">Lo que quedó hecho y lo que sigue, más abajo ↓</div></div>';
   var hecho=tarj('bien','Lo que quedó hecho hoy',H.length,lista(H,'Hoy no se tildó ningún ticket en la app.',function(x){ return fila(x.c, corto(x.t), x.t.ticket||''); },10));
   var llam=tarj('prog','Llamadas de hoy',LL.length,lista(LL,'No grabaste llamadas hoy en Fathom.',function(x){ return fila(x.c, String(x.l.title||'Llamada'), x.m?_bv2Dur(x.m):''); },10));
