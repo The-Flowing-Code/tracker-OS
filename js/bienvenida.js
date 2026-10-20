@@ -297,7 +297,7 @@ var _BV2_CSS=''
   +'#bv2 .prp .ac{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}'
   +'#bv2 .bAcc{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid rgba(242,240,235,.18)!important;font-size:12.5px;color:var(--t2)} #bv2 .bAcc:hover{border-color:rgba(242,240,235,.4)!important;color:#F2F0EB}'
   +'#bv2 .bAcc.ok{background:var(--ok)!important;border-color:var(--ok)!important;color:#080A0F;font-weight:600}'
-  +'#bv2 .fpop{cursor:pointer;border-radius:10px} #bv2 .fpop:hover{background:rgba(242,240,235,.04)} #bv2 .fpop .acc{white-space:nowrap;flex:none;min-width:64px}'
+  +'#bv2 .fpop .acc{white-space:nowrap;flex:none}'
   +'#bv2 .nm .prn{display:inline-block;margin-left:8px;font-weight:400;font-size:12px;color:var(--amb)}'
   +'#bv2 .pieBv{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--ln)}'
   +'#bv2 .sello i{width:6px;height:6px;border-radius:50%;background:var(--ok)}'
@@ -402,6 +402,14 @@ function _bv2Popup(cid){
     +'<div class="dsh">'+(P.length?P.map(_bv2PropFila).join(''):'<div class="ks" style="padding:14px 0">No hay cambios propuestos sin decidir para este cliente.</div>')+'</div>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cerrar</button></div></div></div>';
 }
+// El nombre de un cliente abre su reporte de campañas (el artifact que arma la rutina); sin reporte, sus sugerencias.
+function _bv2Reporte(cid){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(cid); }); if(!c) return;
+  var url=c.reporteCampana&&c.reporteCampana.url;
+  if(url){ try{ window.open(url,'_blank','noopener'); return; }catch(e){} }
+  try{ if(typeof toast==='function') toast(c.name+' todavía no tiene reporte de campañas.','amber'); }catch(e){}
+  _bv2Popup(c.id);
+}
 function _bv2PropDe(c){
   var out=[]; try{ out=dashCambiosPendientes().filter(function(x){ return String(x.c.id)===String(c.id); }); }catch(e){}
   return out;
@@ -417,8 +425,8 @@ function _bv2CarteraHtml(){
     var c=porNombre(nombre), P=c?_bv2PropDe(c):[];
     var cuerpo='<b>'+esc(nombre||'')+(P.length?'<span class="prn">'+P.length+' propuesta'+(P.length===1?'':'s')+'</span>':'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'');
     if(!c) return '<div class="it"><span class="nm" style="cursor:default">'+cuerpo+'</span><span></span></div>';
-    return '<div class="it fpop" data-bv2pop="'+c.id+'" role="button" tabindex="0" title="Ver las propuestas de '+esc(nombre)+'"><span class="nm" style="cursor:pointer">'+cuerpo+'</span>'
-      +'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(nombre)+'">Ficha</button></div>';
+    return '<div class="it fpop"><button class="nm" data-bv2rep="'+c.id+'" title="Abrir el reporte de campañas de '+esc(nombre)+'">'+cuerpo+'</button>'
+      +'<button class="acc" data-bv2sug="'+c.id+'" title="Ver los cambios propuestos de '+esc(nombre)+'">Ver sugerencias</button></div>';
   };
   var tarj=function(cls,t,L,vacio,pinta){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div>'
     +(L.length?'<div class="lst" tabindex="0" aria-label="'+t+'">'+L.map(pinta).join('')+'</div>':'<div class="vac">'+vacio+'</div>')+'</div>'; };
@@ -560,9 +568,10 @@ function bienvenida2Mostrar(){
     if((b=e.target.closest('[data-bv2ed]'))){ var j=+b.dataset.bv2ed; _BV2.edit=(_BV2.edit===j)?-1:j; _bv2Pintar(); var inp=document.getElementById('bv2I'); if(inp){ inp.focus(); inp.select(); } return; }
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
-    if(!e.target.closest('[data-bv2cli]') && (b=e.target.closest('[data-bv2pop]'))){ _bv2Popup(+b.dataset.bv2pop); return; }
-    // El nombre de un cliente, en cualquier tarjeta, abre el popup con sus propuestas; la ficha queda en los botones.
-    if((b=e.target.closest('.nm[data-bv2cli]'))){ _bv2Popup(+b.dataset.bv2cli); return; }
+    if((b=e.target.closest('[data-bv2sug]'))){ _bv2Popup(+b.dataset.bv2sug); return; }
+    if((b=e.target.closest('[data-bv2rep]'))){ _bv2Reporte(+b.dataset.bv2rep); return; }
+    // El nombre de un cliente, en cualquier tarjeta, abre su reporte de campañas; las sugerencias, en el botón «Ver sugerencias».
+    if((b=e.target.closest('.nm[data-bv2cli]'))){ _bv2Reporte(+b.dataset.bv2cli); return; }
     if((b=e.target.closest('[data-bv2cli]'))){ var id=+b.dataset.bv2cli; bienvenida2Cerrar(function(){ try{ selectClient(id); }catch(err){} }); return; }
     if((b=e.target.closest('[data-bv2go]'))){ var go=b.dataset.bv2go;
       bienvenida2Cerrar(function(){ try{ if(go==='showTickets()') showTickets(); else { var m=/^irTorre\('(\w+)'\)$/.exec(go); if(m) irTorre(m[1]); } }catch(err){} }); return; }
