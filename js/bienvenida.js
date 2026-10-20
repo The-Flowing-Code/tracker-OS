@@ -297,7 +297,7 @@ var _BV2_CSS=''
   +'#bv2 .prp .ac{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}'
   +'#bv2 .bAcc{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid rgba(242,240,235,.18)!important;font-size:12.5px;color:var(--t2)} #bv2 .bAcc:hover{border-color:rgba(242,240,235,.4)!important;color:#F2F0EB}'
   +'#bv2 .bAcc.ok{background:var(--ok)!important;border-color:var(--ok)!important;color:#080A0F;font-weight:600}'
-  +'#bv2 .fpop .acc{white-space:nowrap;flex:none}'
+  +'#bv2 .fpop .acc{white-space:nowrap;flex:none} #bv2 .fpop .acc.vacio{border-color:rgba(242,240,235,.2)!important;color:var(--t3)!important;background:transparent}'
   +'#bv2 .nm .prn{display:inline-block;margin-left:8px;font-weight:400;font-size:12px;color:var(--amb)}'
   +'#bv2 .pieBv{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--ln)}'
   +'#bv2 .sello i{width:6px;height:6px;border-radius:50%;background:var(--ok)}'
@@ -399,7 +399,7 @@ function _bv2Popup(cid){
     +(typeof DASH_CSS==='string'?DASH_CSS:'')
     +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px"><div class="modal-title" style="margin:0">'+esc(c.name)+' · '+(P.length?(P.length+' cambio'+(P.length===1?'':'s')+' propuesto'+(P.length===1?'':'s')+' sin decidir'):'sin cambios propuestos')+'</div>'
     +'<a class="cta" onclick="closeModal();selectClient('+c.id+')" style="flex:none">Ver ficha</a></div>'
-    +'<div class="dsh">'+(P.length?P.map(_bv2PropFila).join(''):'<div class="ks" style="padding:14px 0">No hay cambios propuestos sin decidir para este cliente.</div>')+'</div>'
+    +'<div class="dsh">'+(P.length?P.map(_bv2PropFila).join(''):_bv2PorQueNo(c))+'</div>'
     +'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cerrar</button></div></div></div>';
 }
 // El nombre de un cliente abre su reporte de campañas (el artifact que arma la rutina); sin reporte, sus sugerencias.
@@ -409,6 +409,22 @@ function _bv2Reporte(cid){
   if(url){ try{ window.open(url,'_blank','noopener'); return; }catch(e){} }
   try{ if(typeof toast==='function') toast(c.name+' todavía no tiene reporte de campañas.','amber'); }catch(e){}
   _bv2Popup(c.id);
+}
+// Si no hay sugerencias, se dice por qué, con lo que la app sabe de este cliente.
+function _bv2PorQueNo(c){
+  var f=function(iso){ var d=iso?new Date(iso):null; return (d&&!isNaN(d))?(('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)):''; };
+  var cp=c.cambiosPropuestos||null, dec=c.cambiosDecisiones||{}, motivos=[];
+  if(!cp || !cp.at) motivos.push('La rutina de campañas todavía no le dejó ninguna propuesta a este cliente.');
+  else motivos.push('La rutina de campañas lo revisó el '+f(cp.at)+' y no dejó propuestas abiertas.');
+  var n={tarea:0,descartado:0}, ult=null;
+  Object.keys(dec).forEach(function(k){ var x=dec[k]; if(!x||!x.estado) return; if(x.estado==='tarea') n.tarea++; else if(x.estado==='descartado') n.descartado++; var d=x.at?new Date(x.at):null; if(d&&!isNaN(d)&&(!ult||d>ult)) ult=d; });
+  if(n.tarea||n.descartado) motivos.push('Ya decidiste sobre sus propuestas: '+n.tarea+' pasaron a ticket y '+n.descartado+' se descartaron'+(ult?' (la última, el '+f(ult.toISOString())+')':'')+'.');
+  var ab=(c.tasks||[]).filter(function(t){ return t && !t.done && !t.deleted && !t.archivada; }).length;
+  if(ab) motivos.push('Tiene '+ab+' ticket'+(ab===1?'':'s')+' abierto'+(ab===1?'':'s')+' en su ficha.');
+  var rep=c.reporteCampana&&c.reporteCampana.url;
+  return '<div style="padding:12px 0 4px"><div style="font-size:13.5px;color:var(--text);margin-bottom:8px">No hay sugerencias abiertas para '+esc(c.name)+'. Esto es lo que sabe la app:</div>'
+    +'<ul style="margin:0 0 10px 18px;padding:0;color:var(--text2);font-size:13px;line-height:1.6">'+motivos.map(function(m){ return '<li>'+esc(m)+'</li>'; }).join('')+'</ul>'
+    +'<div class="ks">Que no tenga sugerencias no quiere decir que le vaya bien: eso lo dice el reporte de campañas.'+(rep?' <a class="cta" onclick="window.open(\''+esc(rep)+'\',\'_blank\',\'noopener\')">Abrir el reporte</a>':'')+'</div></div>';
 }
 function _bv2PropDe(c){
   var out=[]; try{ out=dashCambiosPendientes().filter(function(x){ return String(x.c.id)===String(c.id); }); }catch(e){}
@@ -426,7 +442,7 @@ function _bv2CarteraHtml(){
     var cuerpo='<b>'+esc(nombre||'')+(P.length?'<span class="prn">'+P.length+' propuesta'+(P.length===1?'':'s')+'</span>':'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'');
     if(!c) return '<div class="it"><span class="nm" style="cursor:default">'+cuerpo+'</span><span></span></div>';
     return '<div class="it fpop"><button class="nm" data-bv2rep="'+c.id+'" title="Abrir el reporte de campañas de '+esc(nombre)+'">'+cuerpo+'</button>'
-      +'<button class="acc" data-bv2sug="'+c.id+'" title="Ver los cambios propuestos de '+esc(nombre)+'">Ver sugerencias</button></div>';
+      +'<button class="acc'+(P.length?'':' vacio')+'" data-bv2sug="'+c.id+'" title="'+(P.length?('Ver los cambios propuestos de '+esc(nombre)):('Sin sugerencias abiertas: tocá para ver por qué'))+'">'+(P.length?'Ver sugerencias':'Sin sugerencias')+'</button></div>';
   };
   var tarj=function(cls,t,L,vacio,pinta){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div>'
     +(L.length?'<div class="lst" tabindex="0" aria-label="'+t+'">'+L.map(pinta).join('')+'</div>':'<div class="vac">'+vacio+'</div>')+'</div>'; };
