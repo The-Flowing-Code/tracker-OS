@@ -297,6 +297,7 @@ var _BV2_CSS=''
   +'#bv2 .prp .ac{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}'
   +'#bv2 .bAcc{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid rgba(242,240,235,.18)!important;font-size:12.5px;color:var(--t2)} #bv2 .bAcc:hover{border-color:rgba(242,240,235,.4)!important;color:#F2F0EB}'
   +'#bv2 .bAcc.ok{background:var(--ok)!important;border-color:var(--ok)!important;color:#080A0F;font-weight:600}'
+  +'#bv2 .fpop{cursor:pointer;border-radius:10px} #bv2 .fpop:hover{background:rgba(242,240,235,.04)} #bv2 .fpop .acc{white-space:nowrap;flex:none;min-width:64px}'
   +'#bv2 .nm .prn{display:inline-block;margin-left:8px;font-weight:400;font-size:12px;color:var(--amb)}'
   +'#bv2 .pieBv{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--ln)}'
   +'#bv2 .sello i{width:6px;height:6px;border-radius:50%;background:var(--ok)}'
@@ -370,23 +371,40 @@ var _BV2_CSS=''
    reporte de campañas cada mañana (maquina.carteraEstado, migración 044). Es un
    juicio sobre registros, costo, calificados y agendas; NO es lo mismo que
    «sin alarmas», que solo dice que ninguna regla saltó. */
+function _bv2PropFila(x){
+  var tipoDe=function(y){ return y.tipo||(y.origen==='revision'?'revision':'rutina'); };
+  var iid=esc(String(x.it.id)), rid=esc(String((x.r&&x.r.id)||'')), cid=x.c.id;
+  var crear=x.origen==='rutina'?"dashTicketModal('rutina',"+cid+",'','"+iid+"')":(x.origen==='etapa'?"dashTicketModal('etapa',"+cid+",'','"+iid+"')":"dashTicketModal('revision',"+cid+",'"+rid+"','"+iid+"')");
+  var desc=x.origen==='rutina'?"dashRutinaDecidir("+cid+",'"+iid+"','descartado')":(x.origen==='etapa'?"dashEtapaDecidir("+cid+",'"+iid+"','descartado')":"dashDescartar("+cid+",'"+rid+"','"+iid+"')");
+  var cuando=x.ts?new Date(x.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+  return '<div class="row prop" style="align-items:flex-start;padding:10px 0">'
+    +'<div style="flex:1;min-width:0"><div class="ks mono">'+({llamada:'llamada',rutina:'rutina',etapa:'etapa',revision:'revisión'}[tipoDe(x)]||'')+(cuando?' · '+cuando:'')+'</div>'
+    +'<div style="color:var(--text2);font-size:13px;line-height:1.5;margin-top:2px">'+esc(x.it.texto)+'</div>'
+    +(x.it.porque?'<div class="ks" style="margin-top:2px">'+esc(x.it.porque)+'</div>':'')+'</div>'
+    +'<div class="prop-acc" style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">'
+      +'<a class="cta" onclick="'+crear+'">Crear ticket</a>'
+      +'<span class="pill" onclick="propEditarModal(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')" title="Mejorar la redacción antes de decidir">Editar</span>'
+      +'<span class="pill" onclick="dashAgenteMandar(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')" title="El agente lo prepara y lo hacemos juntos cuando lo apruebes">Mandar al agente</span>'
+      +'<span class="pill" onclick="'+desc+'" title="No se hace; queda registrado como descartado">Descartar</span>'
+    +'</div></div>';
+}
+// El popup de un cliente: sus cambios propuestos como en Tickets, con las mismas acciones.
+function _bv2Popup(cid){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(cid); }); if(!c) return;
+  var P=_bv2PropDe(c);
+  if(!P.length && _BV2.reabrir){ _BV2.reabrir=false; return; }
+  _BV2.pop=c.id;
+  var mr=document.getElementById('modal-root'); if(!mr) return;
+  mr.innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="bv2-pop" style="max-width:780px;width:min(780px,94vw);max-height:84vh;overflow:auto">'
+    +(typeof DASH_CSS==='string'?DASH_CSS:'')
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px"><div class="modal-title" style="margin:0">'+esc(c.name)+' · '+P.length+' cambio'+(P.length===1?'':'s')+' propuesto'+(P.length===1?'':'s')+' sin decidir</div>'
+    +'<a class="cta" onclick="closeModal();selectClient('+c.id+')" style="flex:none">Ver ficha</a></div>'
+    +'<div class="dsh">'+(P.length?P.map(_bv2PropFila).join(''):'<div class="ks" style="padding:14px 0">No hay cambios propuestos sin decidir para este cliente.</div>')+'</div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cerrar</button></div></div></div>';
+}
 function _bv2PropDe(c){
   var out=[]; try{ out=dashCambiosPendientes().filter(function(x){ return String(x.c.id)===String(c.id); }); }catch(e){}
   return out;
-}
-function _bv2PropHtml(L){
-  var tipoDe=function(x){ return x.tipo||(x.origen==='revision'?'revision':'rutina'); };
-  return '<div class="prp">'+L.map(function(x){
-    var iid=esc(String(x.it.id)), rid=esc(String((x.r&&x.r.id)||'')), cid=x.c.id;
-    var crear=x.origen==='rutina'?"dashTicketModal('rutina',"+cid+",'','"+iid+"')":(x.origen==='etapa'?"dashTicketModal('etapa',"+cid+",'','"+iid+"')":"dashTicketModal('revision',"+cid+",'"+rid+"','"+iid+"')");
-    var desc=x.origen==='rutina'?"dashRutinaDecidir("+cid+",'"+iid+"','descartado')":(x.origen==='etapa'?"dashEtapaDecidir("+cid+",'"+iid+"','descartado')":"dashDescartar("+cid+",'"+rid+"','"+iid+"')");
-    return '<div><div class="o">'+esc({llamada:'llamada',rutina:'rutina',etapa:'etapa',revision:'revisión'}[tipoDe(x)]||'')+'</div>'
-      +'<div class="t">'+esc(x.it.texto)+'</div>'+(x.it.porque?'<div class="p">'+esc(x.it.porque)+'</div>':'')
-      +'<div class="ac"><button class="bAcc ok" onclick="'+crear+'">Crear ticket</button>'
-      +'<button class="bAcc" onclick="propEditarModal(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')">Editar</button>'
-      +'<button class="bAcc" onclick="dashAgenteMandar(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')">Mandar al agente</button>'
-      +'<button class="bAcc" onclick="'+desc+'">Descartar</button></div></div>';
-  }).join('')+'</div>';
 }
 function _bv2CarteraHtml(){
   var e=null; (DB.clients||[]).forEach(function(c){ if(c && c.carteraEstado && Array.isArray(c.carteraEstado.bien)) e=c.carteraEstado; });
@@ -396,12 +414,11 @@ function _bv2CarteraHtml(){
   var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return (DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null; };
   // Cada cliente con propuestas sin decidir se abre al tocarlo y trae sus mismos botones.
   var fila=function(nombre, a, b){
-    var c=porNombre(nombre), P=c?_bv2PropDe(c):[], abierto=!!(c && _BV2.exp && _BV2.exp[c.id]);
-    var cuerpo='<b>'+esc(nombre||'')+(P.length?'<span class="prn">'+P.length+' propuesta'+(P.length===1?'':'s')+' '+(abierto?'▴':'▾')+'</span>':'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'');
-    return '<div class="it" style="display:block"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
-      +(P.length?'<button class="nm" data-bv2exp="'+c.id+'" aria-expanded="'+(abierto?'true':'false')+'" title="Ver las propuestas de '+esc(nombre)+'">'+cuerpo+'</button>':'<span class="nm" style="cursor:default">'+cuerpo+'</span>')
-      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir '+esc(nombre)+'">Abrir</button>':'<span></span>')+'</div>'
-      +(abierto?_bv2PropHtml(P):'')+'</div>';
+    var c=porNombre(nombre), P=c?_bv2PropDe(c):[];
+    var cuerpo='<b>'+esc(nombre||'')+(P.length?'<span class="prn">'+P.length+' propuesta'+(P.length===1?'':'s')+'</span>':'')+'</b><span>'+esc(a||'')+'</span>'+(b?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(b)+'</span>':'');
+    if(!c) return '<div class="it"><span class="nm" style="cursor:default">'+cuerpo+'</span><span></span></div>';
+    return '<div class="it fpop" data-bv2pop="'+c.id+'" role="button" tabindex="0" title="Ver las propuestas de '+esc(nombre)+'"><span class="nm" style="cursor:pointer">'+cuerpo+'</span>'
+      +'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(nombre)+'">Ficha</button></div>';
   };
   var tarj=function(cls,t,L,vacio,pinta){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div>'
     +(L.length?'<div class="lst" tabindex="0" aria-label="'+t+'">'+L.map(pinta).join('')+'</div>':'<div class="vac">'+vacio+'</div>')+'</div>'; };
@@ -543,7 +560,7 @@ function bienvenida2Mostrar(){
     if((b=e.target.closest('[data-bv2ed]'))){ var j=+b.dataset.bv2ed; _BV2.edit=(_BV2.edit===j)?-1:j; _bv2Pintar(); var inp=document.getElementById('bv2I'); if(inp){ inp.focus(); inp.select(); } return; }
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
-    if((b=e.target.closest('[data-bv2exp]'))){ var k=b.dataset.bv2exp; _BV2.exp=_BV2.exp||{}; _BV2.exp[k]=!_BV2.exp[k]; _bv2Pintar(); return; }
+    if(!e.target.closest('[data-bv2cli]') && (b=e.target.closest('[data-bv2pop]'))){ _bv2Popup(+b.dataset.bv2pop); return; }
     if((b=e.target.closest('[data-bv2cli]'))){ var id=+b.dataset.bv2cli; bienvenida2Cerrar(function(){ try{ selectClient(id); }catch(err){} }); return; }
     if((b=e.target.closest('[data-bv2go]'))){ var go=b.dataset.bv2go;
       bienvenida2Cerrar(function(){ try{ if(go==='showTickets()') showTickets(); else { var m=/^irTorre\('(\w+)'\)$/.exec(go); if(m) irTorre(m[1]); } }catch(err){} }); return; }
@@ -551,7 +568,15 @@ function bienvenida2Mostrar(){
   document.addEventListener('keydown', _bv2Tecla);
   // Al cerrarse un cuadro (crear ticket, editar, descartar) la lista se vuelve a dibujar sola.
   var _mr=document.getElementById('modal-root');
-  if(_mr && window.MutationObserver){ try{ if(_BV2.mo) _BV2.mo.disconnect(); }catch(e){} _BV2.mo=new MutationObserver(function(){ if(!_mr.firstChild) setTimeout(_bv2Pintar, 300); }); _BV2.mo.observe(_mr,{childList:true}); }
+  if(_mr && window.MutationObserver){ try{ if(_BV2.mo) _BV2.mo.disconnect(); }catch(e){} _BV2.pop=null; _BV2.reabrir=false; _BV2.mo=new MutationObserver(function(){
+      var hay=!!document.getElementById('bv2-pop');
+      if(hay){ _BV2.vePop=true; return; }
+      if(_mr.firstChild){ if(_BV2.vePop){ _BV2.reabrir=true; _BV2.vePop=false; } return; }
+      // modal-root quedo vacio: se vuelve a dibujar la lista y, si venias de una accion del popup, se reabre
+      _BV2.vePop=false; setTimeout(_bv2Pintar, 300);
+      if(_BV2.reabrir && _BV2.pop){ var id=_BV2.pop; setTimeout(function(){ if(document.getElementById('bv2')) _bv2Popup(id); }, 450); }
+      _BV2.reabrir=false; });
+    _BV2.mo.observe(_mr,{childList:true}); }
   // El reloj y las horas libres se mueven solos; mientras se escribe un no
   // negociable solo cambia la hora, para no borrar lo que se está tipeando.
   _BV2.reloj=setInterval(_bv2Tic, 60000);
