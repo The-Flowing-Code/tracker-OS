@@ -454,6 +454,12 @@ function _bv2Tecla(e){
   if(document.activeElement && document.activeElement.id==='bv2I'){ _BV2.edit=-1; _bv2Pintar(); return; }
   bienvenida2Cerrar();
 }
+function _bv2Tic(){
+  // «Buenas noches» no pasa la noche abierta: al cambiar el día se cierra sola.
+  if(_BV2.noche && _BV2.abierta && rvISO(_BV2.abierta)!==rvISO(new Date())){ bienvenida2Cerrar(); return; }
+  if(document.activeElement && document.activeElement.id==='bv2I'){ var r=document.getElementById('bv2reloj'); if(r) r.textContent=_bv2Hora(); return; }
+  _bv2Pintar();
+}
 function bienvenida2Mostrar(){
   if(document.getElementById('bv2')) return;
   if(!document.getElementById('bv2-fuente')){
@@ -487,10 +493,7 @@ function bienvenida2Mostrar(){
   document.addEventListener('keydown', _bv2Tecla);
   // El reloj y las horas libres se mueven solos; mientras se escribe un no
   // negociable solo cambia la hora, para no borrar lo que se está tipeando.
-  _BV2.reloj=setInterval(function(){
-    if(document.activeElement && document.activeElement.id==='bv2I'){ var r=document.getElementById('bv2reloj'); if(r) r.textContent=_bv2Hora(); return; }
-    _bv2Pintar();
-  }, 60000);
+  _BV2.reloj=setInterval(_bv2Tic, 60000);
   _bv2SumarGoogle();
 }
 
