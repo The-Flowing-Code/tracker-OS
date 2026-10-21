@@ -17927,6 +17927,48 @@ function eerrHtml(){
   +'</div>';
 }
 
+// Los cuatro numeros que Angie pidio ver en grande (21/10/2026): lo que cuesta
+// sostener la agencia (fijos), lo que se invierte en traer clientes (pauta, la
+// categoria ADS), lo que crece con cada cliente (variables) y cuanto deja cada
+// venta (ticket promedio). Los gastos salen del EERR del mes; vacios no se
+// muestran en $0, porque un cero se lee como que no se gasto.
+function _rtTarjetasGrandes(mesK, rotMes, nuevosAnio){
+  var suma=function(fil){
+    var cats=EERR_CATS.filter(fil);
+    var hay=cats.some(function(c){ return eerrVal(mesK,c.k)!=null; });
+    return {hay:hay, monto:cats.reduce(function(t,c){ return t+(eerrVal(mesK,c.k)||0); },0),
+            nombres:cats.map(function(c){ return c.n.toLowerCase(); }).join(', ')};
+  };
+  var fijos=suma(function(c){ return c.tipo==='fijo' && c.k!=='ads'; });
+  var pauta=suma(function(c){ return c.k==='ads'; });
+  var vari=suma(function(c){ return c.tipo==='var'; });
+  // Ticket: lo firmado por cada cliente que entro este ano. El abono que se
+  // renueva solo no tiene total y queda afuera para no inflar ni hundir el promedio.
+  var tks=(nuevosAnio||[]).map(function(c){ return _ventaTicket(c).monto; })
+    .filter(function(m){ return m>0; });
+  var prom=tks.length?(tks.reduce(function(t,m){ return t+m; },0)/tks.length):null;
+  var anio=new Date().getFullYear();
+  var grande=function(rot, val, pie, color){
+    return '<div style="flex:1;min-width:200px;background:var(--bg2);border:1px solid var(--border);'
+        +'border-radius:var(--radius-lg);padding:16px 18px">'
+      +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">'+rot+'</div>'
+      +'<div style="font-size:38px;line-height:1.1;margin-top:6px;font-weight:500;color:'+(color||'var(--strong)')+'">'+val+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:5px;line-height:1.6">'+pie+'</div>'
+    +'</div>';
+  };
+  var gasto=function(rot, g){
+    return g.hay ? grande(rot, _rtPlata(g.monto), rotMes+' &middot; '+esc(g.nombres))
+                 : grande(rot, '&mdash;', 'sin cargar en '+rotMes+' &middot; '+esc(g.nombres), 'var(--text3)');
+  };
+  return '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">'
+    +gasto('Gastos fijos', fijos)
+    +gasto('Pauta publicitaria', pauta)
+    +gasto('Gastos variables', vari)
+    +(prom!=null
+      ? grande('Ticket promedio', _rtPlata(prom), tks.length+' ventas de '+anio+' &middot; implementacion + abono firmado')
+      : grande('Ticket promedio', '&mdash;', 'sin ventas con monto en '+anio, 'var(--text3)'))
+  +'</div>';
+}
 function rentabilidadHtml(){
   var filas=_rtFilas();
   var tira=(typeof _overviewMetricsHtml==='function')?_overviewMetricsHtml('comercial'):'';
@@ -18038,6 +18080,7 @@ function rentabilidadHtml(){
       +kpiCosto
       +kpiMargen
     +'</div>'
+    +_rtTarjetasGrandes(mesK, rotMes, nuevosAnio)
     +tira
     +eerrHtml()
 
