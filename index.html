@@ -37423,6 +37423,10 @@ function _cpPintar(){
   } else if(hoy){
     p.className='cpop hoy';
     var link=st.link;
+    // Las que vienen de Google o se cargaron a mano no viven en GHL: no hay link
+    // que pedirle ni cita que mover desde aca.
+    var deGoogle=/^(g:|mano-)/.test(String(x.id));
+    if(deGoogle && link===undefined) link=st.link='';
     html='<div class="cp-top"><span class="cp-lbl">Hoy</span>'
       +'<span class="cp-badge">'+esc(t<=ahora ? 'ahora' : _cpRelativo(t))+'</span></div>'
       +'<div class="cp-big">'+esc(_citaHora(x.inicio))+'<small>'+esc(_cpDia(d))+'</small></div>'
@@ -37430,13 +37434,17 @@ function _cpPintar(){
         +(link
           ? '<a class="cp-b pri" href="'+esc(link)+'" target="_blank" rel="noopener">Entrar a la llamada</a>'
           : (link===''
-            ? '<button class="cp-b pri" disabled title="La reunión no tiene link en GHL">Sin link en GHL</button>'
+            ? '<button class="cp-b pri" disabled title="La reunión no tiene link en GHL">'
+              +(deGoogle?'Link en Google Calendar':'Sin link en GHL')+'</button>'
             : '<button class="cp-b pri" disabled>Buscando el link…</button>'))
-        +'<button class="cp-b" onclick="citaPopMover()">Reprogramar</button>'
+        +(deGoogle?'':'<button class="cp-b" onclick="citaPopMover()">Reprogramar</button>')
       +'</div>'+_cpBotonInvitar(c);
     // El link no se guarda en la tarjeta: se le pide a GHL al abrir, que es
-    // donde vive y donde se actualiza si alguien lo cambia.
-    if(link===undefined) _cpTraerLink(x);
+    // donde vive y donde se actualiza si alguien lo cambia. Se pide DESPUES de
+    // pintar (abajo): si contestaba antes de terminar, este mismo pintado
+    // pisaba la respuesta y quedaba «Buscando el link…» para siempre (Santi,
+    // 21/10/2026).
+    var _pedirLink=(link===undefined);
   } else {
     p.className='cpop';
     html='<div class="cp-top"><span class="cp-lbl">Próxima llamada</span>'
@@ -37448,10 +37456,16 @@ function _cpPintar(){
         +'Abrir en calendario</button>'
       +'</div>'+_cpBotonInvitar(c);
   }
-  if(!o.et) html+='<div class="cp-nota">No está enganchada a ninguna etapa: '
+  if(/^(g:|mano-)/.test(String(x.id))) html+='<div class="cp-nota">'
+    +(String(x.id).indexOf('g:')===0
+      ? ('Está en el Google Calendar de '+esc(x.deNuestroLado||'quien la toma')+', no en GHL: '
+        +'se mueve desde Google. Para que el cliente reciba los recordatorios, agendala desde la ficha.')
+      : 'Se cargó a mano, no está en GHL: la fecha se cambia desde la ficha.')+'</div>';
+  else if(!o.et) html+='<div class="cp-nota">No está enganchada a ninguna etapa: '
     +'asignásela desde la ficha.</div>';
   p.innerHTML=html;
   _cpUbicar();
+  if(_pedirLink) _cpTraerLink(x);
 }
 /* Invitar al equipo del cliente a una reunion que YA existe (Angie, 16/10/2026).
    Antes solo se podia al crearla. Usa el mismo camino que al agendar: suma los
