@@ -38710,9 +38710,11 @@ async function citasAgendarGhl(clientId){
     var r=idViejo
       // El calendario va tambien al reprogramar: del otro lado hace falta para
       // poder releer los huecos cuando GHL rechaza el horario.
+      // Con la persona elegida: el horario era libre para ELLA, no para quien
+      // tenia la reunion antes (el servidor, sin `userId`, deja al anterior).
       ? await agLlamar({accion:'reprogramar', eventId:idViejo,
                         calendarId:((S._huecosCal||{})['cita-huecos']||cal),
-                        inicio:_envio})
+                        inicio:_envio, userId:_citaQuien()})
       // `userId` vacio = como antes: la cita entra al calendario y GHL decide
       // quien la toma. Con persona elegida, queda a su nombre.
       /* ⚠️  EL CONTACTO RECIEN CREADO VIAJA POR ID. Buscarlo por mail falla:
