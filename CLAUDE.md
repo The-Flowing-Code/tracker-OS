@@ -57,6 +57,10 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
   por cliente que estuvo, con los minutos y tramos de SU caso. La escribe solo
   la rutina `pendientes-de-llamadas` (service key); el equipo la lee. Un tramo
   dudoso no se carga: se le pregunta a Angie.
+- `errores_agenda` (046): cada falla de la función `agendar` que vio alguien
+  del equipo (quién, acción, código, error tal cual, dispositivo). La escribe
+  `agLlamar` desde la app de cada uno, solo a su nombre; se lee para no
+  depender de capturas.
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.

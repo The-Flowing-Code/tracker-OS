@@ -72591,7 +72591,35 @@ function ticketsProxyUrl(){
    Medido dos veces: el 30/09/26 se cayo la sesion 4 de la capacitacion y el
    01/10 la del 16. Ademas se reintenta una sola vez ante un 401, por si el
    token vence entre el chequeo y la llamada. */
+/* ⚠️  CADA FALLA QUEDA ANOTADA (21/10/2026). «Santi siempre tiene un problema
+   distinto»: el mensaje quedaba en su pantalla y se perdia, y sin el texto
+   exacto cada falla parecia nueva. Se guarda en `errores_agenda` (046) quien,
+   que accion, el codigo y el error tal cual, con los campos del pedido que
+   explican la falla -nunca el mail del cliente ni tokens-. Si no se puede
+   anotar, no pasa nada: el error sigue su camino igual. */
+function _agAnotarError(cuerpo, e){
+  try{
+    if(!e || e._anotado || typeof SB!=='object' || !SB.token) return;
+    e._anotado=true;
+    var k=cuerpo||{}, ped={};
+    ['accion','calendarId','eventId','inicio','userId','dia','minutos'].forEach(function(x){
+      if(k[x]!=null && k[x]!=='') ped[x]=String(k[x]).slice(0,120); });
+    if(k.contactId) ped.contactId='si';
+    if(e.diagnostico && e.diagnostico.lectura) ped.lectura=String(e.diagnostico.lectura).slice(0,300);
+    var cid=(S._cpop&&S._cpop.clientId)||S.clientId||null;
+    sbFetch('errores_agenda', {method:'POST', headers:{'Prefer':'return=minimal'},
+      body:JSON.stringify({accion:String(k.accion||'agendar').slice(0,40),
+        cliente_id:cid?Number(cid):null, status:e._status||null,
+        error:String(e.message||'').slice(0,2000), pedido:ped,
+        pantalla:String(S.view||'').slice(0,200),
+        dispositivo:String(navigator.userAgent||'').slice(0,300)})}).catch(function(){});
+  }catch(x){}
+}
 async function agLlamar(cuerpo, _reintento, _n429){
+  try{ return await _agLlamar(cuerpo, _reintento, _n429); }
+  catch(e){ _agAnotarError(cuerpo, e); throw e; }
+}
+async function _agLlamar(cuerpo, _reintento, _n429){
   if(SB.exp && Date.now()>SB.exp-60000){ try{ await sbRenovar(); }catch(e){} }
   var r;
   try{
@@ -72659,6 +72687,7 @@ async function agLlamar(cuerpo, _reintento, _n429){
         +'Lo reintenté 3 veces. Esperá un minuto y volvé a abrir esta ventana.');
     }
     var _e=new Error((d&&d.error)||_porNum||('HTTP '+r.status));
+    _e._status=r.status;
     if(_dg){
       _e.diagnostico=_dg;
       if(_dg.lectura && String(_e.message).indexOf(_dg.lectura)<0)
