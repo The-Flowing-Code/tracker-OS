@@ -130,13 +130,18 @@ async function buscarContacto(email: string) {
 // junto al que se mando. Con eso se ve de un vistazo si el nuestro esta en la
 // lista -y entonces el problema es el formato o algo del lado de GHL- o si no
 // esta -y entonces el hueco se ocupo de verdad.
-async function diagnosticarHueco(calendarId: string, inicio: string) {
+/* ⚠️  CON LA PERSONA, SI LA HAY (21/10/2026). Sin `userId` estos son los huecos
+   de TODO el equipo: un horario que GHL rechazo porque esa persona ya estaba
+   ocupada seguia "libre" (lo tenia libre otro), daba coincidencia exacta y se
+   reintentaba sin validar, a nombre de ella. Dos reuniones a la misma hora. */
+async function diagnosticarHueco(calendarId: string, inicio: string, userId = "") {
   try {
     const t = Date.parse(inicio);
     if (isNaN(t)) return { nota: "la fecha no se entiende" };
     const r = await ghl(
       "/calendars/" + encodeURIComponent(calendarId) + "/free-slots" +
-      "?startDate=" + (t - 12 * 3600 * 1000) + "&endDate=" + (t + 12 * 3600 * 1000),
+      "?startDate=" + (t - 12 * 3600 * 1000) + "&endDate=" + (t + 12 * 3600 * 1000) +
+      (userId ? "&userId=" + encodeURIComponent(userId) : ""),
     );
     if (!r.ok) return { nota: "no pude releer los huecos: " + r.status };
     const slots: string[] = [];
@@ -576,7 +581,7 @@ Deno.serve(async (req: Request) => {
             calId = String(ap.calendarId || "").trim();
           }
           const diag = calId
-            ? await diagnosticarHueco(calId, inicio)
+            ? await diagnosticarHueco(calId, inicio, asignadoRp)
             : { lectura: "no pude averiguar de que calendario es esta cita" };
           const d = diag as any;
           if (d && d.coincide_exacto) {
@@ -696,7 +701,7 @@ Deno.serve(async (req: Request) => {
       // se compara, para saber de una vez si el problema es que el hueco se
       // ocupo, o que lo que mandamos no es lo que el espera.
       if (/no longer available/i.test(r.crudo || "")) {
-        const diag = await diagnosticarHueco(calendarId, inicio);
+        const diag = await diagnosticarHueco(calendarId, inicio, asignado);
         // Si el hueco SIGUE en la lista de GHL y aun asi lo rechazo, el que se
         // esta equivocando es su validacion, no nosotros. En ese caso -y solo
         // en ese- se reintenta pidiendole que no valide: ya validamos nosotros
