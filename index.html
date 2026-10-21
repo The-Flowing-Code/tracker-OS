@@ -37074,8 +37074,7 @@ function p360Agendar(clientId, elegir){
         ? ('<div style="margin-top:12px"><label style="font-size:11px;color:var(--text3);'
             +'display:block;margin-bottom:4px">De que reunion es</label>'
           +'<select id="cita-etapa" style="'+est+';width:100%" '
-            +'onchange="citasSemanaCargar('+c.id+',{fecha:\'cita-fecha\',hora:\'cita-hora\','
-            +'etapa:\'cita-etapa\',caja:\'cita-huecos\'})">'
+            +'onchange="citasEtapaCambio('+c.id+')">'
           +rutaDef().map(function(e){
               return '<option value="'+esc(e.l)+'"'+(e.l===et?' selected':'')+'>'
                 +esc(e.l)+'</option>'; }).join('')
@@ -37149,10 +37148,24 @@ function p360Agendar(clientId, elegir){
 async function p360AgendarHacer(clientId, modo){
   var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });
   if(!c) return;
+  /* ⚠️  UN PEDIDO A LA VEZ (21/10/2026). El boton quedaba vivo mientras GHL
+     contestaba y, despues, los ~20 s que tarda invitar al equipo en Google: un
+     segundo toque -en el celu pasa solo- mandaba otra cita. Con «Como venga»
+     GHL se la daba a otra persona del equipo; asi salio la duplicada de
+     Atentamente del 8/10. */
+  if(S._agendandoCita) return;
+  S._agendandoCita=true;
+  var _bts=Array.prototype.slice.call(document.querySelectorAll('.modal-footer .btn'));
+  _bts.forEach(function(b){ b.disabled=true; });
   var et=(document.getElementById('cita-etapa')||{}).value||'';
   var antes=JSON.stringify((c.citas||{})[et]||null);
-  if(modo==='ghl') await citasAgendarGhl(clientId);
-  else citasAMano(clientId);
+  try{
+    if(modo==='ghl') await citasAgendarGhl(clientId);
+    else citasAMano(clientId);
+  }finally{
+    S._agendandoCita=false;
+    _bts.forEach(function(b){ if(b.isConnected) b.disabled=false; });
+  }
   var ahora=JSON.stringify((c.citas||{})[et]||null);
   if(ahora!==antes){
     closeModal(); _citasRepintar();
@@ -37807,6 +37820,9 @@ async function citasQuienCargar(clientId, ids){
      muestra el aviso. */
   S._quienElegido=false;
   S._quienPend=!!cal;
+  // Lo de la vez anterior no vale: con 0 o 1 persona, o si GHL no contesta, el
+  // nombre quedaba y la confirmacion decia «La toma: Martin» sin serlo.
+  S._quienNom=''; S._quienMail='';
   var _destrabar=function(){
     S._quienPend=false; S._quienElegido=true;
     var sm=S._sem||{};
@@ -37818,7 +37834,10 @@ async function citasQuienCargar(clientId, ids){
     var r=await agLlamar({accion:'personas', calendarId:cal});
     var ps=(r&&r.personas)||[];
     // Con una sola persona no hay nada que elegir: el desplegable seria ruido.
-    if(ps.length<2){ caja.innerHTML=''; _destrabar(); return; }
+    if(ps.length<2){
+      if(ps.length===1){ S._quienNom=String(ps[0].nombre||''); S._quienMail=String(ps[0].mail||'').toLowerCase(); }
+      caja.innerHTML=''; _destrabar(); return;
+    }
     /* Pastillas y no un desplegable: es la primera pregunta del popup y son
        cuatro personas, asi que verlas todas cuesta menos que abrir una lista.
        El valor sigue viviendo en un input con el id de siempre, para que
@@ -37844,7 +37863,8 @@ async function citasQuienCargar(clientId, ids){
     if(sm.ids&&sm.ids.caja==='cita-huecos') citasSemanaCargar(sm.clientId, sm.ids, sm.lunes);
   }catch(e){
     caja.innerHTML='<span style="font-size:10.5px;color:var(--amberx)">No pude traer el '
-      +'equipo de ese calendario: '+esc((e&&e.message)||'')+'</span>';
+      +'equipo de ese calendario: '+esc((e&&e.message)||'')+'. Si agendás igual, GHL elige '
+      +'quién la toma.</span>';
     _destrabar();
   }
 }
@@ -38359,8 +38379,33 @@ function citasSemanaElegir(dia, hh){
   if(hi){ hi.value=hh; hi.style.borderColor='var(--accent)'; }
   // El mismo paquete que deja citasHuecos, con el ISO de GHL sin tocar.
   S._huecos=S._huecos||{};
-  S._huecos[ids.caja]={dia:dia, isos:g.isos, horas:g.horas.slice()};
+  var _et=ids.et || (document.getElementById(ids.etapa)||{}).value||'';
+  S._huecos[ids.caja]={dia:dia, isos:g.isos, horas:g.horas.slice(),
+                       elegido:true, quien:_citaQuien(), cal:String(_citaCalElegido(_et)||'')};
   citasSemanaPintar();
+}
+/* Lo elegido en la grilla vale para la persona y el calendario de ese momento.
+   Cambiar cualquiera de los dos dejaba el horario anterior marcado como bueno
+   y se mandaba con la persona nueva (21/10/2026). */
+function _csElegidoVale(ids){
+  var g=(S._huecos||{})[ids.caja];
+  var f=(document.getElementById(ids.fecha)||{}).value||'';
+  var h=(document.getElementById(ids.hora)||{}).value||'';
+  var et=ids.et || (document.getElementById(ids.etapa)||{}).value||'';
+  return !!(g && g.elegido && f && g.dia===f && (g.horas||[]).indexOf(h)>=0
+    && g.quien===_citaQuien() && g.cal===String(_citaCalElegido(et)||''));
+}
+// Cambiar de etapa en el popup: su calendario, su gente y sus horarios.
+function citasEtapaCambio(clientId){
+  var et=(document.getElementById('cita-etapa')||{}).value||'';
+  var def=rutaDef().filter(function(e){ return e.l===et; })[0];
+  var sel=document.getElementById('cita-cal');
+  if(sel && def && def.cal && Array.prototype.some.call(sel.options, function(o){ return o.value===String(def.cal); }))
+    sel.value=String(def.cal);
+  if(S._huecos) delete S._huecos['cita-huecos'];
+  var ids={fecha:'cita-fecha', hora:'cita-hora', etapa:'cita-etapa', caja:'cita-huecos'};
+  citasQuienCargar(clientId, ids);
+  citasSemanaCargar(clientId, ids);
 }
 function _csResumen(){
   var e=document.getElementById('cita-sem-res');
@@ -38371,8 +38416,7 @@ function _csResumen(){
   /* Elegido de la grilla o nada. Con los campos ocultos no hay forma de que
      la fecha y la hora sean otra cosa que un hueco que dio GHL, asi que lo
      unico que queda por distinguir es si ya se eligio. */
-  var _g=(S._huecos||{})[ids.caja];
-  if(!f || !_g || _g.dia!==f || (_g.horas||[]).indexOf(h)<0){
+  if(!_csElegidoVale(ids)){
     e.textContent='Elegí un horario de la semana.';
     e.style.color='var(--text3)';
     return;
@@ -38424,6 +38468,10 @@ async function citasReprogramar(clientId, etapa){
   if(String(x.id).indexOf('mano-')===0){
     di('Esta reunión no existe en GHL: se cargó a mano. Cambiá la fecha desde arriba.',
        'var(--amberx)'); return;
+  }
+  if(String(x.id).indexOf('g:')===0){
+    di('Esta reunión está en Google Calendar, no en GHL: se mueve desde Google. Para que el '
+      +'cliente reciba los recordatorios, agendala nueva desde arriba.','var(--amberx)'); return;
   }
   // El mismo criterio que arriba: se devuelve el horario que dio GHL, no uno
   // rearmado, y se le manda el calendario para que pueda releer los huecos si
@@ -38610,6 +38658,15 @@ async function citasAgendarGhl(clientId){
     _citasDecir(clientId,'Falta el calendario: elegilo en "Con quien", o dejaselo fijo a '
       +'"'+et+'" en el editor de etapas.','var(--amberx)'); return;
   }
+  /* ⚠️  SIN HORARIO ELEGIDO NO SE AGENDA (21/10/2026). Con la semana, la fecha
+     y la hora son campos ocultos que arrancan en HOY a las 09:00: tocar
+     «Agendar» sin elegir creaba una reunion a las 9 que nadie eligio, o -despues
+     de las 9- contestaba que «esa fecha ya paso» por una fecha que nadie puso. */
+  if(document.getElementById('cita-sem-res')
+     && !_csElegidoVale({fecha:'cita-fecha', hora:'cita-hora', etapa:'cita-etapa', caja:'cita-huecos'})){
+    _citasDecir(clientId,'Elegí un horario de la semana'
+      +(S._quienNom?(' para '+esc(S._quienNom)):'')+' antes de agendar.','var(--amberx)'); return;
+  }
   if(S._huecosSinFiltrar && !confirm('GHL devolvio los mismos horarios con y sin persona, '
       +'asi que estos pueden ser los del equipo y no los de ella. ¿Agendo igual?')) return;
   var d=new Date(f+'T'+(h||'09:00')+':00');
@@ -38630,7 +38687,9 @@ async function citasAgendarGhl(clientId){
   // al cliente con dos invitaciones para lo mismo y al tablero sin saber cual
   // vale. Las cargadas a mano no cuentan: esas no existen en GHL.
   var ya=(c.citas||{})[et];
-  var idViejo=(ya && ya.id && String(ya.id).indexOf('mano-')!==0
+  // Las de Google Calendar («g:») tampoco: GHL no las conoce y contestaba
+  // «no encuentra esa reunion».
+  var idViejo=(ya && ya.id && !/^(mano-|g:)/.test(String(ya.id))
     && String(ya.estado||'')!=='cancelled') ? String(ya.id) : '';
   // Salvo dos casos, en los que mover seria peor que crear.
   //
