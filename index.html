@@ -15632,6 +15632,12 @@ function _rtMesesImpl(c){
 function rtPartesEn(c, anio, mes){
   if(c.serviceType!=='mixto'){
     var r=rtMensual(c), n=r.monto||0;
+    // Un pago unico se reparte solo entre los meses que dura el contrato.
+    // Sin esto un contrato de febrero seguia sumando su cuota en octubre.
+    if(r.origen==='contrato' && r.meses){
+      var d0=(typeof _eerrDesde==='function')?_eerrDesde(c):null;
+      if(d0){ var i0=(anio-d0.a)*12+(mes-d0.m); if(i0<0||i0>=r.meses) n=0; }
+    }
     return (r.origen==='abono') ? {abono:n, unico:0} : {abono:0, unico:n};
   }
   var fee=_feeMensual(c);
@@ -15708,10 +15714,11 @@ function _rtFilas(){
   return _rtCarteraHoy()
     .map(function(c){
       var men=rtMensual(c);
-      var fee=men.monto;
       // Lo de este mes partido: la columna tiene que decir si esos pesos son
       // abono o la implementacion, que se cobra una vez y no se repite.
       var partes=rtPartesEn(c, h.getFullYear(), h.getMonth());
+      // ESTE MES es lo de este mes: un contrato que ya termino suma 0.
+      var fee=partes.abono+partes.unico;
       var e=_rtEsfuerzo(c);
       // Por tarea cerrada: lo unico que se puede dividir hoy. Dice cuanto te
       // rinde el abono contra el trabajo que se hizo, no cuanto ganas.
@@ -15804,7 +15811,7 @@ function eerrSinAporte(){
     //    lo archive. Afuera quedan los mismos que afuera de la cartera por otro
     //    motivo: archivados (ahi estan los de prueba), prospectos, la agencia y
     //    los que ya se dieron de baja.
-    if(!c.archived && !c.bajaAt && !esAgencia(c) && !esProspecto(c) && !_primerCobro(c)){
+    if(!c.archived && !c.bajaAt && !esAgencia(c) && !esProspecto(c) && !_primerCobro(c) && !_clienteDeAntesDeLosCobros(c)){
       var r0=(c.serviceType==='recurrente'||c.recurrente);
       var tiene0=(parseFloat(c.contractValue)||0)>0 || (r0 && _feeMensual(c)>0)
         || (c.serviceType==='mixto' && _feeMensual(c)>0);
@@ -16074,11 +16081,24 @@ function _eerrAltaFiable(c){
   if(_primerCobro(c)) return true;
   return (typeof clienteAltaFiable==='function') ? clienteAltaFiable(c) : true;
 }
+// Los cobros se empezaron a tildar en la app en agosto de 2026. Los clientes
+// de antes pagaron afuera y no tienen cuotas cargadas (muchos siguen en
+// garantia). Pedirles un cobro tildado los borraba de la cartera aunque se les
+// siga dando servicio. El abono mensual no entra aca: se paga todos los meses
+// y cada mes se tilda, asi que sin cobros se sigue nombrando para tildarlo.
+var COBROS_EN_APP_DESDE=new Date(2026,7,1);
+function _clienteDeAntesDeLosCobros(c){
+  if(!c || c.archived || c.bajaAt || esProspecto(c)) return false;
+  if(c.serviceType==='recurrente' || c.recurrente) return false;
+  var d=clienteAlta(c);
+  return !!(d && d.getFullYear()>=2025 && d<COBROS_EN_APP_DESDE);
+}
 function _eerrEsCartera(c){
   if(!c || esAgencia(c)) return false;
   // Sin un cobro tildado no hay cliente: hay una venta cargada. Es la regla que
-  // deja afuera a los que firmaron y todavia no pagaron.
-  if(!_primerCobro(c)) return false;
+  // deja afuera a los que firmaron y todavia no pagaron. Salvo los de antes de
+  // que se tildaran cobros en la app, que pagaron y siguen activos.
+  if(!_primerCobro(c)) return _clienteDeAntesDeLosCobros(c);
   if(!esProspecto(c)) return true;
   // Para la plata no alcanza con _llegoAAlta, que acepta la etapa automatica:
   // esa sube un lead a la columna de pago porque en la llamada se hablo de
@@ -17956,6 +17976,10 @@ function rentabilidadHtml(){
                    ? '<span title="Termino la implementacion y no hay fee cargado">falta el fee</span>'
                  : (!(parseFloat(f.c.contractValue)||0) && !_feeMensual(f.c))
                    ? '<span title="Tiene cuotas cobradas pero no valor de contrato ni fee">falta el valor</span>'
+                 // Pago unico cuyo plazo ya paso: sigue en cartera (por ejemplo,
+                 // en garantia) pero este mes no factura.
+                 : f.men.origen==='contrato'
+                   ? '<span title="El contrato de pago unico ya termino: sigue activo, este mes no factura">contrato terminado'+(f.c.garantia?' · en garantia':'')+'</span>'
                    : 'sin datos'))
             +'</span>'
           +'<span style="width:96px;flex:none;text-align:right;font-size:11.5px;color:var(--text3)">'

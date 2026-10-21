@@ -12,6 +12,7 @@ const F = cargar(
     '_feeMensual', '_rtMesesImpl', 'rtPartesEn', 'rtMensualEn', 'rtMensual', '_rtHitoPendiente',
     '_contratoDias', '_fecha', '_isoLocal', 'clienteAltaInfo', 'clienteAlta', 'clienteAltaFiable',
     '_pagos', '_pagoFecha', '_primerCobro', '_eerrAltaEfectiva', '_eerrAltaFiable', '_eerrEsCartera',
+    'COBROS_EN_APP_DESDE', '_clienteDeAntesDeLosCobros',
     'esAgencia', 'esProspecto', '_bajaMes', '_bajaPorArchivo', '_bajaEfectiva', '_eerrCuenta',
     '_eerrDesde', '_eerrFinVencidoAntesDeEmpezar', '_eerrHasta', '_eerrHastaContrato', '_eerrVencida',
     '_eerrCubre', 'eerrAbonosDetalle', 'eerrAbonosMes', 'eerrPartesMes', 'eerrAnio',
@@ -170,5 +171,26 @@ describe('eerrResultado sin gastos cargados', () => {
     expect(F.eerrIngresoNeto(2)).toBeNull();
     DB.eerr = { '2026-03': { otrosIngresos: 250 } };
     expect(F.eerrIngresoNeto(2)).toBe(250);
+  });
+});
+
+// Los cobros se tildan en la app desde agosto de 2026: el cliente de antes
+// cuenta en cartera sin cuotas, y su pago unico no sigue sumando al terminar.
+describe('clientes de antes de los cobros en la app', () => {
+  const viejo = (extra = {}) => ({
+    id: 9, name: 'Garantia Vieja', serviceType: 'one-time', contractValue: '3000',
+    contract: { durationDays: 90 }, altaAt: '2026-02-10', pagos: [], ...extra,
+  });
+
+  it('entra en cartera sin cobro tildado si su alta es anterior a agosto 2026', () => {
+    expect(F._eerrEsCartera(viejo())).toBe(true);
+    expect(F._eerrEsCartera(viejo({ altaAt: '2026-09-01' }))).toBe(false);
+    expect(F._eerrEsCartera(viejo({ archived: true }))).toBe(false);
+  });
+
+  it('su pago unico se reparte solo en los meses del contrato', () => {
+    expect(F.rtPartesEn(viejo(), 2026, 1)).toEqual({ abono: 0, unico: 1000 });
+    expect(F.rtPartesEn(viejo(), 2026, 3)).toEqual({ abono: 0, unico: 1000 });
+    expect(F.rtPartesEn(viejo(), 2026, 4)).toEqual({ abono: 0, unico: 0 });
   });
 });
