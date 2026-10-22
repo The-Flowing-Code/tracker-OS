@@ -61,6 +61,16 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
   del equipo (quién, acción, código, error tal cual, dispositivo). La escribe
   `agLlamar` desde la app de cada uno, solo a su nombre; se lee para no
   depender de capturas.
+- `formularios_onboarding` y `formularios_respuestas` (047): el formulario de
+  onboarding de cada cliente (portal/formulario.html). El cliente entra sin
+  cuenta con un código de 40 caracteres en el link; en la base solo está su
+  sha256. Lee y escribe SOLO la función `formulario` (service key); el equipo
+  lee. Audios y archivos en el bucket privado `formularios`. Cero policies
+  para `anon`.
+- `set_vigilancia` (048): las rutinas «Leads sin mensaje 1 y conversaciones
+  del día» (8:35 y 18:35) y «Parte de WhatsApp» (18:45) dejan su resumen en
+  `maquina.vigilancia.{leads,whatsapp}` del cliente interno (Evolve); el buen
+  día y el buenas noches lo muestran (js/bienvenida.js).
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.
