@@ -71,6 +71,10 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
   del día» (8:35 y 18:35) y «Parte de WhatsApp» (18:45) dejan su resumen en
   `maquina.vigilancia.{leads,whatsapp}` del cliente interno (Evolve); el buen
   día y el buenas noches lo muestran (js/bienvenida.js).
+- `set_mensajes_dia` (049): esas mismas rutinas redactan los mensajes que hay
+  que mandarles a los clientes ese día y los dejan en
+  `maquina.mensajesDia.{leads,whatsapp}`; el buen día los muestra con un
+  botón para copiar. La app no manda nada.
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.
