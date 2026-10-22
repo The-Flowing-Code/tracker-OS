@@ -494,6 +494,42 @@ function _bv2VigHtml(noche){
     +tarj('alar','Para seguir',resto.length,lista(resto,'Nada pendiente de seguimiento.'))+'</div>'
     +(recHtml?'<div class="q4" style="grid-template-columns:1fr">'+recHtml+'</div>':'');
 }
+/* «Mensajes para mandar hoy» (Angie, 22/10/2026): las rutinas de vigilancia,
+   además de ver lo trabado, redactan el mensaje para cada cliente que lo
+   necesita (maquina.mensajesDia, migración 049). La app no manda nada: muestra
+   dónde va, por qué, el texto y un botón para copiarlo. A la mañana, los de
+   hoy; a la noche, los que quedaron armados para mañana. */
+function _bv2MensHtml(noche){
+  var M=null; (DB.clients||[]).forEach(function(c){ if(c && c.mensajesDia && typeof c.mensajesDia==='object') M=c.mensajesDia; });
+  M=M||{};
+  var hoy=rvISO(new Date());
+  var vale=function(p){ return p && (noche ? p.fecha>hoy : p.fecha===hoy); };
+  var L=[].concat(vale(M.leads)?(M.leads.mensajes||[]):[], vale(M.whatsapp)?(M.whatsapp.mensajes||[]):[]);
+  _BV2.msgs=L.map(function(x){ return String(x.texto||''); });
+  var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
+  var t=noche?'Mensajes armados para mañana':'Mensajes para mandar hoy';
+  var cab='<div class="tt" style="margin:0 2px -8px;font-size:12px;letter-spacing:.14em;color:var(--t2)">'+(noche?'PARA MANDAR MAÑANA':'PARA MANDAR HOY')+' <small style="letter-spacing:0;text-transform:none">· los redactan las rutinas; revisalos antes de mandar</small></div>';
+  if(!L.length) return noche?'':cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">0</span></div><div class="vac">No quedó ningún mensaje armado para hoy.</div></div></div>';
+  var filas=L.map(function(x,i){
+    var c=porNombre(x.cliente);
+    var dq=[x.donde, x.quien?('lo manda '+x.quien):''].filter(Boolean).join(' · ');
+    return '<div class="it" style="display:block;padding:12px 0">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'')+'</b>'
+      +(dq?'<span>'+esc(dq)+'</span>':'')+(x.motivo?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(x.motivo)+'</span>':'')+'</span>'
+      +'<span style="display:flex;gap:6px;flex:none"><button class="acc" data-bv2copy="'+i+'" title="Copiar el mensaje">Copiar</button>'
+      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(c.name)+'">Ficha</button>':'')+'</span></div>'
+      +'<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(242,240,235,.04);white-space:pre-wrap;font-size:13px;line-height:1.55;color:#F2F0EB">'+esc(x.texto||'')+'</div></div>';
+  }).join('');
+  return cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div><div class="lst" tabindex="0" aria-label="'+t+'">'+filas+'</div></div></div>';
+}
+function _bv2Copiar(i){
+  var txt=(_BV2.msgs||[])[i]; if(!txt) return;
+  var ok=function(){ try{ if(typeof toast==='function') toast('Mensaje copiado'); }catch(e){} };
+  try{ navigator.clipboard.writeText(txt).then(ok,function(){ _bv2CopiarViejo(txt); ok(); }); }catch(e){ _bv2CopiarViejo(txt); ok(); }
+}
+function _bv2CopiarViejo(txt){
+  try{ var ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }catch(e){}
+}
 function _bv2PieHtml(txt){
   return '<div class="pieBv"><span class="sello"><i></i>Actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">'+txt+'</button></div>';
 }
@@ -562,7 +598,7 @@ function _bv2Html(){
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2VigHtml(false)+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
+    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2MensHtml(false)+_bv2VigHtml(false)+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
 }
 
 // Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
@@ -627,6 +663,7 @@ function bienvenida2Mostrar(){
     if((b=e.target.closest('[data-bv2ed]'))){ var j=+b.dataset.bv2ed; _BV2.edit=(_BV2.edit===j)?-1:j; _bv2Pintar(); var inp=document.getElementById('bv2I'); if(inp){ inp.focus(); inp.select(); } return; }
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
+    if((b=e.target.closest('[data-bv2copy]'))){ _bv2Copiar(+b.dataset.bv2copy); return; }
     if((b=e.target.closest('[data-bv2sug]'))){ _bv2Popup(+b.dataset.bv2sug); return; }
     if((b=e.target.closest('[data-bv2rep]'))){ _bv2Reporte(+b.dataset.bv2rep); return; }
     // El nombre de un cliente, en cualquier tarjeta, abre su reporte de campañas; las sugerencias, en el botón «Ver sugerencias».
@@ -776,7 +813,7 @@ function _bv2HtmlNoche(){
     +lista(MA,'No tenés tickets que venzan hasta mañana.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },10));
   var esp=tarj('fren','Esperando a terceros',ET.length,lista(ET,'No hay nada esperando al cliente o a otra persona.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },8));
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div>'+_bv2VigHtml(true)+'<div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
+    +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div>'+_bv2VigHtml(true)+_bv2MensHtml(true)+'<div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
     +'<div class="vac" style="border:0;padding:0 4px">Las tarjetas de abajo cuentan lo que la app sabe; lo hecho fuera de ella (GHL, Meta, archivos) está en «Lo que hiciste hoy», que arma la rutina de cierre.</div>'+_bv2PieHtml('Cerrar el día →')+'</div>';
 }
 function buenasNochesMostrar(){
