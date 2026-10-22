@@ -3719,11 +3719,14 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                            Esta aca igual porque en `datos` se perderia SIEMPRE,
                            no a veces. Lo que se gana es que la app la lea al
                            bajar y la devuelva al subir en vez de pisarla. */
-                    'oferta'];
+                    'oferta',
+                    /* La guía del onboarding (22/10/2026): la escribe Claude desde el chat
+                       antes de la llamada, como el dataset. Misma salvedad que `oferta`. */
+                    'guiaOnboarding'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.
@@ -31297,6 +31300,32 @@ function cobroIconoHtml(c, antes){
     +'<path d="M17 6.5H9.75a3.25 3.25 0 000 6.5h4.5a3.25 3.25 0 010 6.5H6"/></svg>'
     +'</span></span>';
 }
+/* ── La guía de onboarding, en la esquina de la tarjeta (Angie, 22/10/2026) ─
+   Igual que el dataset: un ícono que abre el documento sin entrar a la ficha.
+   La guía la arma Claude antes de la llamada (lo que ya se sabe del cliente,
+   lo que falta para el dataset y las preguntas en orden) y deja el link en
+   `maquina.guiaOnboarding` = {url, fecha, at}. La app no la genera: solo la
+   muestra. Lima mientras la llamada es hoy o está por venir; gris después. */
+function onbIconoHtml(c, antes){
+  var g=(c&&c.guiaOnboarding)||null;
+  var url=(g && typeof g.url==='string'
+    && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9_-]{6,64}$/.test(g.url)) ? g.url : '';
+  if(!url) return '';
+  var f=String(g.fecha||''), hoy=new Date(), ymd=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+  var vigente=!f || f>=ymd;
+  var t='Guía del onboarding'+(f?(' del '+f.slice(8,10)+'/'+f.slice(5,7)):'')
+    +' — qué nos llevamos para el dataset y las preguntas. Tocala para abrirla.';
+  var n=parseInt(antes,10)||0;
+  var cls='p3kcap'+(n?(' con'+Math.min(n,4)):'')+(vigente?' hecho':'');
+  return '<span class="'+cls+'" role="button" tabindex="0" title="'+esc(t)+'" aria-label="'+esc(t)+'" '
+    +'onclick="event.stopPropagation();window.open(\''+url+'\',\'_blank\',\'noopener\')" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();window.open(\''+url+'\',\'_blank\',\'noopener\');}">'
+    +'<span class="p3kcapb"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" '
+    +'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+    +'aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/>'
+    +'<path d="M9 4V3h6v1"/><path d="M8.5 10.5l1.5 1.5 3-3"/><line x1="8.5" y1="16" x2="15.5" y2="16"/></svg>'
+    +'</span></span>';
+}
 /* ── El dataset de oferta, en la esquina de la tarjeta ───────────────────
    Tercer icono, al lado de la capacitacion y el cobro. Hace dos cosas que el
    renglon de abajo no puede: dice de un vistazo cuanto se avanzo -el anillo-
@@ -43355,18 +43384,19 @@ function p360Html(){
     var _capIco=capIconoHtml(d.c, _nAntes);
     var _cobIco=cobroIconoHtml(d.c, _nAntes+(_capIco?1:0));
     var _ofeIco=ofertaIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0));
+    var _onbIco=onbIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0));
     /* El embudo vivia en la tira de Prendidos, que se saco. Se muda aca para
        no perder el camino al reporte: solo cuando hay reporte, asi no suma una
        insignia apagada a media cartera. */
     var _embIco=(typeof _embFunnelBtn==='function')
-      ? _embFunnelBtn(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)) : '';
+      ? _embFunnelBtn(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)) : '';
     // La llave de "falta configurar" va a la izquierda de todas, y como es una
     // pastilla con numero reserva el lugar de dos iconos en la linea del nombre.
-    var _incIco=incIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_embIco?1:0));
+    var _incIco=incIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0));
     /* Se cuenta el "+" igual que el calendario. Nunca se lo habia contado, asi
        que con el mas presente la linea del nombre reservaba lugar para un icono
        menos del que habia y el nombre largo se metia abajo del boton. */
-    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_embIco?1:0)+(_incIco?2:0);
+    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0);
     // En Reparto la tarjeta lleva un renglon mas -lo que le debe esa persona-,
     // asi que su piso es una linea mas alto. Dentro de cada vista siguen
     // midiendo todas lo mismo, que es lo que hace legible una columna.
@@ -43391,7 +43421,7 @@ function p360Html(){
          .p3kins en el CSS). La primera de la lista sigue quedando a la
          derecha de todo, como antes. */
       +'<div class="p3kins">'
-      +calBtn+masBtn+_capIco+_cobIco+_ofeIco+_embIco+_incIco
+      +calBtn+masBtn+_capIco+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
       // Una tarjeta de prospecto se crea sola desde una llamada: una prueba, un
       // mail mal leido o alguien del equipo abren una que no va. Si no se puede
       // borrar, queda para siempre ocupando una columna.
