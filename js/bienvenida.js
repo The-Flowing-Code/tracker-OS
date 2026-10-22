@@ -451,6 +451,49 @@ function _bv2CarteraHtml(){
     +'<div class="q4">'+tarj('bien','Van bien',B,'Hoy ningún cliente cumple lo que pide el reporte.',function(x){ return fila(x.cliente, x.numeros, x.lectura); })
     +tarj('fren','No van bien',M,'Ninguno con problemas de resultados hoy.',function(x){ return fila(x.cliente, x.motivo, ''); })+'</div>';
 }
+/* «Qué quedó trabado» (Angie, 22/10/2026): lo que dejan las rutinas que miran el
+   resultado con los leads y los clientes (maquina.vigilancia, migración 048).
+   «leads» = Leads sin mensaje 1 y conversaciones del día (8:35 y 18:35);
+   «whatsapp» = Parte de WhatsApp de los grupos de clientes y del equipo (18:45).
+   Nació porque el 21/10 una rutina vio dos plantillas aprobadas, lo dejó en un
+   archivo y nadie las conectó: lo que vigilan tiene que estar donde se mira. */
+var _BV2_VIG_TIPO={sin_mensaje:'sin mensaje 1',fallo:'falló el envío',tarde:'mensaje tarde',espera:'espera respuesta',
+  no_agendo:'contestó y no agendó',sin_seguimiento:'sin seguimiento',prometido:'prometimos',riesgo:'riesgo',otro:''};
+var _BV2_VIG_URG={sin_mensaje:1,fallo:1,espera:1,prometido:1,riesgo:1};
+function _bv2Vig(){
+  var v=null; (DB.clients||[]).forEach(function(c){ if(c && c.vigilancia && typeof c.vigilancia==='object') v=c.vigilancia; });
+  return v||{};
+}
+function _bv2VigHtml(noche){
+  var V=_bv2Vig(), hoy=rvISO(new Date());
+  var ayer=(function(){ var d=new Date(); d.setDate(d.getDate()-1); return rvISO(d); })();
+  // A la mañana sirve el parte de WhatsApp de anoche; a la noche, solo lo de hoy.
+  var vale=function(p){ return p && (p.fecha===hoy || (!noche && p.fecha===ayer && p.momento==='noche')); };
+  var L=vale(V.leads)?V.leads:null, W=vale(V.whatsapp)?V.whatsapp:null;
+  var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
+  var items=[].concat(L?(L.items||[]):[], W?(W.items||[]):[]);
+  var urg=items.filter(function(x){ return _BV2_VIG_URG[x.tipo]; }), resto=items.filter(function(x){ return !_BV2_VIG_URG[x.tipo]; });
+  var fila=function(x){
+    var c=porNombre(x.cliente), t=_BV2_VIG_TIPO[x.tipo]||'';
+    return '<div class="it"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'General')+(t?'<span class="prn">'+esc(t)+'</span>':'')+'</b><span>'+esc(x.texto||'')+'</span></span>'
+      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(c.name)+'">Abrir</button>':'<span></span>')+'</div>';
+  };
+  var cuando=function(p,nom){ if(!p) return ''; var d=p.at?new Date(p.at):null; return nom+' '+((d&&!isNaN(d))?_bv2Hora(d):'')+(p.fecha!==hoy?' de ayer':''); };
+  var fuentes=[cuando(L,'leads'),cuando(W,'WhatsApp')].filter(Boolean).join(' · ');
+  var falta=[]; if(!L) falta.push(noche?'la de leads corre a las 18:35':'la de leads corre a las 8:35'); if(!W) falta.push(noche?'el parte de WhatsApp corre a las 18:45':'el parte de WhatsApp de anoche no está');
+  var lista=function(a,vacio){ return a.length?'<div class="lst" tabindex="0">'+a.slice(0,14).map(fila).join('')+(a.length>14?'<div class="vac" style="border:0;padding:6px 0">y '+(a.length-14)+' más</div>':'')+'</div>':'<div class="vac">'+vacio+'</div>'; };
+  var resumen=[L&&L.resumen, W&&W.resumen].filter(Boolean).map(function(r){ return '<div class="subl" style="margin-bottom:8px">'+esc(r)+'</div>'; }).join('');
+  var tarj=function(cls,t,n,cuerpo){ return '<div class="card g '+cls+'"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+n+'</span></div>'+cuerpo+'</div>'; };
+  var rec=(W&&W.recurrentes)||[];
+  var recHtml=rec.length?tarj('prog','Lo que se repite entre clientes',rec.length,'<div class="lst" tabindex="0">'+rec.map(function(r){
+      return '<div class="it"><span class="nm" style="cursor:default"><b>'+esc(r.problema||'')+(r.veces?'<span class="prn">'+esc(String(r.veces))+' veces</span>':'')+'</b><span>'+esc(r.clientes||'')+'</span></span><span></span></div>';
+    }).join('')+'</div>'):'';
+  return '<div class="tt" style="margin:0 2px -8px;font-size:12px;letter-spacing:.14em;color:var(--t2)">QUÉ QUEDÓ TRABADO <small style="letter-spacing:0;text-transform:none">· '
+      +(fuentes?('rutinas: '+esc(fuentes)):'las rutinas todavía no corrieron')+(falta.length?(' · '+esc(falta.join('; '))):'')+'</small></div>'
+    +'<div class="q4">'+tarj('fren','Para resolver ya',urg.length,resumen+lista(urg,'Nada urgente: todos los leads tienen su mensaje 1 y nadie espera respuesta.'))
+    +tarj('alar','Para seguir',resto.length,lista(resto,'Nada pendiente de seguimiento.'))+'</div>'
+    +(recHtml?'<div class="q4" style="grid-template-columns:1fr">'+recHtml+'</div>':'');
+}
 function _bv2PieHtml(txt){
   return '<div class="pieBv"><span class="sello"><i></i>Actualizado '+_bv2Hora(_BV2.abierta)+'</span><button class="btnE" data-bv2entrar="1">'+txt+'</button></div>';
 }
@@ -519,7 +562,7 @@ function _bv2Html(){
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
+    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2VigHtml(false)+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
 }
 
 // Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
@@ -733,7 +776,7 @@ function _bv2HtmlNoche(){
     +lista(MA,'No tenés tickets que venzan hasta mañana.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },10));
   var esp=tarj('fren','Esperando a terceros',ET.length,lista(ET,'No hay nada esperando al cliente o a otra persona.',function(x){ return fila(x.c, corto(x.t), _bv2Vence(x.due)); },8));
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div><div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
+    +'<div class="in">'+top+'<div class="q4" style="grid-template-columns:1fr">'+_bv2EodHtml()+'</div>'+_bv2VigHtml(true)+'<div class="q4">'+hecho+llam+man+esp+'</div>'+'<div class="q4" style="grid-template-columns:1fr">'+dec+'</div>'
     +'<div class="vac" style="border:0;padding:0 4px">Las tarjetas de abajo cuentan lo que la app sabe; lo hecho fuera de ella (GHL, Meta, archivos) está en «Lo que hiciste hoy», que arma la rutina de cierre.</div>'+_bv2PieHtml('Cerrar el día →')+'</div>';
 }
 function buenasNochesMostrar(){
