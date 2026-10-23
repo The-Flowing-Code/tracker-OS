@@ -42484,8 +42484,8 @@ function dashRutinaDecidir(cid, iid, que, resp, due){
   save(); showTickets();
 }
 
-/* Los cambios propuestos sin decidir, con Crear ticket y Descartar. Van en la
-   tarjeta de la rutina del Dashboard y arriba de Tickets (Angie, 14/10/2026):
+/* Los cambios propuestos sin decidir, con Crear ticket y Descartar. Van solo en
+   Tickets; del Dashboard se sacaron el 23/10/2026 por estar repetidos (Angie, 14/10/2026):
    es una decision sobre tareas, y en Tickets es donde se miran las tareas.
    `enTarjeta`: adentro de la tarjeta de la rutina (con linea arriba); si no,
    en su propia tarjeta, con los estilos del Dashboard. */
@@ -42906,7 +42906,8 @@ function dashboardHtml(){
       +'<div class="h">Lo que encontró la rutina <span style="color:var(--text3);font-weight:400">· historial de reportes</span></div>'
       +'<div class="lbl">'+(_rh.length?(_rh.length+' corrida'+(_rh.length===1?'':'s')):'reporte de campañas')+'</div></div>'
     +rtHistorialHtml('dentro')
-    +dashCambiosHtml(true)
+    // Los cambios propuestos sin decidir se sacaron de aca: ya estan en
+    // Tickets, con los mismos botones (Angie, 23/10/2026).
     +'</div>';
 
   var seg=function(d,l){ return '<button class="seg'+(dias===d?' on':'')+'" onclick="dashPeriodo('+d+')">'+l+'</button>'; };
