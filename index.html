@@ -36835,6 +36835,18 @@ function _mailDeCasa(m){
   }
   return !!_EQUIPO_MAILS[String(m||'').trim().toLowerCase()];
 }
+/* ⚠️  UN EVENTO SIN INVITADOS NO ES UNA REUNION CON EL CLIENTE.
+   Medido el 23/10/26: de 72 citas guardadas, las 41 de GHL traen todas el
+   contacto, y de las 31 de Google las 6 sin nadie invitado eran tareas de Angie
+   en su calendario -«Revisar que estén lanzados Mi Stock, Quironex…», «Revisar
+   la oferta de Metrodev»-. Por el titulo se pegaban al cliente como su proxima
+   reunion, y Santi no podia agendarle a Mi Stock porque «ya tenia una». Solo
+   cuenta para repartir citas a las fichas: el buen dia sigue nombrando al
+   cliente en la agenda del dia. */
+function _citaSinInvitados(ev){
+  var m=String((ev&&ev.mail)||'').trim();
+  return !String((ev&&ev.con)||'').trim() && (!m || _mailDeCasa(m));
+}
 function _citaEsDe(c, titulo, con, mail){
   var m=String(mail||'').trim().toLowerCase();
   if(m && _mailDeCasa(m)) m='';
@@ -37101,6 +37113,7 @@ function _citasAplicar(c, eventos, callado, totalAgenda){
     var grupos={};
     (eventos||[]).forEach(function(ev){
       if(String(ev.estado||'')==='cancelled') return;
+      if(_citaSinInvitados(ev)) return;
       if(!_citaEsDe(c, ev.titulo, ev.con, ev.mail)) return;
       var cands=_citaEtapasPorCal(_citaCalId(ev));
       if(!cands.length) cands=_citaEtapasDe(ev.titulo, _citaCalNombre(ev));
@@ -37122,6 +37135,7 @@ function _citasAplicar(c, eventos, callado, totalAgenda){
   eventos.forEach(function(ev){
     // De la agenda de la agencia viene todo: lo que no es de este cliente se
     // ignora, o cada tarjeta se llenaria con las reuniones de las demas.
+    if(_citaSinInvitados(ev)) return;
     if(!_citaEsDe(c, ev.titulo, ev.con, ev.mail)) return;
     var _inf={};
     var et=_citaEtapaPara(c, ev.titulo, _citaCalNombre(ev), ev.id,
