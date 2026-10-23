@@ -230,7 +230,12 @@ body.light .client-state.live{text-shadow:none}
 .p3f.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:500}
 .p3scroll{overflow-x:auto;margin:0 -4px;padding:0 4px 4px}
 .p3cols{display:flex;gap:10px;min-width:900px}
-.p3col{flex:1;min-width:132px}
+.p3col{flex:1;min-width:132px;display:flex;flex-direction:column}
+/* Las columnas tienen todas el mismo alto y cada una scrollea por dentro: una
+   columna con quince clientes estiraba el tablero entero y las demas quedaban
+   flotando arriba de un vacio. El titulo queda fijo arriba de su scroll. */
+.p3cuerpo{height:clamp(320px,calc(100vh - 290px),1200px);overflow-y:auto;
+  overscroll-behavior:contain;padding-right:3px;scrollbar-width:thin}
 .p3cab{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
   padding:0 2px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .p3cab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2551,6 +2556,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   .p3scroll{overflow-x:visible;margin:0;padding:0}
   .p3cols{min-width:0;flex-direction:column;gap:18px}
   .p3col{min-width:0;width:100%}
+  .p3cuerpo{height:auto;overflow:visible}
 
   /* ── 7. Los modales ──────────────────────────────────────────────── */
   /* Las reglas de apilado de arriba cuelgan de `.content`, y los modales no
@@ -43520,26 +43526,17 @@ function p360Html(){
           +'onclick="p360AbrirCol(\''+esc(col.l).replace(/'/g,"\\'")+'\')" '
           +'title="Ver por donde va cada uno dentro de '+esc(col.l)+'">'
           +'<span>'+esc(col.l)+'</span><b>'+(col.cards.length||'')+'</b></div>'
-        // Una columna con quince leads estira el tablero entero y las demas
-        // quedan flotando arriba de un vacio. Se muestran las primeras y el
-        // resto se abre desde el pie de la columna.
-        +(col.cards.length?(function(){
-            var tope=6;
-            var abierta=((S._p3ColAbierta||{})[col.l]);
-            var ver=abierta?col.cards:col.cards.slice(0,tope);
-            var ocultas=col.cards.length-ver.length;
-            // Sin la funcion envoltorio, map le pasa el INDICE como segundo
-            // argumento y tarjeta lo tomaba como una linea extra: adentro de
-            // cada ficha aparecia un "1", un "2", un "3" sueltos, que ademas le
-            // sumaban alto y rompian que midieran todas lo mismo.
-            return ver.map(function(d){ return tarjeta(d); }).join('')
-              +((ocultas>0||abierta)
-                ? ('<button class="p3mas" onclick="event.stopPropagation();p360VerMas(\''
-                    +lb+'\')">'
-                  +(abierta?'ver menos':('ver '+ocultas+' mas'))+'</button>')
-                : '');
-          })()
-          :'<div class="p3nada"></div>')
+        // Todas las tarjetas, adentro de un cuerpo con alto fijo que scrollea:
+        // antes se cortaba a las seis con un "ver N mas" al pie (Angie, 23/10).
+        +'<div class="p3cuerpo">'
+        +(col.cards.length
+          // Sin la funcion envoltorio, map le pasa el INDICE como segundo
+          // argumento y tarjeta lo tomaba como una linea extra: adentro de
+          // cada ficha aparecia un "1", un "2", un "3" sueltos, que ademas le
+          // sumaban alto y rompian que midieran todas lo mismo.
+          ? col.cards.map(function(d){ return tarjeta(d); }).join('')
+          : '<div class="p3nada"></div>')
+        +'</div>'
       +'</div>';
     }).join('')
     +'</div></div>'
