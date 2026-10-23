@@ -384,9 +384,22 @@ function _bv2PropFila(x){
     +'<div class="prop-acc" style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">'
       +'<a class="cta" onclick="'+crear+'">Crear ticket</a>'
       +'<span class="pill" onclick="propEditarModal(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')" title="Mejorar la redacción antes de decidir">Editar</span>'
-      +'<span class="pill" onclick="dashAgenteMandar(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\')" title="El agente lo prepara y lo hacemos juntos cuando lo apruebes">Mandar al agente</span>'
-      +'<span class="pill" onclick="'+desc+'" title="No se hace; queda registrado como descartado">Descartar</span>'
+      +'<span class="pill" onclick="dashAgenteMandar(\''+x.origen+'\','+cid+',\''+rid+'\',\''+iid+'\');_bv2PopRefrescar('+cid+',0,1600)" title="El agente lo prepara y lo hacemos juntos cuando lo apruebes">Mandar al agente</span>'
+      +'<span class="pill" onclick="'+desc+';_bv2PopRefrescar('+cid+',1,350)" title="No se hace; queda registrado como descartado">Descartar</span>'
     +'</div></div>';
+}
+/* Descartar y «Mandar al agente» guardan sin abrir ningún cuadro, así que el
+   observador de modal-root no se entera y el popup quedaba igual: parecía que el
+   botón no andaba (Angie, 22/10/2026; el descarte sí se había guardado). Se
+   vuelve a dibujar el popup y la pantalla de atrás, con un aviso. */
+function _bv2PopRefrescar(cid, aviso, ms){
+  setTimeout(function(){
+    // «Mandar al agente» ya avisa solo cuando termina; Descartar no avisa nada.
+    if(aviso){ try{ if(typeof toast==='function') toast('Descartado: quedó registrado'); }catch(e){} }
+    try{ if(document.getElementById('bv2')) _bv2Pintar(); }catch(e){}
+    var P=[]; try{ var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(cid); }); if(c) P=_bv2PropDe(c); }catch(e){}
+    if(P.length){ _bv2Popup(cid); } else { try{ closeModal(); }catch(e){} }
+  }, ms||350);
 }
 // El popup de un cliente: sus cambios propuestos como en Tickets, con las mismas acciones.
 function _bv2Popup(cid){
