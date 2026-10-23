@@ -69,6 +69,14 @@ textarea::placeholder{color:var(--muted)}
 .files li{display:flex;gap:10px;align-items:center;font-size:13.5px;color:var(--soft);background:var(--black);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
 .files li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .files li button{appearance:none;background:none;border:0;color:var(--muted);font:500 13px var(--sans);cursor:pointer;padding:4px 6px}
+.files li.subiendo{color:var(--lime);border-color:rgba(200,255,71,.35)}
+.files li.subiendo span:first-child{flex:none}
+.files li.fallo{color:var(--red);border-color:rgba(255,122,107,.45)}
+.puntos{display:inline-flex;gap:3px;flex:none}
+.puntos i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:puntos 1.2s infinite}
+.puntos i:nth-child(2){animation-delay:.2s}.puntos i:nth-child(3){animation-delay:.4s}
+@keyframes puntos{0%,80%,100%{opacity:.2}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.puntos i{animation:none;opacity:.7}}
 .saved{font-size:12px;color:var(--muted);margin-left:auto}
 .send{margin-top:40px;border-top:1px solid var(--border);padding-top:24px}
 .send p{color:var(--soft);margin:0 0 14px}
@@ -77,7 +85,35 @@ textarea::placeholder{color:var(--muted)}
 .confirm .row{margin-top:10px}
 .msg{margin-top:40px;text-align:center;color:var(--soft)}
 .msg h2{color:var(--white);font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+.msg.gracias{margin-top:56px}
+.msg.gracias h2{font-size:clamp(44px,13vw,64px);line-height:1;color:var(--lime);margin-bottom:14px}
+.reunion{margin:26px auto 0;max-width:380px;background:var(--mid);border:1px solid var(--border2);border-radius:12px;padding:16px 18px}
+.reunion small{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.reunion b{display:block;color:var(--white);font-size:19px;font-weight:700;line-height:1.35}
 footer{margin-top:48px;color:var(--muted);font-size:12.5px}
+header.chico .intro,header.chico .how{display:none}
+header.chico h1{font-size:19px;margin-top:10px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--lime);margin-bottom:8px}
+.pasos .q{margin-top:28px;padding:20px 18px}
+.pasos .qt{font-size:19px;line-height:1.35}
+.nav{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:18px}
+.nav .primary{flex:1;max-width:260px;margin-left:auto}
+.nav .atras{appearance:none;background:none;border:1px solid var(--border2);color:var(--soft);border-radius:999px;padding:12px 18px;font:500 15px var(--sans);cursor:pointer;min-height:50px}
+.empezar{margin-top:22px}
+.send .row{margin-top:0}
+.send .chip.accesos{border-color:var(--lime);color:var(--lime)}
+.ins{margin:40px auto 0;text-align:left;max-width:560px}
+.ins h3{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--white);margin:0 0 6px}
+.ins>p{color:var(--soft);font-size:14.5px;margin:0 0 14px}
+.cta-c{background:var(--mid);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;margin-top:10px}
+.cta-c b{display:block;color:var(--white);font-size:14px;margin-bottom:6px}
+.cta-c .lin{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--soft);margin-top:4px;flex-wrap:wrap}
+.cta-c .lin code{font-family:ui-monospace,Menlo,monospace;color:var(--white);word-break:break-all}
+.cta-c .lin button{appearance:none;border:1px solid var(--border2);background:none;color:var(--lime);border-radius:999px;padding:4px 10px;font:500 12.5px var(--sans);cursor:pointer;margin-left:auto}
+.vid{margin-top:18px}
+.vid b{display:block;color:var(--white);font-size:15px;margin-bottom:8px}
+.vid video{width:100%;border-radius:12px;background:#000;display:block}
+.vid a{display:inline-block;margin-top:6px;color:var(--lime);font-size:13px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -90,7 +126,7 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
     <div class="how" id="how" hidden>
       <div><b>1</b><span>Respondé escribiendo o tocá <strong>Grabar audio</strong> y contalo hablando: es igual de bueno.</span></div>
       <div><b>2</b><span>Cada respuesta se guarda sola. Podés cerrar y volver cuando quieras con este mismo link.</span></div>
-      <div><b>3</b><span>Cuando termines, tocá <strong>Enviar</strong> al final.</span></div>
+      <div><b>3</b><span>Va una pregunta por vez. Si una no la sabés, tocá <strong>Saltar</strong>.</span></div>
     </div>
   </header>
 </div>
@@ -136,10 +172,10 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
     return !!((x.texto&&String(x.texto).trim()) || x.opcion || (x.audios&&x.audios.length) || (x.archivos&&x.archivos.length));
   }
   function progreso(){
-    var todas=[], hechas=0;
-    (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){ todas.push(p); if(respondida(p)) hechas++; }); });
-    document.getElementById('prog').style.width=(todas.length?Math.round(100*hechas/todas.length):0)+'%';
-    document.getElementById('pc').textContent=hechas+' de '+todas.length;
+    var vs=visibles(), hechas=vs.filter(function(q){ return respondida(q.p); }).length;
+    document.getElementById('prog').style.width=(vs.length?Math.round(100*hechas/vs.length):0)+'%';
+    document.getElementById('pc').textContent=hechas+' de '+vs.length;
+    pintarNav();
     (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){
       var c=document.getElementById('q-'+p.id); if(c) c.classList.toggle('ok', respondida(p)); }); });
   }
@@ -162,6 +198,8 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
   }
 
   function lista(p, ul){
+    // Los que se están subiendo todavía quedan: si suben dos a la vez, el primero no borra el aviso del otro.
+    var quedan=Array.prototype.slice.call(ul.querySelectorAll('li.subiendo, li.fallo'));
     ul.innerHTML='';
     var x=R[p.id]||{};
     (x.audios||[]).forEach(function(a, i){
@@ -172,6 +210,7 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
       ul.appendChild(el('li',{},[el('span',{text:a.nombre||'Archivo'}),
         el('button',{type:'button',text:'Quitar',onclick:function(){ quitar(p, a.path, ul); }})]));
     });
+    quedan.forEach(function(li){ ul.appendChild(li); });
   }
   function quitar(p, path, ul){
     trabajo(1);
@@ -181,6 +220,10 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
   }
   function subir(p, blob, tipo, nombre, seg, ul){
     trabajo(1); estado('Subiendo…');
+    // Sin esto, al terminar de grabar no pasa nada a la vista y parece que falló (Angie, 23/10/2026).
+    var prov=el('li',{class:'subiendo'},[el('span',{text:tipo==='audio'?'Guardando tu audio':'Subiendo '+nombre}),
+      el('span',{class:'puntos','aria-hidden':'true'},[el('i'),el('i'),el('i')])]);
+    prov.setAttribute('role','status'); ul.appendChild(prov);
     var mime=blob.type||'application/octet-stream';
     return api({accion:'subir', pregunta_id:p.id, tipo:tipo, nombre:nombre, mime:mime, tam:blob.size})
       .then(function(d){
@@ -189,10 +232,48 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
           return api({accion:'confirmar', pregunta_id:p.id, tipo:tipo, path:d.path, nombre:nombre, tam:blob.size, seg:seg});
         });
       })
-      .then(function(d){ trabajo(-1); R[p.id]=Object.assign({}, R[p.id], {audios:d.audios, archivos:d.archivos}); lista(p, ul); progreso(); estado('Guardado'); })
-      .catch(function(e){ trabajo(-1); fallo(e); alert2(e.message); });
+      .then(function(d){ trabajo(-1); prov.remove(); R[p.id]=Object.assign({}, R[p.id], {audios:d.audios, archivos:d.archivos}); lista(p, ul); progreso(); estado('Guardado'); })
+      .catch(function(e){ trabajo(-1); fallo(e); alert2(e.message);
+        prov.className='fallo'; prov.innerHTML='';
+        prov.appendChild(el('span',{text:(tipo==='audio'?'El audio':'El archivo')+' no se guardó. Probá de nuevo o escribilo.'}));
+        prov.appendChild(el('button',{type:'button',text:'Cerrar',onclick:function(){ prov.remove(); }})); });
   }
   function alert2(t){ estado(t, true); }
+  // Los mismos instructivos de Meta del artifact «Instructivos del CRM» (pestaña Meta).
+  function instructivosHtml(ins){
+    var box=el('div',{class:'ins'},[el('h3',{text:'Adelantá los accesos de Meta'})]);
+    if(!ins){ box.appendChild(el('p',{text:'No pudimos cargar los videos. Te los mandamos por WhatsApp.'})); return box; }
+    box.appendChild(el('p',{text:ins.intro||''}));
+    (ins.cuentas||[]).forEach(function(c){
+      var linea=function(etq, val){
+        var b=el('button',{type:'button',text:'Copiar'});
+        b.addEventListener('click', function(){
+          var hecho=function(){ b.textContent='Copiado'; setTimeout(function(){ b.textContent='Copiar'; }, 1500); };
+          if(navigator.clipboard) navigator.clipboard.writeText(val).then(hecho, function(){ b.textContent='Mantené apretado para copiar'; });
+        });
+        return el('div',{class:'lin'},[el('span',{text:etq}), el('code',{text:val}), b]);
+      };
+      box.appendChild(el('div',{class:'cta-c'},[el('b',{text:c.nombre||''}), linea('Como persona · mail', c.mail||''), linea('Como socio · ID de negocio', c.negocio||'')]));
+    });
+    (ins.videos||[]).forEach(function(v){
+      if(!v.url) return;
+      var vid=el('video',{controls:'',preload:'metadata',playsinline:'',src:v.url,'aria-label':v.titulo||''});
+      if(v.poster) vid.setAttribute('poster', v.poster);
+      box.appendChild(el('div',{class:'vid'},[el('b',{text:v.titulo||''}), vid, el('a',{href:v.url,target:'_blank',rel:'noopener',text:'Abrir video'})]));
+    });
+    box.appendChild(el('p',{text:'Si te trabás en algún paso, anotá el minuto del video y escribinos por el grupo de WhatsApp.'}));
+    return box;
+  }
+  // La hora va en la zona del que lo abre: el cliente puede no estar en Argentina.
+  function reunionHtml(iso){
+    var t=iso?new Date(iso):null;
+    if(!t||isNaN(t)) return null;
+    var dia=t.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'});
+    var hora=t.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',hour12:false});
+    return el('div',{class:'reunion'},[el('small',{text:'Tu próxima reunión'}),
+      el('b',{text:dia.charAt(0).toUpperCase()+dia.slice(1)+' a las '+hora}),
+      el('span',{text:'Ahí revisamos juntos lo que nos mandaste.'})]);
+  }
 
   var ICO_MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3.5"/></svg>';
   var ICO_CLIP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/></svg>';
@@ -267,6 +348,38 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
     return card;
   }
 
+  // Una pregunta por pantalla (Angie, 23/10/2026): de a una se contesta más en el celu.
+  // Las tarjetas se arman todas una vez (así no se pierden audios ni lo escrito al ir y
+  // volver) y solo se muestra la del paso actual. Paso -1 es la portada; el último, enviar.
+  var todas=[], paso=-1, nav=null, envio=null;
+  // Una pregunta con «si» aparece solo si la otra tiene esa opción elegida
+  // (ej.: «¿Quiénes son?» solo si contestaron que conocen a su competencia).
+  function visible(q){ return !q.p.si || (q.p.si.opciones||[]).indexOf((R[q.p.si.id]||{}).opcion)>=0; }
+  function visibles(){ return todas.filter(visible); }
+  function irA(i){
+    var vs=visibles();
+    paso=Math.max(-1, Math.min(i, vs.length));
+    var head=document.querySelector('header');
+    head.classList.toggle('chico', paso>=0);
+    todas.forEach(function(q){ q.card.hidden=true; });
+    var actual=(paso>=0 && paso<vs.length)?vs[paso]:null;
+    if(actual) actual.card.hidden=false;
+    envio.hidden=(paso!==vs.length);
+    document.getElementById('empezar').hidden=(paso!==-1);
+    nav.hidden=(paso===-1);
+    pintarNav();
+    window.scrollTo(0,0);
+    if(actual){ var t=actual.card.querySelector('.qt'); if(t){ t.setAttribute('tabindex','-1'); t.focus({preventScroll:true}); } }
+  }
+  function pintarNav(){
+    if(!nav) return;
+    var vs=visibles(), actual=(paso>=0 && paso<vs.length)?vs[paso]:null;
+    nav.innerHTML='';
+    nav.appendChild(el('button',{type:'button',class:'atras',text:'← Anterior',onclick:function(){ irA(paso-1); }}));
+    if(actual) nav.appendChild(el('button',{type:'button',class:'primary',
+      text:respondida(actual.p)?'Siguiente →':'Saltar esta →',onclick:function(){ irA(paso+1); }}));
+  }
+
   function pintar(){
     document.getElementById('titulo').textContent=F.titulo||'Tu formulario';
     document.getElementById('intro').textContent=F.intro||'';
@@ -274,36 +387,66 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
     document.getElementById('bar').hidden=false;
     document.title=(F.titulo||'Tu formulario')+' · flowing code';
     main.innerHTML='';
-    (F.bloques||[]).forEach(function(b){
-      var s=el('section',{class:'blk'},[el('h2',{text:b.titulo||''}), b.bajada?el('p',{class:'bd',text:b.bajada}):null]);
-      (b.preguntas||[]).forEach(function(p){ s.appendChild(pregunta(p)); });
-      main.appendChild(s);
-    });
-    var envio=el('div',{class:'send'});
     var yaEnviado=F.estado==='completo';
+    var arranque=el('div',{class:'empezar',id:'empezar'});
+    main.appendChild(arranque);
+    var cont=el('div',{class:'pasos'});
+    todas=[];
+    (F.bloques||[]).forEach(function(b){
+      (b.preguntas||[]).forEach(function(p){
+        var card=pregunta(p);
+        card.insertBefore(el('div',{class:'eyebrow',text:b.titulo||''}), card.firstChild);
+        card.hidden=true; cont.appendChild(card);
+        todas.push({p:p, card:card});
+      });
+    });
+    main.appendChild(cont);
+    nav=el('div',{class:'nav'});
+    var hechas=todas.filter(function(q){ return visible(q) && respondida(q.p); }).length;
+    arranque.appendChild(el('button',{type:'button',class:'primary',
+      text:yaEnviado?'Revisar mis respuestas':(hechas?'Seguir donde quedé':'Empezar'),
+      onclick:function(){
+        var vs=visibles(), i=0;
+        if(!yaEnviado){ for(i=0;i<vs.length && respondida(vs[i].p);i++){} }
+        irA(i);
+      }}));
+    envio=el('div',{class:'send'});
     envio.appendChild(el('p',{text:yaEnviado
       ? 'Ya nos llegó tu formulario. Si querés sumar o corregir algo, hacelo y volvé a tocar Enviar.'
-      : 'Si alguna pregunta no aplica o no la sabés, dejala vacía. Con lo que respondas armamos tu estrategia.'}));
+      : 'Llegaste al final. Si alguna pregunta no aplicaba o no la sabías, no pasa nada: lo charlamos en la próxima reunión.'}));
     var btn=el('button',{type:'button',class:'primary',text:yaEnviado?'Enviar de nuevo':'Enviar'});
     var conf=el('div',{class:'confirm'}); conf.hidden=true;
-    btn.addEventListener('click', function(){ conf.hidden=false; btn.hidden=true; });
+    var conAccesos=false;
+    btn.addEventListener('click', function(){ conAccesos=false; conf.hidden=false; btn.hidden=true; if(btnAcc) btnAcc.hidden=true; });
     conf.appendChild(el('div',{text:'¿Lo enviamos? Lo que no respondiste lo podemos charlar en la próxima reunión.'}));
     conf.appendChild(el('div',{class:'row'},[
       el('button',{type:'button',class:'primary',text:'Sí, enviar',onclick:function(){
         trabajo(1);
-        api({accion:'enviar'}).then(function(){
+        api({accion:'enviar', accesos:conAccesos}).then(function(d){
           trabajo(-1); estado('Enviado');
-          main.innerHTML='';
-          main.appendChild(el('div',{class:'msg'},[el('h2',{text:'¡Gracias! Ya lo tenemos.'}),
-            el('p',{text:'Con esto armamos tu estrategia. Si te acordás de algo más, volvé a abrir este link y sumalo.'})]));
+          main.innerHTML=''; nav=null;
+          document.querySelector('header').classList.add('chico');
+          main.appendChild(el('div',{class:'msg gracias'},[el('h2',{text:'¡Gracias!'}),
+            el('p',{text:'Ya tenemos tus respuestas. Con esto armamos tu estrategia. Si te acordás de algo más, volvé a abrir este link y sumalo.'}),
+            reunionHtml(d&&d.proxima)]));
+          if(conAccesos) main.appendChild(instructivosHtml(d&&d.instructivos));
+          window.scrollTo(0,0);
         }).catch(function(e){ trabajo(-1); fallo(e); });
       }}),
-      el('button',{type:'button',class:'chip',text:'Todavía no',onclick:function(){ conf.hidden=true; btn.hidden=false; }})
+      el('button',{type:'button',class:'chip',text:'Todavía no',onclick:function(){ conf.hidden=true; btn.hidden=false; if(btnAcc) btnAcc.hidden=false; }})
     ]));
-    envio.appendChild(btn); envio.appendChild(conf);
+    var btnAcc=null;
+    if(F.accesos){
+      // Solo a los que ya pautaron (accesos = true en su formulario, Angie 23/10/2026).
+      btnAcc=el('button',{type:'button',class:'chip accesos',text:'Enviar y adelantar accesos'});
+      btnAcc.addEventListener('click', function(){ conAccesos=true; conf.hidden=false; btn.hidden=true; btnAcc.hidden=true; });
+    }
+    envio.appendChild(el('div',{class:'row'},[btn, btnAcc])); envio.appendChild(conf);
     main.appendChild(envio);
+    main.appendChild(nav);
     main.appendChild(el('footer',{text:'flowing code · tus respuestas solo las ve el equipo que trabaja con vos.'}));
     progreso();
+    irA(-1);
   }
 
   // El código largo de 40 o el corto «cliente-8 al azar» (23/10/2026); la función valida igual.
