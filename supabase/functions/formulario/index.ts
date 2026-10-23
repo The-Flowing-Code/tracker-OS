@@ -82,6 +82,28 @@ async function upsertRespuesta(fid: string, pid: string, campos: Record<string, 
   return (await r.json())[0];
 }
 
+// La próxima reunión del cliente, para confirmársela en el «gracias» (Angie, 23/10/2026).
+// Misma regla que la portada de la vista cliente: confirmada, en el futuro y de una
+// etapa que no esté hecha (una cita vieja de una etapa cerrada no es la próxima).
+// Solo sale la hora de inicio: ni nombres ni links.
+async function proximaReunion(cid: unknown): Promise<string | null> {
+  if (!cid) return null;
+  const r = await admin('/rest/v1/clientes?select=citas:datos->citas,hechas:datos->rutaHechas&id=eq.' + encodeURIComponent(String(cid)));
+  const c = r.ok ? (await r.json())[0] : null;
+  if (!c || !c.citas) return null;
+  const hechas = c.hechas || {};
+  const ahora = Date.now();
+  let prox: number | null = null;
+  for (const [etapa, ci] of Object.entries(c.citas as Record<string, any>)) {
+    if (!ci || etapa in hechas) continue;
+    if (!['confirmed', 'confirmado', undefined, null].includes(ci.estado)) continue;
+    const t = Date.parse(ci.inicio);
+    if (isNaN(t) || t <= ahora) continue;
+    if (prox === null || t < prox) prox = t;
+  }
+  return prox === null ? null : new Date(prox).toISOString();
+}
+
 async function tocar(f: any, extra: Record<string, unknown> = {}) {
   const cambios: Record<string, unknown> = { actualizado_at: new Date().toISOString(), ...extra };
   if (f.estado === 'enviado' || f.estado === 'borrador') { if (!('estado' in extra)) cambios.estado = f.estado === 'enviado' ? 'en_curso' : f.estado; }
@@ -162,7 +184,9 @@ Deno.serve(async (req) => {
 
     if (accion === 'enviar') {
       await tocar(f, { estado: 'completo', completado_at: new Date().toISOString() });
-      return json({ ok: true });
+      let proxima: string | null = null;
+      try { proxima = await proximaReunion(f.cliente_id); } catch (_e) { /* sin reunión, el gracias sale igual */ }
+      return json({ ok: true, proxima });
     }
 
     return json({ error: 'acción desconocida' }, 400);
