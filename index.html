@@ -239,9 +239,15 @@ body.light .client-state.live{text-shadow:none}
 /* Estrategia abierta: la columna se ensancha y adentro van las subcolumnas por
    avance del dataset (Angie, 23/10). Cada subcolumna scrollea igual que una
    columna comun. */
-.p3col.p3abierta{flex:none;width:calc(6 * 128px + 5 * 8px)}
+.p3col.p3abierta{flex:none;width:auto}
+/* Cada subcolumna mide lo que una columna comun: mas angostas las tarjetas se
+   rompian (nombres cortados, iconos encimados). Las vacias se achican para no
+   ocupar el ancho de una con clientes. Con una abierta, las demas columnas
+   no se aprietan: el tablero se corre de costado. */
 .p3subs{display:flex;gap:8px}
-.p3sub{flex:1;min-width:128px;display:flex;flex-direction:column}
+.p3sub{flex:none;width:230px;display:flex;flex-direction:column}
+.p3sub.vacia{width:104px}
+.p3cols:has(.p3abierta) .p3col:not(.p3abierta){min-width:230px}
 .p3subcab{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;
   padding:0 2px 6px;display:flex;justify-content:space-between;gap:6px}
 .p3subcab b{color:var(--text2);font-weight:500}
@@ -2569,7 +2575,8 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   .p3cuerpo{height:auto;overflow:visible}
   .p3col.p3abierta{width:100%}
   .p3subs{flex-direction:column}
-  .p3sub{min-width:0}
+  .p3sub,.p3sub.vacia{width:100%}
+  .p3cols:has(.p3abierta) .p3col:not(.p3abierta){min-width:0}
 
   /* ── 7. Los modales ──────────────────────────────────────────────── */
   /* Las reglas de apilado de arriba cuelgan de `.content`, y los modales no
@@ -36121,7 +36128,7 @@ function _p360SubDataset(c){
 function _p360SubsHtml(cards, tarjeta){
   return '<div class="p3subs">'+P360_SUBS_DATASET.map(function(nom){
     var ds=cards.filter(function(d){ return _p360SubDataset(d.c)===nom; });
-    return '<div class="p3sub"><div class="p3subcab"><span>'+esc(nom)+'</span><b>'
+    return '<div class="p3sub'+(ds.length?'':' vacia')+'"><div class="p3subcab"><span>'+esc(nom)+'</span><b>'
       +(ds.length||'')+'</b></div><div class="p3cuerpo">'
       +(ds.length ? ds.map(function(d){ return tarjeta(d); }).join('')
                   : '<div class="p3nada"></div>')
