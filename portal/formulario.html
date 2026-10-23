@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#080A0F">
+<title>Tu formulario · flowing code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap">
+<style>
+/* El formulario de onboarding de cada cliente. Una columna, pensada para el
+   celular: el cliente responde escribiendo o grabando un audio, y cada
+   respuesta se guarda sola. Habla solo con la función `formulario`. */
+:root{
+  color-scheme:dark;
+  --black:#080A0F; --white:#F2F0EB; --lime:#C8FF47; --ink:#080A0F; --agua:#47FFC8; --red:#ff7a6b;
+  --mid:#12151D; --mid2:#1A1D26; --border:rgba(242,240,235,.1); --border2:rgba(242,240,235,.2);
+  --muted:rgba(242,240,235,.5); --soft:rgba(242,240,235,.76);
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--black);color:var(--white);font:400 16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:720px;margin:0 auto}
+:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+header{padding-block:28px 20px;border-bottom:1px solid var(--border)}
+.logo{width:136px}.logo svg{width:100%;height:auto;display:block}
+h1{font-size:clamp(28px,7vw,40px);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:22px 0 0;text-wrap:balance}
+.intro{color:var(--soft);font-size:16.5px;margin:12px 0 0;white-space:pre-line}
+.how{margin-top:16px;display:grid;gap:8px;font-size:14px;color:var(--soft)}
+.how div{display:flex;gap:10px;align-items:flex-start}
+.how b{color:var(--lime);font-weight:600;flex:none;width:18px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(8,10,15,.94);backdrop-filter:blur(10px);
+  margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)));padding:10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--border)}
+.bar .wrap{display:flex;align-items:center;gap:12px}
+.track{flex:1;height:6px;background:var(--mid2);border-radius:99px;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:var(--lime);border-radius:99px;transition:width .3s}
+.pc{font-size:12.5px;color:var(--soft);flex:none;font-variant-numeric:tabular-nums}
+.state{font-size:12px;color:var(--muted);flex:none;min-width:70px;text-align:right}
+.state.err{color:var(--red)}
+section.blk{padding-top:34px}
+section.blk>h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0}
+section.blk>.bd{color:var(--soft);font-size:14.5px;margin:6px 0 0}
+.q{margin-top:16px;background:var(--mid);border:1px solid var(--border);border-radius:14px;padding:16px}
+.q.ok{border-color:rgba(200,255,71,.35)}
+.qt{font-weight:600;font-size:16.5px;line-height:1.4}
+.qh{color:var(--muted);font-size:13.5px;margin-top:4px}
+.know{margin-top:12px;background:rgba(71,255,200,.06);border:1px solid rgba(71,255,200,.25);border-radius:10px;padding:11px 13px;font-size:14.5px;color:var(--soft)}
+.know b{display:block;color:var(--agua);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{appearance:none;border:1px solid var(--border2);background:transparent;color:var(--white);border-radius:999px;padding:9px 14px;font:500 14.5px var(--sans);cursor:pointer;min-height:42px}
+.chip[aria-pressed="true"]{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+textarea{display:block;width:100%;margin-top:12px;min-height:96px;resize:vertical;background:var(--black);color:var(--white);
+  border:1px solid var(--border2);border-radius:10px;padding:11px 12px;font:400 16px/1.5 var(--sans)}
+textarea::placeholder{color:var(--muted)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.btn{appearance:none;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border2);background:var(--mid2);color:var(--white);
+  border-radius:999px;padding:9px 14px;font:500 14px var(--sans);cursor:pointer;min-height:42px}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.rec{border-color:rgba(255,122,107,.6);color:#fff;background:rgba(255,122,107,.18)}
+.btn.rec .dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.btn.rec .dot{animation:none}}
+.files{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.files li{display:flex;gap:10px;align-items:center;font-size:13.5px;color:var(--soft);background:var(--black);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+.files li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files li button{appearance:none;background:none;border:0;color:var(--muted);font:500 13px var(--sans);cursor:pointer;padding:4px 6px}
+.saved{font-size:12px;color:var(--muted);margin-left:auto}
+.send{margin-top:40px;border-top:1px solid var(--border);padding-top:24px}
+.send p{color:var(--soft);margin:0 0 14px}
+.primary{appearance:none;border:0;background:var(--lime);color:var(--ink);font:700 16px var(--sans);border-radius:999px;padding:14px 22px;cursor:pointer;min-height:50px}
+.confirm{margin-top:14px;background:var(--mid);border:1px solid var(--border2);border-radius:12px;padding:14px 16px}
+.confirm .row{margin-top:10px}
+.msg{margin-top:40px;text-align:center;color:var(--soft)}
+.msg h2{color:var(--white);font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+footer{margin-top:48px;color:var(--muted);font-size:12.5px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 779.65 150.64" role="img" aria-label="flowing code"><g transform="translate(16.65 29.91) scale(1.8918)"><path d="M 6.00 13.39 Q 6.00 14.69 6.97 15.55 L 15.50 23.14 Q 16.47 24.00 15.50 24.86 L 6.97 32.45 Q 6.00 33.31 6.00 34.61 L 6.00 45.39 Q 6.00 46.69 6.97 45.83 L 30.55 24.86 Q 31.53 24.00 30.55 23.14 L 6.97 2.17 Q 6.00 1.31 6.00 2.61 Z" fill="#C8FF47"/><path d="M 40.97 42.02 C 41.47 40.58 41.29 40.80 42.22 39.60 C 42.98 38.63 42.47 39.03 43.53 38.41 C 44.44 37.89 43.70 38.12 44.75 38.00 C 45.72 37.89 45.03 37.84 45.97 38.12 C 46.91 38.40 46.46 38.18 47.23 38.79 C 48.05 39.45 47.86 39.26 48.40 40.16 C 49.00 41.16 50.62 43.04 51.53 43.77 C 52.35 44.42 54.61 45.62 55.61 45.92 C 56.56 46.21 59.22 46.45 60.20 46.34 C 61.17 46.23 63.84 45.34 64.69 44.85 C 65.60 44.32 67.77 42.38 68.42 41.54 C 69.17 40.57 70.56 37.90 70.97 36.74 A 4.20 4.20 0 0 0 63.03 33.98 C 62.53 35.42 62.71 35.20 61.78 36.40 C 61.02 37.37 61.53 36.97 60.47 37.59 C 59.56 38.11 60.30 37.88 59.25 38.00 C 58.28 38.11 58.97 38.16 58.03 37.88 C 57.09 37.60 57.54 37.82 56.77 37.21 C 55.95 36.55 56.14 36.74 55.60 35.84 C 55.00 34.84 53.38 32.96 52.47 32.23 C 51.65 31.58 49.39 30.38 48.39 30.08 C 47.44 29.79 44.78 29.55 43.80 29.66 C 42.83 29.77 40.16 30.66 39.31 31.15 C 38.40 31.68 36.23 33.62 35.58 34.46 C 34.83 35.43 33.44 38.10 33.03 39.26 A 4.20 4.20 0 0 0 40.97 42.02 Z" fill="#C8FF47"/></g><path transform="translate(180.98 101.54)" d="M37.75 -51.56V-38.57H0.92V-51.56ZM10.32 0.00V-57.25Q10.32 -62.52 12.28 -65.95Q14.23 -69.38 18.23 -71.07Q22.23 -72.75 28.35 -72.75Q31.28 -72.75 33.96 -72.75Q36.65 -72.75 37.75 -72.75V-59.76Q37.05 -59.76 35.44 -59.76Q33.83 -59.76 32.62 -59.76Q29.64 -59.76 28.40 -58.53Q27.16 -57.30 27.16 -54.35V0.00Z M57.70 -72.75V0.00H40.87V-72.75Z M88.54 1.17Q80.48 1.17 74.36 -2.16Q68.24 -5.49 64.83 -11.54Q61.42 -17.60 61.42 -25.76Q61.42 -33.93 64.83 -39.98Q68.24 -46.02 74.36 -49.38Q80.48 -52.73 88.54 -52.73Q96.64 -52.73 102.74 -49.38Q108.83 -46.02 112.24 -39.98Q115.65 -33.93 115.65 -25.76Q115.65 -17.60 112.24 -11.54Q108.83 -5.49 102.74 -2.16Q96.64 1.17 88.54 1.17ZM88.54 -12.21Q91.49 -12.21 93.77 -13.79Q96.05 -15.36 97.35 -18.40Q98.65 -21.43 98.65 -25.76Q98.65 -30.14 97.35 -33.16Q96.05 -36.18 93.77 -37.76Q91.49 -39.35 88.54 -39.35Q85.63 -39.35 83.33 -37.77Q81.03 -36.19 79.73 -33.17Q78.43 -30.14 78.43 -25.76Q78.43 -21.42 79.73 -18.39Q81.03 -15.36 83.32 -13.79Q85.62 -12.21 88.54 -12.21Z M130.77 0.00 114.90 -51.56H132.57L136.58 -35.44Q137.94 -29.77 139.21 -23.65Q140.47 -17.53 141.73 -11.59H139.49Q140.90 -17.53 142.34 -23.65Q143.77 -29.77 145.25 -35.44L149.53 -51.56H164.41L168.67 -35.44Q170.14 -29.77 171.57 -23.65Q173.00 -17.53 174.42 -11.59H172.21Q173.45 -17.53 174.67 -23.63Q175.88 -29.73 177.18 -35.44L181.07 -51.56H199.04L183.17 0.00H165.80L160.12 -19.28Q159.33 -22.09 158.57 -25.02Q157.80 -27.95 157.06 -30.95Q156.31 -33.96 155.52 -36.92H158.43Q157.67 -33.96 156.91 -30.95Q156.14 -27.95 155.39 -25.02Q154.64 -22.09 153.80 -19.28L148.09 0.00Z M200.43 0.00V-51.56H217.27V0.00ZM208.81 -56.57Q204.76 -56.57 202.16 -58.98Q199.55 -61.39 199.55 -65.09Q199.55 -68.78 202.16 -71.16Q204.76 -73.54 208.79 -73.54Q212.85 -73.54 215.47 -71.16Q218.08 -68.78 218.08 -65.07Q218.08 -61.38 215.46 -58.98Q212.85 -56.57 208.81 -56.57Z M239.94 -28.02V0.00H223.11V-51.56H239.71V-37.76H237.22Q239.64 -44.56 244.18 -48.62Q248.71 -52.69 256.12 -52.69Q261.75 -52.69 265.71 -50.27Q269.68 -47.85 271.78 -43.31Q273.88 -38.77 273.88 -32.40V0.00H257.04V-28.92Q257.04 -33.50 254.86 -35.91Q252.68 -38.32 248.65 -38.32Q246.01 -38.32 244.04 -37.21Q242.08 -36.11 241.01 -33.82Q239.94 -31.54 239.94 -28.02Z M305.15 21.09Q297.23 21.09 291.95 18.88Q286.68 16.68 283.80 12.81Q280.92 8.95 280.13 3.98H296.20Q296.64 5.58 297.84 6.74Q299.05 7.91 300.91 8.54Q302.76 9.17 305.15 9.17Q309.85 9.17 312.30 6.56Q314.75 3.96 314.75 -1.19V-9.11H314.70Q313.35 -6.10 311.16 -4.14Q308.96 -2.19 306.11 -1.27Q303.27 -0.36 299.88 -0.36Q293.16 -0.36 288.14 -3.70Q283.12 -7.04 280.36 -12.90Q277.60 -18.76 277.60 -26.30Q277.60 -34.00 280.42 -39.96Q283.24 -45.91 288.23 -49.30Q293.23 -52.69 299.74 -52.69Q303.11 -52.69 305.88 -51.74Q308.65 -50.79 310.88 -48.94Q313.11 -47.09 314.68 -44.36H314.73V-51.56H331.45V-2.82Q331.45 5.58 328.24 10.85Q325.04 16.12 319.14 18.60Q313.24 21.09 305.15 21.09ZM304.61 -13.51Q307.79 -13.51 310.20 -15.12Q312.60 -16.73 313.95 -19.69Q315.29 -22.64 315.29 -26.60Q315.29 -30.56 313.95 -33.50Q312.60 -36.44 310.20 -38.03Q307.79 -39.62 304.61 -39.62Q301.54 -39.62 299.28 -38.08Q297.03 -36.53 295.81 -33.61Q294.60 -30.68 294.60 -26.60Q294.60 -22.53 295.81 -19.58Q297.03 -16.64 299.28 -15.07Q301.54 -13.51 304.61 -13.51Z M378.32 1.17Q370.34 1.17 364.33 -2.21Q358.32 -5.60 354.99 -11.67Q351.65 -17.75 351.65 -25.76Q351.65 -33.78 354.99 -39.86Q358.32 -45.95 364.33 -49.34Q370.34 -52.73 378.32 -52.73Q383.68 -52.73 388.20 -51.17Q392.71 -49.60 396.05 -46.74Q399.39 -43.88 401.34 -39.96Q403.30 -36.04 403.58 -31.28H387.38Q387.17 -33.13 386.48 -34.62Q385.80 -36.12 384.67 -37.20Q383.54 -38.27 382.02 -38.85Q380.50 -39.43 378.62 -39.43Q375.49 -39.43 373.26 -37.77Q371.03 -36.11 369.85 -33.05Q368.66 -30.00 368.66 -25.76Q368.66 -21.57 369.85 -18.50Q371.03 -15.44 373.28 -13.79Q375.52 -12.14 378.62 -12.14Q380.50 -12.14 382.01 -12.72Q383.52 -13.30 384.62 -14.38Q385.73 -15.46 386.41 -17.00Q387.10 -18.54 387.35 -20.43H403.58Q403.45 -15.70 401.55 -11.76Q399.65 -7.82 396.29 -4.91Q392.92 -2.01 388.35 -0.42Q383.78 1.17 378.32 1.17Z M432.10 1.17Q424.05 1.17 417.93 -2.16Q411.81 -5.49 408.40 -11.54Q404.99 -17.60 404.99 -25.76Q404.99 -33.93 408.40 -39.98Q411.81 -46.02 417.93 -49.38Q424.05 -52.73 432.10 -52.73Q440.21 -52.73 446.30 -49.38Q452.40 -46.02 455.81 -39.98Q459.22 -33.93 459.22 -25.76Q459.22 -17.60 455.81 -11.54Q452.40 -5.49 446.30 -2.16Q440.21 1.17 432.10 1.17ZM432.10 -12.21Q435.06 -12.21 437.34 -13.79Q439.62 -15.36 440.91 -18.40Q442.21 -21.43 442.21 -25.76Q442.21 -30.14 440.91 -33.16Q439.62 -36.18 437.34 -37.76Q435.06 -39.35 432.10 -39.35Q429.20 -39.35 426.90 -37.77Q424.59 -36.19 423.29 -33.17Q421.99 -30.14 421.99 -25.76Q421.99 -21.42 423.29 -18.39Q424.59 -15.36 426.89 -13.79Q429.19 -12.21 432.10 -12.21Z M483.10 1.13Q476.37 1.13 471.36 -2.23Q466.34 -5.59 463.58 -11.66Q460.81 -17.72 460.81 -25.86Q460.81 -33.78 463.63 -39.83Q466.45 -45.88 471.45 -49.28Q476.45 -52.69 482.95 -52.69Q486.32 -52.69 489.06 -51.81Q491.79 -50.93 493.97 -49.16Q496.14 -47.38 497.77 -44.61H497.83V-72.75H514.66V0.00H498.02V-7.96H497.96Q496.63 -4.95 494.44 -2.92Q492.25 -0.89 489.38 0.12Q486.51 1.13 483.10 1.13ZM487.82 -12.32Q491.01 -12.32 493.41 -13.99Q495.82 -15.66 497.16 -18.71Q498.51 -21.75 498.51 -25.86Q498.51 -29.97 497.16 -32.98Q495.82 -35.99 493.41 -37.66Q491.01 -39.33 487.82 -39.33Q484.75 -39.33 482.50 -37.71Q480.24 -36.08 479.03 -33.09Q477.82 -30.09 477.82 -25.86Q477.82 -21.63 479.03 -18.60Q480.24 -15.56 482.50 -13.94Q484.75 -12.32 487.82 -12.32Z M544.96 1.17Q537.05 1.17 531.06 -2.28Q525.06 -5.72 521.73 -11.82Q518.40 -17.92 518.40 -25.76Q518.40 -33.66 521.75 -39.74Q525.10 -45.83 530.98 -49.28Q536.87 -52.73 544.52 -52.73Q550.34 -52.73 555.12 -50.80Q559.91 -48.87 563.39 -45.31Q566.88 -41.75 568.77 -36.89Q570.67 -32.02 570.67 -26.17V-21.64H523.83V-31.67H562.80L555.12 -29.62Q555.12 -32.97 553.88 -35.36Q552.65 -37.76 550.39 -39.05Q548.12 -40.34 544.93 -40.34Q541.79 -40.34 539.50 -39.05Q537.22 -37.76 535.99 -35.36Q534.76 -32.97 534.76 -29.62V-22.21Q534.76 -18.78 536.04 -16.24Q537.31 -13.70 539.73 -12.32Q542.15 -10.95 545.55 -10.95Q548.03 -10.95 549.97 -11.63Q551.92 -12.32 553.25 -13.57Q554.58 -14.82 555.18 -16.51H570.31Q569.37 -11.31 565.81 -7.34Q562.25 -3.36 556.86 -1.09Q551.46 1.17 544.96 1.17Z" fill="#C8FF47"/></svg></div>
+    <h1 id="titulo">Tu formulario</h1>
+    <p class="intro" id="intro"></p>
+    <div class="how" id="how" hidden>
+      <div><b>1</b><span>Respondé escribiendo o tocá <strong>Grabar audio</strong> y contalo hablando: es igual de bueno.</span></div>
+      <div><b>2</b><span>Cada respuesta se guarda sola. Podés cerrar y volver cuando quieras con este mismo link.</span></div>
+      <div><b>3</b><span>Cuando termines, tocá <strong>Enviar</strong> al final.</span></div>
+    </div>
+  </header>
+</div>
+<div class="bar" id="bar" hidden><div class="wrap">
+  <div class="track" aria-hidden="true"><i id="prog"></i></div>
+  <span class="pc" id="pc"></span>
+  <span class="state" id="state" aria-live="polite"></span>
+</div></div>
+<main class="wrap" id="main">
+  <p class="msg" id="loading">Cargando tu formulario…</p>
+</main>
+
+<script>
+(function(){
+  'use strict';
+  var FN='https://onnysveksgxtmspxgbow.supabase.co/functions/v1/formulario';
+  // El código viaja en el # del link: el navegador no lo manda a ningún servidor.
+  var T=(location.hash||'').replace(/^#/,'').trim();
+  var main=document.getElementById('main');
+  var F=null, R={}, timers={}, pend=0;
+
+  function el(tag, attrs, kids){
+    var e=document.createElement(tag);
+    Object.keys(attrs||{}).forEach(function(k){
+      if(k==='text') e.textContent=attrs[k];
+      else if(k.indexOf('on')===0) e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    });
+    (kids||[]).forEach(function(c){ if(c) e.appendChild(c); });
+    return e;
+  }
+  function api(body){
+    body.t=T;
+    return fetch(FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(d){ if(!r.ok||d.error) throw new Error(d.error||('Error '+r.status)); return d; }); });
+  }
+  function estado(txt, err){ var s=document.getElementById('state'); s.textContent=txt||''; s.classList.toggle('err', !!err); }
+  function trabajo(delta){ pend+=delta; if(pend>0) estado('Guardando…'); }
+  function fallo(e){ estado('No se guardó', true); console.warn(e); }
+
+  function respondida(p){
+    var x=R[p.id]||{};
+    return !!((x.texto&&String(x.texto).trim()) || x.opcion || (x.audios&&x.audios.length) || (x.archivos&&x.archivos.length));
+  }
+  function progreso(){
+    var todas=[], hechas=0;
+    (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){ todas.push(p); if(respondida(p)) hechas++; }); });
+    document.getElementById('prog').style.width=(todas.length?Math.round(100*hechas/todas.length):0)+'%';
+    document.getElementById('pc').textContent=hechas+' de '+todas.length;
+    (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){
+      var c=document.getElementById('q-'+p.id); if(c) c.classList.toggle('ok', respondida(p)); }); });
+  }
+
+  var cola={};
+  function guardar(pid, campos){
+    R[pid]=Object.assign({}, R[pid]||{}, campos);
+    // Se juntan los cambios de la misma pregunta: tocar una opción y escribir
+    // enseguida no tiene que perder la opción.
+    cola[pid]=Object.assign({}, cola[pid]||{}, campos);
+    progreso();
+    clearTimeout(timers[pid]);
+    timers[pid]=setTimeout(function(){
+      var envio=cola[pid]; delete cola[pid];
+      trabajo(1);
+      api(Object.assign({accion:'guardar', pregunta_id:pid}, envio))
+        .then(function(){ trabajo(-1); if(pend<=0) estado('Guardado'); })
+        .catch(function(e){ trabajo(-1); fallo(e); });
+    }, 900);
+  }
+
+  function lista(p, ul){
+    ul.innerHTML='';
+    var x=R[p.id]||{};
+    (x.audios||[]).forEach(function(a, i){
+      ul.appendChild(el('li',{},[el('span',{text:'Audio '+(i+1)+(a.seg?(' · '+Math.floor(a.seg/60)+':'+('0'+Math.round(a.seg%60)).slice(-2)):'')}),
+        el('button',{type:'button',text:'Quitar',onclick:function(){ quitar(p, a.path, ul); }})]));
+    });
+    (x.archivos||[]).forEach(function(a){
+      ul.appendChild(el('li',{},[el('span',{text:a.nombre||'Archivo'}),
+        el('button',{type:'button',text:'Quitar',onclick:function(){ quitar(p, a.path, ul); }})]));
+    });
+  }
+  function quitar(p, path, ul){
+    trabajo(1);
+    api({accion:'quitar', pregunta_id:p.id, path:path}).then(function(d){
+      trabajo(-1); R[p.id]=Object.assign({}, R[p.id], {audios:d.audios, archivos:d.archivos}); lista(p, ul); progreso(); estado('Guardado');
+    }).catch(function(e){ trabajo(-1); fallo(e); });
+  }
+  function subir(p, blob, tipo, nombre, seg, ul){
+    trabajo(1); estado('Subiendo…');
+    var mime=blob.type||'application/octet-stream';
+    return api({accion:'subir', pregunta_id:p.id, tipo:tipo, nombre:nombre, mime:mime, tam:blob.size})
+      .then(function(d){
+        return fetch(d.url,{method:'PUT',headers:{'Content-Type':mime},body:blob}).then(function(r){
+          if(!r.ok) throw new Error('No se pudo subir ('+r.status+')');
+          return api({accion:'confirmar', pregunta_id:p.id, tipo:tipo, path:d.path, nombre:nombre, tam:blob.size, seg:seg});
+        });
+      })
+      .then(function(d){ trabajo(-1); R[p.id]=Object.assign({}, R[p.id], {audios:d.audios, archivos:d.archivos}); lista(p, ul); progreso(); estado('Guardado'); })
+      .catch(function(e){ trabajo(-1); fallo(e); alert2(e.message); });
+  }
+  function alert2(t){ estado(t, true); }
+
+  var ICO_MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3.5"/></svg>';
+  var ICO_CLIP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/></svg>';
+
+  function grabador(p, ul){
+    var b=el('button',{type:'button',class:'btn'}); b.innerHTML=ICO_MIC+'<span>Grabar audio</span>';
+    if(!(navigator.mediaDevices && window.MediaRecorder)){ b.disabled=true; b.title='Este navegador no deja grabar: escribilo o subí un audio como archivo.'; return b; }
+    var rec=null, partes=[], t0=0, tick=null;
+    b.addEventListener('click', function(){
+      if(rec){ rec.stop(); return; }
+      navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+        var tipos=['audio/webm;codecs=opus','audio/mp4','audio/webm','audio/ogg'];
+        var mt=tipos.filter(function(x){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(x); })[0];
+        rec=mt?new MediaRecorder(stream,{mimeType:mt}):new MediaRecorder(stream);
+        partes=[]; t0=Date.now();
+        rec.ondataavailable=function(e){ if(e.data&&e.data.size) partes.push(e.data); };
+        rec.onstop=function(){
+          stream.getTracks().forEach(function(x){ x.stop(); });
+          clearInterval(tick); var seg=(Date.now()-t0)/1000;
+          var blob=new Blob(partes,{type:(rec.mimeType||'audio/webm').split(';')[0]});
+          rec=null; b.classList.remove('rec'); b.innerHTML=ICO_MIC+'<span>Grabar audio</span>';
+          if(blob.size>0) subir(p, blob, 'audio', 'audio', Math.round(seg), ul);
+        };
+        rec.start();
+        b.classList.add('rec');
+        var pinta=function(){ var s=Math.round((Date.now()-t0)/1000); b.innerHTML='<span class="dot"></span><span>Grabando '+Math.floor(s/60)+':'+('0'+(s%60)).slice(-2)+' · tocá para terminar</span>'; };
+        pinta(); tick=setInterval(pinta, 500);
+      }).catch(function(){ alert2('No pudimos usar el micrófono. Revisá el permiso del navegador, o escribilo.'); });
+    });
+    return b;
+  }
+  function adjuntar(p, ul){
+    var inp=el('input',{type:'file',id:'f-'+p.id,multiple:'multiple'}); inp.hidden=true;
+    inp.addEventListener('change', function(){
+      Array.prototype.forEach.call(inp.files||[], function(f){ subir(p, f, 'archivo', f.name, null, ul); });
+      inp.value='';
+    });
+    var b=el('button',{type:'button',class:'btn',onclick:function(){ inp.click(); }}); b.innerHTML=ICO_CLIP+'<span>Subir archivo</span>';
+    var w=document.createElement('span'); w.appendChild(inp); w.appendChild(b); return w;
+  }
+
+  function pregunta(p){
+    var x=R[p.id]||{};
+    var card=el('div',{class:'q',id:'q-'+p.id});
+    card.appendChild(el('div',{class:'qt',text:p.texto||''}));
+    if(p.ayuda) card.appendChild(el('div',{class:'qh',text:p.ayuda}));
+    if(p.sabemos) card.appendChild(el('div',{class:'know'},[el('b',{text:'Lo que entendimos'}), document.createTextNode(p.sabemos)]));
+    var ta=null;
+    var opciones=(p.tipo==='confirmar') ? ['Sí, es así','Hay algo distinto'] : (p.opciones||null);
+    if(opciones){
+      var row=el('div',{class:'row',role:'group','aria-label':p.texto||''});
+      opciones.forEach(function(o){
+        var c=el('button',{type:'button',class:'chip','aria-pressed':String(x.opcion===o),text:o});
+        c.addEventListener('click', function(){
+          var nuevo=(R[p.id]||{}).opcion===o?null:o;
+          Array.prototype.forEach.call(row.children, function(k){ k.setAttribute('aria-pressed', String(k.textContent===nuevo)); });
+          guardar(p.id, {opcion:nuevo});
+          if(ta && p.tipo==='confirmar') ta.hidden=(nuevo!=='Hay algo distinto' && !(R[p.id]||{}).texto);
+        });
+        row.appendChild(c);
+      });
+      card.appendChild(row);
+    }
+    ta=el('textarea',{id:'t-'+p.id,'aria-label':p.texto||'Tu respuesta',placeholder:p.placeholder||(p.tipo==='confirmar'?'Contanos qué es distinto':'Escribí acá, o grabá un audio')});
+    ta.value=x.texto||'';
+    if(p.tipo==='confirmar' && x.opcion!=='Hay algo distinto' && !x.texto) ta.hidden=true;
+    ta.addEventListener('input', function(){ guardar(p.id, {texto:ta.value}); });
+    card.appendChild(ta);
+    var ul=el('ul',{class:'files'});
+    var tools=el('div',{class:'tools'},[grabador(p, ul), (p.archivo?adjuntar(p, ul):null)]);
+    card.appendChild(tools); card.appendChild(ul); lista(p, ul);
+    return card;
+  }
+
+  function pintar(){
+    document.getElementById('titulo').textContent=F.titulo||'Tu formulario';
+    document.getElementById('intro').textContent=F.intro||'';
+    document.getElementById('how').hidden=false;
+    document.getElementById('bar').hidden=false;
+    document.title=(F.titulo||'Tu formulario')+' · flowing code';
+    main.innerHTML='';
+    (F.bloques||[]).forEach(function(b){
+      var s=el('section',{class:'blk'},[el('h2',{text:b.titulo||''}), b.bajada?el('p',{class:'bd',text:b.bajada}):null]);
+      (b.preguntas||[]).forEach(function(p){ s.appendChild(pregunta(p)); });
+      main.appendChild(s);
+    });
+    var envio=el('div',{class:'send'});
+    var yaEnviado=F.estado==='completo';
+    envio.appendChild(el('p',{text:yaEnviado
+      ? 'Ya nos llegó tu formulario. Si querés sumar o corregir algo, hacelo y volvé a tocar Enviar.'
+      : 'Si alguna pregunta no aplica o no la sabés, dejala vacía. Con lo que respondas armamos tu estrategia.'}));
+    var btn=el('button',{type:'button',class:'primary',text:yaEnviado?'Enviar de nuevo':'Enviar'});
+    var conf=el('div',{class:'confirm'}); conf.hidden=true;
+    btn.addEventListener('click', function(){ conf.hidden=false; btn.hidden=true; });
+    conf.appendChild(el('div',{text:'¿Lo enviamos? Lo que no respondiste lo podemos charlar en la próxima reunión.'}));
+    conf.appendChild(el('div',{class:'row'},[
+      el('button',{type:'button',class:'primary',text:'Sí, enviar',onclick:function(){
+        trabajo(1);
+        api({accion:'enviar'}).then(function(){
+          trabajo(-1); estado('Enviado');
+          main.innerHTML='';
+          main.appendChild(el('div',{class:'msg'},[el('h2',{text:'¡Gracias! Ya lo tenemos.'}),
+            el('p',{text:'Con esto armamos tu estrategia. Si te acordás de algo más, volvé a abrir este link y sumalo.'})]));
+        }).catch(function(e){ trabajo(-1); fallo(e); });
+      }}),
+      el('button',{type:'button',class:'chip',text:'Todavía no',onclick:function(){ conf.hidden=true; btn.hidden=false; }})
+    ]));
+    envio.appendChild(btn); envio.appendChild(conf);
+    main.appendChild(envio);
+    main.appendChild(el('footer',{text:'flowing code · tus respuestas solo las ve el equipo que trabaja con vos.'}));
+    progreso();
+  }
+
+  if(!/^[A-Za-z0-9]{40}$/.test(T)){
+    main.innerHTML='<div class="msg"><h2>Este link no está completo</h2><p>Abrilo desde el mensaje que te mandamos, sin cortarlo. Si sigue sin andar, escribile a tu CSM.</p></div>';
+    return;
+  }
+  api({accion:'leer'}).then(function(d){ F=d; R=d.respuestas||{}; pintar(); })
+    .catch(function(e){ main.innerHTML=''; main.appendChild(el('div',{class:'msg'},[el('h2',{text:'No pudimos abrir tu formulario'}), el('p',{text:e.message})])); });
+  window.addEventListener('beforeunload', function(e){ if(pend>0){ e.preventDefault(); e.returnValue=''; } });
+})();
+</script>
+</body>
+</html>
