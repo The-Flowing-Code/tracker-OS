@@ -247,10 +247,17 @@ body.light .client-state.live{text-shadow:none}
 .p3subs{display:flex;gap:8px}
 .p3sub{flex:1 1 230px;min-width:200px;display:flex;flex-direction:column}
 .p3sub.vacia{flex:0 0 120px;min-width:0}
-/* Con Estrategia abierta se ve solo Estrategia (Angie, 23/10): las demas
-   columnas se esconden y vuelven al tocar el titulo otra vez. */
-.p3cols:has(.p3abierta) .p3col:not(.p3abierta){display:none}
+/* Con Estrategia abierta sus subcolumnas se despliegan en el lugar y las demas
+   columnas quedan plegadas en una tira angosta con el nombre y la cuenta
+   (Angie, 23/10). Tocar cualquier tira vuelve al tablero completo. */
 .p3cols:has(.p3abierta){min-width:0}
+.p3cols:has(.p3abierta) .p3col:not(.p3abierta){flex:0 0 38px;min-width:38px}
+.p3cols:has(.p3abierta) .p3col:not(.p3abierta) .p3cuerpo{display:none}
+.p3cols:has(.p3abierta) .p3col:not(.p3abierta) .p3cab{writing-mode:vertical-rl;
+  transform:rotate(180deg);justify-content:flex-end;align-items:center;gap:8px;
+  height:clamp(320px,calc(100vh - 262px),1228px);padding:10px 0;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+.p3cols:has(.p3abierta) .p3col:not(.p3abierta) .p3cab:hover{border-color:var(--border2)}
 .p3volver{font-style:normal;text-transform:none;letter-spacing:0;color:var(--text3);
   margin-left:10px;font-size:10.5px}
 .p3cab:hover .p3volver{color:var(--accent)}
@@ -36141,6 +36148,9 @@ function _p360SubsHtml(cards, tarjeta){
   }).join('')+'</div>';
 }
 function p360AbrirCol(etapa){
+  // Con Estrategia desplegada, tocar una columna plegada vuelve al tablero:
+  // no abre el detalle de esa otra columna.
+  if(S.p360Col && _p360ConSubs(S.p360Col) && S.p360Col!==etapa){ S.p360Col=null; showTickets(); return; }
   S.p360Col=(S.p360Col===etapa)?null:etapa;
   showTickets();
 }
