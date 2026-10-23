@@ -45405,6 +45405,7 @@ function fichaEditar(clientId, campo){
   if(!c) return;
   var etq={name:'Nombre de la empresa', contacto:'Contacto', email:'Email',
            phone:'Telefono', industry:'Industria', web:'Sitio web',
+           instagram:'Instagram', paginaFb:'Página de Facebook', bibliotecaFb:'Biblioteca de anuncios',
            locid:'Location ID de la subcuenta de GHL'}[campo]||campo;
   var actual=(campo==='locid')?((c.ghl&&c.ghl.locationId)||''):(c[campo]||'');
   var pista=(campo==='phone')?' (con codigo de pais: +54 9 11 ...)'
@@ -45413,7 +45414,10 @@ function fichaEditar(clientId, campo){
     titulo:etq,
     ayuda:(campo==='phone')?'Con codigo de pais (+54 9 11 ...), si no el boton de WhatsApp no se activa.'
          :((campo==='locid')?'Podes pegar la URL entera de la subcuenta: el id sale de ahi.'
-         :((campo==='web')?'El sitio institucional. De aca se lee la marca para el quiz.':'')),
+         :((campo==='web')?'El sitio institucional. De aca se lee la marca para el quiz.'
+         :((campo==='instagram')?'El usuario (@cuenta) o el link del perfil.'
+         :((campo==='paginaFb')?'El link de la página de Facebook del negocio.'
+         :((campo==='bibliotecaFb')?'El link de la Biblioteca de Anuncios filtrado por su página (view_all_page_id).':''))))),
     valor:actual,
     onOk:function(v){ _fichaGuardar(clientId, campo, v); }
   });
@@ -45422,6 +45426,13 @@ function _fichaGuardar(clientId, campo, v){
   var c=DB.clients.find(function(x){return x.id===clientId;});
   if(!c) return;
   v=String(v||'').trim();
+  if(campo==='instagram' && v){
+    // Se guarda siempre como link: un @usuario suelto no se puede abrir.
+    var ig=v.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+    var h=ig?ig[1]:v.replace(/^@/,'');
+    if(/^[A-Za-z0-9._]+$/.test(h)) v='https://instagram.com/'+h;
+  }
+  if((campo==='paginaFb'||campo==='bibliotecaFb') && v && !/^https?:\/\//i.test(v)) v='https://'+v;
   if(campo==='web'){
     // Sin http no se puede visitar, y con la barra final se duplica en los links.
     if(v && !/^https?:\/\//i.test(v)) v='https://'+v;
@@ -45887,6 +45898,9 @@ function _fichaHtml(c){
           +'title="Agregale el codigo de pais y se activa el boton de WhatsApp">falta el codigo de pais</span>'):''))
       +((campo==='email'&&v)?_invBoton(c, -1, v, (c.ghlInvite||{})[v]):'')
       +((campo==='email'&&v)?_portalBoton(c, -1, v, (c.portalInvite||{})[v]):'')
+      +((/^(web|instagram|paginaFb|bibliotecaFb)$/.test(campo)&&/^https?:\/\//i.test(String(v||'')))
+        ?('<a href="'+esc(v)+'" target="_blank" rel="noopener" class="btn btn-sm" '
+          +'style="font-size:10.5px;padding:2px 8px;text-decoration:none">Abrir</a>'):'')
       +((copiable&&v)?('<button class="btn btn-sm" style="font-size:10.5px;padding:2px 8px" '
         +'onclick="_copiar(\''+esc(String(v).replace(/'/g,"\\'"))+'\')">Copiar</button>'):'')
       +'<button class="btn btn-sm" style="font-size:10.5px;padding:2px 8px" '
@@ -45948,6 +45962,11 @@ function _fichaHtml(c){
   // De aca sale el sitio que se lee para la marca del quiz y para investigar la
   // landing. Sin esto habia que adivinarlo desde el nombre del cliente.
   poner('Sitio web','web', c.web, true);
+  // Las redes y la Biblioteca de Anuncios se cargan al alta (Angie, 23/10/2026):
+  // sin la página no hay cómo ver qué pauta el cliente antes de tener accesos.
+  poner('Instagram','instagram', c.instagram, true);
+  poner('Facebook','paginaFb', c.paginaFb, true);
+  poner('Biblioteca','bibliotecaFb', c.bibliotecaFb, true);
   // Antes solo se dibujaba si ya tenia id, asi que un cliente sin subcuenta no
   // tenia donde vincularla y los botones de invitar no aparecian nunca.
   var g=(c.ghl&&c.ghl.locationId)||'';
