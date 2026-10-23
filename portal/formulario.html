@@ -306,7 +306,8 @@ footer{margin-top:48px;color:var(--muted);font-size:12.5px}
     progreso();
   }
 
-  if(!/^[A-Za-z0-9]{40}$/.test(T)){
+  // El código largo de 40 o el corto «cliente-8 al azar» (23/10/2026); la función valida igual.
+  if(!/^[A-Za-z0-9]{40}$/.test(T) && !(/^[a-z0-9]+(-[a-z0-9]+)*-[A-Za-z0-9]{8}$/.test(T) && T.length<=60)){
     main.innerHTML='<div class="msg"><h2>Este link no está completo</h2><p>Abrilo desde el mensaje que te mandamos, sin cortarlo. Si sigue sin andar, escribile a tu CSM.</p></div>';
     return;
   }
