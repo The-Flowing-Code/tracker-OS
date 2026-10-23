@@ -236,6 +236,16 @@ body.light .client-state.live{text-shadow:none}
    flotando arriba de un vacio. El titulo queda fijo arriba de su scroll. */
 .p3cuerpo{height:clamp(320px,calc(100vh - 290px),1200px);overflow-y:auto;
   overscroll-behavior:contain;padding-right:3px;scrollbar-width:thin}
+/* Estrategia abierta: la columna se ensancha y adentro van las subcolumnas por
+   avance del dataset (Angie, 23/10). Cada subcolumna scrollea igual que una
+   columna comun. */
+.p3col.p3abierta{flex:none;width:calc(6 * 128px + 5 * 8px)}
+.p3subs{display:flex;gap:8px}
+.p3sub{flex:1;min-width:128px;display:flex;flex-direction:column}
+.p3subcab{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;
+  padding:0 2px 6px;display:flex;justify-content:space-between;gap:6px}
+.p3subcab b{color:var(--text2);font-weight:500}
+.p3sub .p3cuerpo{border-left:1px solid var(--border);padding-left:6px}
 .p3cab{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
   padding:0 2px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .p3cab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2557,6 +2567,9 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   .p3cols{min-width:0;flex-direction:column;gap:18px}
   .p3col{min-width:0;width:100%}
   .p3cuerpo{height:auto;overflow:visible}
+  .p3col.p3abierta{width:100%}
+  .p3subs{flex-direction:column}
+  .p3sub{min-width:0}
 
   /* ── 7. Los modales ──────────────────────────────────────────────── */
   /* Las reglas de apilado de arriba cuelgan de `.content`, y los modales no
@@ -36084,6 +36097,37 @@ function p360VerMas(col){
   else S._p3ColAbierta[col]=true;
   if(typeof showTickets==='function') showTickets();
 }
+// Que columnas se abren en subcolumnas al tocar el titulo. Por ahora solo
+// Estrategia (Angie, 23/10/2026); el resto sigue abriendo el detalle de abajo.
+function _p360ConSubs(etapa){
+  return /^estrategia/i.test(String(etapa||'').trim());
+}
+// Las subcolumnas de Estrategia salen del renglon de la oferta, el mismo que se
+// ve en la tarjeta y que se escribe al cerrar cada parte del dataset
+// (set_oferta_estado). No se mueven a mano: si el renglon cambia, el cliente
+// cambia de subcolumna solo.
+var P360_SUBS_DATASET=['Insumos','Mercado e hip\u00f3tesis','Oferta','Creativos',
+  'Embudo y proceso comercial','Dataset completo'];
+function _p360SubDataset(c){
+  var o=(c&&c.oferta)||null;
+  var t=String((o&&o.texto)||'').toLowerCase();
+  if(o && o.estado==='completa') return 'Dataset completo';
+  if(!t || /parte\s*a\b|insumo/.test(t)) return 'Insumos';
+  if(/parte\s*b\b|mercado|hip[o\u00f3]tesis|nicho/.test(t)) return 'Mercado e hip\u00f3tesis';
+  if(/embudo|proceso|landing/.test(t)) return 'Embudo y proceso comercial';
+  if(/creativ|gui[o\u00f3]n|est[a\u00e1]tico|video/.test(t)) return 'Creativos';
+  return 'Oferta';
+}
+function _p360SubsHtml(cards, tarjeta){
+  return '<div class="p3subs">'+P360_SUBS_DATASET.map(function(nom){
+    var ds=cards.filter(function(d){ return _p360SubDataset(d.c)===nom; });
+    return '<div class="p3sub"><div class="p3subcab"><span>'+esc(nom)+'</span><b>'
+      +(ds.length||'')+'</b></div><div class="p3cuerpo">'
+      +(ds.length ? ds.map(function(d){ return tarjeta(d); }).join('')
+                  : '<div class="p3nada"></div>')
+      +'</div></div>';
+  }).join('')+'</div>';
+}
 function p360AbrirCol(etapa){
   S.p360Col=(S.p360Col===etapa)?null:etapa;
   showTickets();
@@ -43519,7 +43563,8 @@ function p360Html(){
     +'<div class="p3scroll"><div class="p3cols">'
     +cols.map(function(col){
       var lb=esc(col.l).replace(/'/g,"\\'");
-      return '<div class="p3col" data-et="'+esc(col.l)+'" '
+      var conSubs=(S.p360Col===col.l && _p360ConSubs(col.l));
+      return '<div class="p3col'+(conSubs?' p3abierta':'')+'" data-et="'+esc(col.l)+'" '
         +'ondragover="p360SobreCol(event,this)" ondragleave="this.classList.remove(\'p3drop\')" '
         +'ondrop="p360Soltar(event,this,\''+lb+'\')">'
         +'<div class="p3cab'+(S.p360Col===col.l?' p3cabsel':'')+'" '
@@ -43528,15 +43573,16 @@ function p360Html(){
           +'<span>'+esc(col.l)+'</span><b>'+(col.cards.length||'')+'</b></div>'
         // Todas las tarjetas, adentro de un cuerpo con alto fijo que scrollea:
         // antes se cortaba a las seis con un "ver N mas" al pie (Angie, 23/10).
-        +'<div class="p3cuerpo">'
-        +(col.cards.length
+        +(conSubs ? _p360SubsHtml(col.cards, tarjeta) : '')
+        +(conSubs ? '' : '<div class="p3cuerpo">')
+        +(conSubs ? '' : col.cards.length
           // Sin la funcion envoltorio, map le pasa el INDICE como segundo
           // argumento y tarjeta lo tomaba como una linea extra: adentro de
           // cada ficha aparecia un "1", un "2", un "3" sueltos, que ademas le
           // sumaban alto y rompian que midieran todas lo mismo.
           ? col.cards.map(function(d){ return tarjeta(d); }).join('')
           : '<div class="p3nada"></div>')
-        +'</div>'
+        +(conSubs ? '' : '</div>')
       +'</div>';
     }).join('')
     +'</div></div>'
@@ -43582,7 +43628,7 @@ function p360Html(){
     // La columna abierta va debajo del tablero, igual que la ficha: adentro de
     // la columna no entra, miden 150px.
     +(function(){
-      if(!S.p360Col) return '';
+      if(!S.p360Col || _p360ConSubs(S.p360Col)) return '';
       var col=cols.filter(function(x){ return x.l===S.p360Col; })[0];
       return col?_p360ColHtml(col.l, col.cards):'';
     })()
