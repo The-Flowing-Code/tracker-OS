@@ -1,8 +1,11 @@
 // formulario · el formulario de onboarding de cada cliente (migración 047)
 //
 // La página del portal (portal/formulario.html) habla SOLO con esta función.
-// El cliente no tiene cuenta: trae un código de 40 caracteres en el link y
-// acá se compara su sha256 contra `formularios_onboarding.token_sha256`. Con
+// El cliente no tiene cuenta: trae un código en el link y acá se compara su
+// sha256 contra `formularios_onboarding.token_sha256`. El código es de 40
+// caracteres o, desde el 23/10/2026, corto: «savia-k7Qm2xPa», el nombre del
+// cliente para que el link se lea y 8 al azar atrás, que son la llave (con
+// el nombre solo, cualquiera que pruebe /savia entraría a sus respuestas). Con
 // eso se lee y se escribe ÚNICAMENTE ese formulario, con la service key, que
 // nunca sale de acá. Las tablas no tienen policies para `anon` a propósito.
 //
@@ -54,7 +57,9 @@ const limpio = (s: string) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/
   .replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'archivo';
 
 async function formularioDe(t: string) {
-  if (!/^[A-Za-z0-9]{40}$/.test(t || '')) return null;
+  const ok = /^[A-Za-z0-9]{40}$/.test(t || '') ||
+    (/^[a-z0-9]+(-[a-z0-9]+)*-[A-Za-z0-9]{8}$/.test(t || '') && t.length <= 60);
+  if (!ok) return null;
   const h = await sha256(t);
   const r = await admin('/rest/v1/formularios_onboarding?select=*&token_sha256=eq.' + h);
   const f = r.ok ? (await r.json())[0] : null;
