@@ -104,6 +104,23 @@ async function proximaReunion(cid: unknown): Promise<string | null> {
   return prox === null ? null : new Date(prox).toISOString();
 }
 
+// Los instructivos de Meta para «Enviar y adelantar accesos» (migración 050). Viven en el
+// bucket privado, no en git: llevan los mails y los ID de negocio a los que nos dan
+// acceso. Se firman por unas horas, solo para un formulario con accesos = true.
+async function instructivos() {
+  const r = await admin('/storage/v1/object/' + BUCKET + '/instructivos/meta/accesos.json');
+  if (!r.ok) throw new Error('no encontré los instructivos (' + r.status + ')');
+  const d = JSON.parse(await r.text());
+  const firmar = async (nombre: string) => {
+    const s = await admin('/storage/v1/object/sign/' + BUCKET + '/instructivos/meta/' + nombre, { method: 'POST', body: JSON.stringify({ expiresIn: 6 * 3600 }) });
+    const j = s.ok ? await s.json() : null;
+    return j && j.signedURL ? SB_URL + '/storage/v1' + j.signedURL : null;
+  };
+  const videos = [];
+  for (const v of d.videos || []) videos.push({ titulo: v.titulo, url: await firmar(v.file + '.mp4'), poster: await firmar(v.file + '.jpg') });
+  return { intro: d.intro, cuentas: d.cuentas || [], videos };
+}
+
 async function tocar(f: any, extra: Record<string, unknown> = {}) {
   const cambios: Record<string, unknown> = { actualizado_at: new Date().toISOString(), ...extra };
   if (f.estado === 'enviado' || f.estado === 'borrador') { if (!('estado' in extra)) cambios.estado = f.estado === 'enviado' ? 'en_curso' : f.estado; }
@@ -129,7 +146,7 @@ Deno.serve(async (req) => {
       const filas = r.ok ? await r.json() : [];
       const resp: Record<string, unknown> = {};
       for (const x of filas) resp[x.pregunta_id] = { texto: x.texto, opcion: x.opcion, audios: x.audios, archivos: x.archivos };
-      return json({ ok: true, titulo: f.titulo, intro: f.intro, bloques: f.bloques, estado: f.estado, completado_at: f.completado_at, respuestas: resp });
+      return json({ ok: true, titulo: f.titulo, intro: f.intro, bloques: f.bloques, estado: f.estado, completado_at: f.completado_at, accesos: !!f.accesos, respuestas: resp });
     }
 
     const pid = String(b.pregunta_id || '');
@@ -183,10 +200,24 @@ Deno.serve(async (req) => {
     }
 
     if (accion === 'enviar') {
-      await tocar(f, { estado: 'completo', completado_at: new Date().toISOString() });
+      const conAccesos = b.accesos === true && !!f.accesos;
+      const ahora = new Date().toISOString();
+      await tocar(f, conAccesos ? { estado: 'completo', completado_at: ahora, accesos_at: ahora } : { estado: 'completo', completado_at: ahora });
       let proxima: string | null = null;
       try { proxima = await proximaReunion(f.cliente_id); } catch (_e) { /* sin reunión, el gracias sale igual */ }
-      return json({ ok: true, proxima });
+      if (!conAccesos) return json({ ok: true, proxima });
+      // Para que el equipo se entere en la app (Angie, 23/10/2026): un ticket en la ficha,
+      // por el mismo camino que las rutinas. El id fijo evita duplicarlo si vuelve a tocar.
+      try {
+        const dia = new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'numeric' });
+        await admin('/rest/v1/rpc/add_cambio_propuesto', { method: 'POST', body: JSON.stringify({ p_id: Number(f.cliente_id), p_item: {
+          id: 'formulario-accesos-' + String(f.id).slice(0, 8), crear: 'ticket',
+          texto: 'Adelantaron los accesos de Meta desde el formulario: revisar que lleguen',
+          porque: 'Tocaron «Enviar y adelantar accesos» el ' + dia + '. Fijate en el Business Manager que estén la página, la cuenta publicitaria, el píxel y el Instagram.' } }) });
+      } catch (_e) { /* el ticket no frena el envío */ }
+      let ins = null;
+      try { ins = await instructivos(); } catch (_e) { /* el gracias sale igual */ }
+      return json({ ok: true, proxima, instructivos: ins });
     }
 
     return json({ error: 'acción desconocida' }, 400);
