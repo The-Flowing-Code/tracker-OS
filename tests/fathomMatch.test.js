@@ -20,11 +20,12 @@ const { _fathomMatchClient } = cargar(
     '_fathomContiene',
     '_fathomAlias',
     '_fathomAliasUnicos',
+    '_fathomHablantes',
   ],
   { DB },
   // Las tres ultimas nacieron en 143f401. Contra versiones de antes se cargan
   // sin ellas, que es justamente lo que se quiere comparar.
-  { opcionales: ['_fathomContiene', '_fathomAlias', '_fathomAliasUnicos'] },
+  { opcionales: ['_fathomContiene', '_fathomAlias', '_fathomAliasUnicos', '_fathomHablantes'] },
 );
 
 const quien = (m) => (m ? m.name : null);
@@ -128,5 +129,31 @@ describe('_fathomMatchClient', () => {
   it.fails('un dominio generico de iCloud (me.com) no asigna reuniones', () => {
     DB.clients = [{ id: 1, name: 'Estudio Ejemplo', email: 'ana@me.com' }];
     expect(match('Meet sin titulo', ['otra.persona@me.com'])).toBeNull();
+  });
+
+  // 24/10/26: llamadas «Impromptu» o de capacitacion sin el cliente en el
+  // titulo ni entre los invitados. Fathom igual nombra a quien habla.
+  const conVoces = (titulo, voces) => ({
+    recording_id: titulo + voces.join(','),
+    participantes: [{ email: 'nico@equipo.test' }],
+    transcripcion: voces.map((v, i) => '00:0' + (i % 10) + ':00 - ' + v + ': hola').join('\n'),
+  });
+  it('quien habla reconoce al cliente cuando el titulo y los invitados no dicen nada', () => {
+    DB.clients = [{ id: 1, name: 'Cheques Sur', contacto: 'Paula Dominguez' }];
+    const f = conVoces('Impromptu Google Meet Meeting', ['Nico Equipo', 'paula dominguez', 'paula dominguez', 'paula dominguez']);
+    expect(quien(_fathomMatchClient(f.recording_id && 'Impromptu Google Meet Meeting', f))).toBe('Cheques Sur');
+  });
+  it('en una capacitacion donde hablan dos clientes no se asigna a ninguno', () => {
+    DB.clients = [
+      { id: 1, name: 'Cheques Sur', contacto: 'Paula Dominguez' },
+      { id: 2, name: 'Taller Norte', contacto: 'Ramiro Quintana' },
+    ];
+    const f = conVoces('Capacitacion', ['paula dominguez', 'paula dominguez', 'paula dominguez', 'Ramiro Quintana', 'Ramiro Quintana', 'Ramiro Quintana']);
+    expect(quien(_fathomMatchClient('Capacitacion', f))).toBe(null);
+  });
+  it('un contacto con solo el nombre de pila no se reconoce por la voz', () => {
+    DB.clients = [{ id: 1, name: 'Cheques Sur', contacto: 'Paula' }];
+    const f = conVoces('Impromptu Google Meet Meeting', ['Paula', 'Paula', 'Paula']);
+    expect(quien(_fathomMatchClient('Impromptu Google Meet Meeting', f))).toBe(null);
   });
 });

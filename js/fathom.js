@@ -1481,10 +1481,9 @@ function _fathomMatchClient(meeting, fila){
   // Va al final igual, porque si escribiste una palabra clave a mano esa gana:
   // sabes algo que el invitado no dice.
   var mails=_fathomMails(fila);
-  if(!mails.length) return null;
   // Los genericos no dicen de quien es la reunion: medio equipo tiene gmail.
   var gen=/^(gmail|hotmail|outlook|yahoo|icloud|live|proton(mail)?)\./i;
-  return DB.clients.find(function(c){
+  var byMail=mails.length ? DB.clients.find(function(c){
     var s2=_fathomSenas(c);
     return mails.some(function(m){
       var dom=m.split('@')[1]||'';
@@ -1494,7 +1493,43 @@ function _fathomMatchClient(meeting, fila){
       // un cliente llamado "Zen" se quedaria con las reuniones de cliente BA.com.
       return !!(dom && s2.clave && !gen.test(dom+'.') && _fathomDomClave(dom)===s2.clave);
     });
-  })||null;
+  }) : null;
+  if(byMail) return byMail;
+  /* ⚠️  QUIEN HABLA, CUANDO NI EL TITULO NI LOS INVITADOS DICEN NADA.
+     Medido el 24/10/26: 22 llamadas de uno a uno estaban sin cliente porque se
+     llamaban «Impromptu Google Meet Meeting» o «El Método Flowing <>
+     Capacitacion Software Partners» y el unico invitado era alguien de casa
+     (el cliente entra con el link, sin invitacion). Fathom igual pone el
+     nombre de cada uno en la transcripcion: «pablo de paoli» hablaba 221
+     veces. Se compara contra el contacto de la ficha con nombre y apellido
+     (un nombre de pila suelto no alcanza: dos Pablos) y solo si coincide UN
+     cliente: en una capacitacion grupal hablan varios y esa va a
+     llamadas_grupales, no entera a uno. */
+  var hab=_fathomHablantes(fila);
+  if(!hab.length) return null;
+  var porVoz=DB.clients.filter(function(c){
+    var k=_n(String(c.contacto||'')).replace(/\s+/g,' ').trim();
+    return k.split(' ').filter(Boolean).length>=2 && hab.indexOf(k)>=0;
+  });
+  return porVoz.length===1 ? porVoz[0] : null;
+}
+// Los que hablan en la transcripcion («00:12:34 - Nombre Apellido: ...»), sin
+// los de casa y con 3 intervenciones o mas: una sola linea puede ser un error
+// de Fathom al reconocer la voz.
+function _fathomHablantes(fila){
+  var t=fila&&fila.transcripcion;
+  if(!t) return [];
+  if(typeof t!=='string'){ try{ t=JSON.stringify(t); }catch(e){ return []; } }
+  var k=String((fila&&fila.recording_id)||'')+':'+t.length;
+  var cache=_fathomHablantes._c||(_fathomHablantes._c={});
+  if(cache[k]) return cache[k];
+  var casa={};
+  (DB.personas||[]).forEach(function(p){ var n=_n(String((p&&(p.nombre||p.name))||'')).trim(); if(n) casa[n]=1; });
+  var cuenta={}, re=/\d\d:\d\d:\d\d - ([^:\n]{2,40}):/g, m;
+  while((m=re.exec(t))){ var n=_n(m[1]).replace(/\s+/g,' ').trim(); cuenta[n]=(cuenta[n]||0)+1; }
+  var out=Object.keys(cuenta).filter(function(n){ return cuenta[n]>=3 && !casa[n]; });
+  cache[k]=out;
+  return out;
 }
 function _fathomUpsertMilestone(c, cl){
   if(!c.milestones) c.milestones=[];
