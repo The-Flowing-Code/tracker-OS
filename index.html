@@ -9239,24 +9239,32 @@ function _lanzaCuenta(c){
   // Cuando empezo el onboarding: la reunion que lo marco, la que quedo agendada,
   // o el alta del cliente. Sin ninguna de las tres no hay reloj que correr.
   var onb=cols[iOnb].l;
+  /* ⚠️  EL RELOJ ARRANCA EN LA PRIMERA LLAMADA, LA MAS VIEJA DE LAS TRES
+     FUENTES (Angie, 27/10/2026: "desde que tenemos la primera llamada tiene
+     que tomar ya y empezar a restar"). Antes mandaba la cita del calendario
+     aunque fuera una segunda reunion: Metrodev contaba desde el 22/10 con el
+     onboarding hecho el 15/10, y Upwize desde el 15/10 con el del 7/10. */
   var f=null;
+  var tomar=function(d){ if(d && !isNaN(d.getTime()) && (!f || d.getTime()<f.getTime())) f=d; };
   var ct=(c.citas||{})[onb];
-  if(ct && ct.inicio && String(ct.estado||'')!=='cancelled'){
-    var d1=new Date(ct.inicio); if(!isNaN(d1)) f=d1;
-  }
-  if(!f && (c.rutaAgenda||{})[onb]) f=parseDDMMYYYY(c.rutaAgenda[onb]);
-  if(!f){
-    var re=(typeof _rutaRe==='function')?_rutaRe(cols[iOnb]):null;
-    (c.fathomCalls||[]).forEach(function(l){
-      if(re && !re.test(String(l.title||''))) return;
-      var d2=parseDDMMYYYY(l.date);
-      if(d2 && (!f || d2.getTime()<f.getTime())) f=d2;
-    });
-  }
+  if(ct && ct.inicio && String(ct.estado||'')!=='cancelled') tomar(new Date(ct.inicio));
+  if((c.rutaAgenda||{})[onb]) tomar(parseDDMMYYYY(c.rutaAgenda[onb]));
+  var re=(typeof _rutaRe==='function')?_rutaRe(cols[iOnb]):null;
+  (c.fathomCalls||[]).forEach(function(l){
+    if(re && !re.test(String(l.title||''))) return;
+    tomar(parseDDMMYYYY(l.date));
+  });
   if(!f && typeof clienteAlta==='function') f=clienteAlta(c);
   if(!f || isNaN(f.getTime())) return null;
   var hoy=new Date(); hoy.setHours(0,0,0,0);
   var ini=new Date(f.getFullYear(), f.getMonth(), f.getDate());
+  /* Con la primera llamada todavia por delante el reloj no arranco: quedan
+     los 30 enteros. Antes sumaba los dias hasta la llamada y la tarjeta decia
+     "33d" en un sprint de 30 (Glass Media, onboarding el 30/10). */
+  if(ini>hoy){
+    return {ini:ini, fin:new Date(ini.getTime()+dLanz*86400000), total:dLanz,
+            faltan:dLanz, dia:0, sinArrancar:true};
+  }
   var fin=new Date(ini.getTime()+dLanz*86400000);
   var faltan=Math.round((fin-hoy)/86400000);
   return {ini:ini, fin:fin, total:dLanz, faltan:faltan,
@@ -43447,7 +43455,7 @@ function p360Html(){
     var deFreno=f ? ('Freno abierto hace '+((f.dias!==null&&f.dias!==undefined)?(f.dias+' d'):'un tiempo')
         +(f.de==='cliente'?', lo destraba el cliente.':', lo destrabamos nosotros.'))
       : 'Sin frenos.';
-    var dias=null, queCuenta='';
+    var dias=null, queCuenta='', _atr=false;
     // Mismo criterio que el Mirador: las campanas al aire le ganan a la
     // proyeccion. Sin esto el circulo decia "Faltan 2 d para lanzar" arriba de
     // la linea que dice "8 d prendidas", en la misma tarjeta.
@@ -43460,9 +43468,17 @@ function p360Html(){
         : ('Lanzo hace '+_yl.dias+' d: es lo que llevan corriendo sus campanas.');
     }
     else if(q2){
+      /* Pasado el dia 30 sin campanas al aire es un atraso, no "lanzo hace":
+         si hubiera lanzado, _yaLanzo lo habria visto. Va con signo y en rojo;
+         con el numero sin signo, Austral Forge (6 d atrasado) se leia igual
+         que una cuenta regresiva de 6 dias. */
       dias=Math.abs(q2.faltan);
-      queCuenta=(q2.faltan<0) ? ('Lanzo hace '+dias+' d.')
-              : (q2.faltan===0 ? 'Lanza hoy.' : ('Faltan '+dias+' d para lanzar.'));
+      if(q2.faltan<0){ _atr=true; col='var(--redx)'; }
+      queCuenta=q2.sinArrancar
+          ? ('El reloj arranca con el onboarding del '+q2.ini.getDate()+'/'+(q2.ini.getMonth()+1)
+             +': quedan los '+q2.total+' d enteros.')
+        : (q2.faltan<0) ? (dias+' d atrasado: tocaba lanzar el '+q2.fin.getDate()+'/'+(q2.fin.getMonth()+1)+'.')
+        : (q2.faltan===0 ? 'Lanza hoy.' : ('Faltan '+dias+' d para lanzar.'));
     }
     // Sin fecha de lanzamiento no hay cuenta que mostrar; se cae en hace cuanto
     // es cliente, que es lo unico comparable que queda.
@@ -43496,7 +43512,7 @@ function p360Html(){
     } else {
       circulo=(dias===null) ? ''
         : ('<div class="p3kdia" title="'+esc(queCuenta+' \u2014 '+deFreno)+'" '
-          +'style="background:'+col+'22;color:'+col+'">'+dias+'d</div>');
+          +'style="background:'+col+'22;color:'+col+'">'+(_atr?'+':'')+dias+'d</div>');
     }
     // Tocarla abre la ruta aca mismo: mover de etapa y ver que falta es lo que
     // se viene a hacer al panel, e irse a la ficha pierde las otras columnas.

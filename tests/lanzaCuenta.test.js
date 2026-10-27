@@ -72,6 +72,26 @@ describe('_lanzaCuenta', () => {
     expect(r.dia).toBe(10);
   });
 
+  it('cuenta desde la primera llamada aunque la cita del calendario sea posterior', () => {
+    // Metrodev, 27/10/2026: onboarding en Fathom el 15/10 y cita el 22/10.
+    const r = _lanzaCuenta({
+      citas: { Onboarding: { inicio: '2026-09-10T15:00:00-03:00', estado: 'confirmed' } },
+      fathomCalls: [{ title: 'Metrodev - Onboarding', date: '03/09/2026' }],
+    });
+    expect(r.ini.getDate()).toBe(3);
+    expect(r.faltan).toBe(18);
+  });
+
+  it('con la primera llamada por delante quedan los 30 enteros', () => {
+    // Glass Media decia "33d": onboarding el 30/10 y hoy 27/10.
+    const r = _lanzaCuenta({
+      citas: { Onboarding: { inicio: '2026-09-18T11:00:00-03:00', estado: 'confirmed' } },
+    });
+    expect(r.sinArrancar).toBe(true);
+    expect(r.faltan).toBe(30);
+    expect(r.dia).toBe(0);
+  });
+
   it('respeta el dia de lanzamiento de la ruta y cae al alta como ultimo recurso', () => {
     RUTA[2].dia = 45;
     const r = _lanzaCuenta({ altaDePrueba: '2026-09-01T12:00:00' });
