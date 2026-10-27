@@ -515,29 +515,65 @@ function _bv2VigHtml(noche){
    «Enviar» (Angie, 27/10/2026) abre WhatsApp con el texto ya escrito y el
    selector de chats: un link no puede abrir un grupo, así que el grupo lo
    elige ella (la tarjeta dice cuál) y lo manda desde su número. */
+/* Editar y «Listo» (Angie, 27/10/2026: «me tendría que dejar editarlos y si los
+   envié manual poner listo»). Lo que cambia ella va en DB.mensajesEstado, que
+   se sincroniza como clave global (tabla config): el texto editado y cuándo lo
+   marcó mandado, por mensaje (día|fuente|cliente|n). El de la rutina no se
+   toca: mensajesDia es de la base y se pisa en cada corrida. Se guardan 7 días. */
+function _bv2MensEstado(){ if(!DB.mensajesEstado || typeof DB.mensajesEstado!=='object') DB.mensajesEstado={}; return DB.mensajesEstado; }
+function _bv2MensGuardar(k, cambio){
+  var E=_bv2MensEstado(), v=Object.assign({}, E[k]||{}, cambio);
+  Object.keys(v).forEach(function(x){ if(v[x]===null||v[x]===undefined||v[x]==='') delete v[x]; });
+  if(Object.keys(v).length) E[k]=v; else delete E[k];
+  var lim=rvISO(new Date(Date.now()-7*864e5));
+  Object.keys(E).forEach(function(x){ if(x.slice(0,10)<lim) delete E[x]; });
+  try{ save(); }catch(e){}
+}
 function _bv2MensHtml(noche){
   var M=null; (DB.clients||[]).forEach(function(c){ if(c && c.mensajesDia && typeof c.mensajesDia==='object') M=c.mensajesDia; });
   M=M||{};
   var hoy=rvISO(new Date());
   var vale=function(p){ return p && (noche ? p.fecha>hoy : p.fecha===hoy); };
-  var L=[].concat(vale(M.leads)?(M.leads.mensajes||[]):[], vale(M.whatsapp)?(M.whatsapp.mensajes||[]):[]);
-  _BV2.msgs=L.map(function(x){ return String(x.texto||''); });
+  var E=_bv2MensEstado(), cuenta={};
+  var L=[];
+  ['leads','whatsapp'].forEach(function(f){
+    if(!vale(M[f])) return;
+    (M[f].mensajes||[]).forEach(function(x){
+      var cl=String(x.cliente||''), n=cuenta[f+cl]=(cuenta[f+cl]||0)+1;
+      var k=M[f].fecha+'|'+f+'|'+cl+'|'+n, e=E[k]||{};
+      L.push({x:x, k:k, texto:(e.t!=null?String(e.t):String(x.texto||'')), editado:e.t!=null, listo:e.listo||''});
+    });
+  });
+  // Los mandados bajan al final; adentro de cada grupo, el orden de la rutina.
+  L=L.filter(function(m){ return !m.listo; }).concat(L.filter(function(m){ return m.listo; }));
+  _BV2.mlist=L; _BV2.msgs=L.map(function(m){ return m.texto; });
+  var pend=L.filter(function(m){ return !m.listo; }).length;
   var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
   var t=noche?'Mensajes armados para mañana':'Mensajes para mandar hoy';
   var cab='<div class="tt" style="margin:0 2px -8px;font-size:12px;letter-spacing:.14em;color:var(--t2)">'+(noche?'PARA MANDAR MAÑANA':'PARA MANDAR HOY')+' <small style="letter-spacing:0;text-transform:none">· los redactan las rutinas; revisalos antes de mandar</small></div>';
   if(!L.length) return noche?'':cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">0</span></div><div class="vac">No quedó ningún mensaje armado para hoy.</div></div></div>';
-  var filas=L.map(function(x,i){
-    var c=porNombre(x.cliente);
+  var caja='margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(242,240,235,.04);white-space:pre-wrap;font-size:13px;line-height:1.55;color:#F2F0EB';
+  var filas=L.map(function(m,i){
+    var x=m.x, c=porNombre(x.cliente), ed=(_BV2.medit===m.k);
     var dq=[x.donde, x.quien?('lo manda '+x.quien):''].filter(Boolean).join(' · ');
-    return '<div class="it" style="display:block;padding:12px 0">'
-      +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'')+'</b>'
-      +(dq?'<span>'+esc(dq)+'</span>':'')+(x.motivo?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(x.motivo)+'</span>':'')+'</span>'
-      +'<span style="display:flex;gap:6px;flex:none"><a class="acc" href="'+esc(_bv2WaLink(x.texto))+'" target="_blank" rel="noopener" data-bv2wa="'+i+'" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center">Enviar</a>'
+    var bots;
+    if(ed) bots='<button class="acc" data-bv2mok="'+i+'" title="Guardar el texto">Guardar</button><button class="acc" data-bv2mno="1" title="Descartar los cambios">Cancelar</button>';
+    else if(m.listo) bots='<span class="acc" style="border-color:var(--ok);color:var(--ok)">Mandado '+esc(_bv2Hora(new Date(m.listo)))+'</span><button class="acc" data-bv2mlisto="'+i+'" title="Volver a pendiente">Deshacer</button>';
+    else bots='<a class="acc" href="'+esc(_bv2WaLink(m.texto))+'" target="_blank" rel="noopener" data-bv2wa="'+i+'" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center">Enviar</a>'
       +'<button class="acc" data-bv2copy="'+i+'" title="Copiar el mensaje">Copiar</button>'
-      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(c.name)+'">Ficha</button>':'')+'</span></div>'
-      +'<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(242,240,235,.04);white-space:pre-wrap;font-size:13px;line-height:1.55;color:#F2F0EB">'+esc(x.texto||'')+'</div></div>';
+      +'<button class="acc" data-bv2med="'+i+'" title="Editar el texto">Editar</button>'
+      +'<button class="acc" data-bv2mlisto="'+i+'" title="Ya lo mandé">Listo</button>'
+      +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(c.name)+'">Ficha</button>':'');
+    var cuerpo=ed
+      ? '<textarea id="bv2MT" aria-label="Texto del mensaje a '+esc(x.cliente||'')+'" maxlength="3000" style="'+caja+';width:100%;min-height:160px;border:1px solid var(--c);font-family:inherit;resize:vertical">'+esc(m.texto)+'</textarea>'
+      : '<div style="'+caja+'">'+esc(m.texto)+'</div>';
+    return '<div class="it" style="display:block;padding:12px 0'+(m.listo&&!ed?';opacity:.5':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'')+(m.editado?' <small style="font-weight:400;color:var(--t2)">· editado</small>':'')+'</b>'
+      +(dq?'<span>'+esc(dq)+'</span>':'')+(x.motivo?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(x.motivo)+'</span>':'')+'</span>'
+      +'<span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+bots+'</span></div>'
+      +cuerpo+'</div>';
   }).join('');
-  return cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div><div class="lst" tabindex="0" aria-label="'+t+'">'+filas+'</div></div></div>';
+  return cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num" title="'+(L.length-pend)+' de '+L.length+' mandados">'+pend+'</span></div><div class="lst" tabindex="0" aria-label="'+t+'">'+filas+'</div></div></div>';
 }
 function _bv2WaLink(txt){
   var t=encodeURIComponent(String(txt||''));
@@ -639,7 +675,11 @@ function _bv2AvisosHtml(){
 
 function _bv2Pintar(){
   var el=document.getElementById('bv2'); if(!el) return;
+  // Un mensaje a medio editar sobrevive al repintado (el reloj y la sincronización repintan solos).
+  var ta=document.getElementById('bv2MT'), mt=ta?{v:ta.value,a:ta.selectionStart,b:ta.selectionEnd,f:document.activeElement===ta}:null;
   var y=el.scrollTop; el.innerHTML=_BV2.noche?_bv2HtmlNoche():_bv2Html(); el.scrollTop=y;
+  var tb=mt&&document.getElementById('bv2MT');
+  if(tb){ tb.value=mt.v; if(mt.f){ tb.focus(); try{ tb.setSelectionRange(mt.a,mt.b); }catch(e){} } el.scrollTop=y; }
 }
 function bienvenida2Cerrar(luego){
   var el=document.getElementById('bv2'); if(!el) return;
@@ -651,6 +691,7 @@ function bienvenida2Cerrar(luego){
 function _bv2Tecla(e){
   if(e.key!=='Escape') return;
   if(document.activeElement && document.activeElement.id==='bv2I'){ _BV2.edit=-1; _bv2Pintar(); return; }
+  if(_BV2.medit){ _BV2.medit=null; _bv2Pintar(); return; }
   bienvenida2Cerrar();
 }
 function _bv2Tic(){
@@ -686,6 +727,10 @@ function bienvenida2Mostrar(){
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
     if((b=e.target.closest('[data-bv2copy]'))){ _bv2Copiar(+b.dataset.bv2copy); return; }
+    if((b=e.target.closest('[data-bv2med]'))){ var mm=(_BV2.mlist||[])[+b.dataset.bv2med]; if(mm){ _BV2.medit=mm.k; _bv2Pintar(); var ta=document.getElementById('bv2MT'); if(ta) ta.focus(); } return; }
+    if((b=e.target.closest('[data-bv2mok]'))){ var mo=(_BV2.mlist||[])[+b.dataset.bv2mok], tx=document.getElementById('bv2MT'); if(mo&&tx){ var v=tx.value; _bv2MensGuardar(mo.k,{t:(v.trim()&&v!==String(mo.x.texto||''))?v:null}); } _BV2.medit=null; _bv2Pintar(); return; }
+    if(e.target.closest('[data-bv2mno]')){ _BV2.medit=null; _bv2Pintar(); return; }
+    if((b=e.target.closest('[data-bv2mlisto]'))){ var ml=(_BV2.mlist||[])[+b.dataset.bv2mlisto]; if(ml){ _bv2MensGuardar(ml.k,{listo:ml.listo?null:new Date().toISOString(), por:ml.listo?null:(String(personaNombre((SB&&SB.email)||'')||'').split(' ')[0]||null)}); _bv2Pintar(); } return; }
     // «Enviar» sigue el link a WhatsApp; además deja el texto copiado por si la app lo pierde.
     if((b=e.target.closest('[data-bv2wa]'))){ _bv2Copiar(+b.dataset.bv2wa); return; }
     if((b=e.target.closest('[data-bv2sug]'))){ _bv2Popup(+b.dataset.bv2sug); return; }
