@@ -1499,7 +1499,12 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .cpop.climenu .cm-op b{font-weight:600;font-size:13px}
 .cpop.climenu .cm-op span{font-weight:400;font-size:11.5px;color:var(--text3);line-height:1.35}
 .cpop.climenu .cm-op.falta span{color:var(--amberx)}
-.p3kmenu .p3kcapb{font-size:14px;line-height:1;letter-spacing:-.05em}
+/* Vertical y sin circulo (Angie, 27/10/2026): no es una insignia de estado
+   como las de al lado, es un menu, y con el circulo se confundia con ellas. */
+.p3kmenub{width:14px;height:22px;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text3);font-size:17px;font-weight:700;line-height:1;transition:color .15s}
+.p3kmenu:hover .p3kmenub,.p3kmenu:focus-visible .p3kmenub{color:var(--text)}
+.p3kmenu:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .cpop{position:fixed;z-index:9000;width:300px;max-width:calc(100vw - 24px);
   background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-lg);
   padding:16px;box-shadow:0 18px 40px rgba(0,0,0,.45);font-family:var(--font)}
@@ -31375,7 +31380,7 @@ function cliMenuIconoHtml(c, antes){
     +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
     +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
     +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();cliMenu(this,'+c.id+');}">'
-    +'<span class="p3kcapb">⋯</span></span>';
+    +'<span class="p3kmenub" aria-hidden="true">⋮</span></span>';
 }
 function cliMenuCerrar(){
   var p=document.getElementById('cli-menu');
