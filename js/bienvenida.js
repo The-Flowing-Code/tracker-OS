@@ -545,6 +545,13 @@ function _bv2MensHtml(noche){
     });
   });
   // Los mandados bajan al final; adentro de cada grupo, el orden de la rutina.
+  /* El CSM ve los mensajes de SUS clientes, de todas las fuentes (Angie,
+     27/10/2026: «todos los mensajes que tiene que mandar a los clientes que él
+     tenga asignado», en vez del artifact aparte). Angie sigue viendo todos. */
+  if(typeof _soyCsm==='function' && _soyCsm() && typeof esDeMiCartera==='function'){
+    var _porNom=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
+    L=L.filter(function(m){ var c=_porNom(m.x.cliente); return !!(c && esDeMiCartera(c)); });
+  }
   L=L.filter(function(m){ return !m.listo; }).concat(L.filter(function(m){ return m.listo; }));
   _BV2.mlist=L; _BV2.msgs=L.map(function(m){ return m.texto; });
   var pend=L.filter(function(m){ return !m.listo; }).length;
