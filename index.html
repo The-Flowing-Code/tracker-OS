@@ -43704,7 +43704,9 @@ function p360Html(){
          .p3kins en el CSS). La primera de la lista sigue quedando a la
          derecha de todo, como antes. */
       +'<div class="p3kins">'
-      +calBtn+masBtn+_capIco+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
+      // El menu va primero: con row-reverse queda en la punta de arriba a la
+      // derecha, antes del calendario o el + (Angie, 27/10/2026).
+      +_capIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
       // Una tarjeta de prospecto se crea sola desde una llamada: una prueba, un
       // mail mal leido o alguien del equipo abren una que no va. Si no se puede
       // borrar, queda para siempre ocupando una columna.
