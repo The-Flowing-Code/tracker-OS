@@ -41320,8 +41320,10 @@ function plantillaEtapas(){
               // guardo strings y no vale la pena migrar una config de 6 filas.
               // `b` es el candado: la tarea no se puede saltear.
               // `m` es el mensaje listo para copiar (las tareas tipo "enviar X").
-              return (typeof t==='string') ? {t:t, r:'', b:false, m:''}
-                   : {t:String(t.t||''), r:String(t.r||''), b:!!t.b, m:String(t.m||'')};
+              // `p` es el mail de quien la hace (27/10/2026: las del CSM nacen
+              // a nombre de Santi). Sin esto, editar la plantilla lo borraba.
+              return (typeof t==='string') ? {t:t, r:'', b:false, m:'', p:''}
+                   : {t:String(t.t||''), r:String(t.r||''), b:!!t.b, m:String(t.m||''), p:String(t.p||'')};
             })};
   });
 }
@@ -41347,7 +41349,7 @@ function plantillaCargar(clientId, callado){
     return {etapa:e.etapa, ruta:e.ruta,
             tareas:e.tareas.map(function(t,j){
               return {id:'t'+base+'-'+i+'-'+j, t:t.t, r:t.r||'', b:!!t.b, m:t.m||'',
-                      ok:false, at:'', por:''};
+                      p:t.p||'', ok:false, at:'', por:''};
             })};
   });
   c.plantillaAt=new Date().toISOString();
