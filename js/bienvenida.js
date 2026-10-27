@@ -511,7 +511,10 @@ function _bv2VigHtml(noche){
    además de ver lo trabado, redactan el mensaje para cada cliente que lo
    necesita (maquina.mensajesDia, migración 049). La app no manda nada: muestra
    dónde va, por qué, el texto y un botón para copiarlo. A la mañana, los de
-   hoy; a la noche, los que quedaron armados para mañana. */
+   hoy; a la noche, los que quedaron armados para mañana.
+   «Enviar» (Angie, 27/10/2026) abre WhatsApp con el texto ya escrito y el
+   selector de chats: un link no puede abrir un grupo, así que el grupo lo
+   elige ella (la tarjeta dice cuál) y lo manda desde su número. */
 function _bv2MensHtml(noche){
   var M=null; (DB.clients||[]).forEach(function(c){ if(c && c.mensajesDia && typeof c.mensajesDia==='object') M=c.mensajesDia; });
   M=M||{};
@@ -529,11 +532,17 @@ function _bv2MensHtml(noche){
     return '<div class="it" style="display:block;padding:12px 0">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><span class="nm" style="cursor:default"><b>'+esc(x.cliente||'')+'</b>'
       +(dq?'<span>'+esc(dq)+'</span>':'')+(x.motivo?'<span style="display:block;margin-top:2px;color:var(--t2)">'+esc(x.motivo)+'</span>':'')+'</span>'
-      +'<span style="display:flex;gap:6px;flex:none"><button class="acc" data-bv2copy="'+i+'" title="Copiar el mensaje">Copiar</button>'
+      +'<span style="display:flex;gap:6px;flex:none"><a class="acc" href="'+esc(_bv2WaLink(x.texto))+'" target="_blank" rel="noopener" data-bv2wa="'+i+'" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center">Enviar</a>'
+      +'<button class="acc" data-bv2copy="'+i+'" title="Copiar el mensaje">Copiar</button>'
       +(c?'<button class="acc" data-bv2cli="'+c.id+'" title="Abrir la ficha de '+esc(c.name)+'">Ficha</button>':'')+'</span></div>'
       +'<div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(242,240,235,.04);white-space:pre-wrap;font-size:13px;line-height:1.55;color:#F2F0EB">'+esc(x.texto||'')+'</div></div>';
   }).join('');
   return cab+'<div class="q4" style="grid-template-columns:1fr"><div class="card g prog"><div class="gh"><span class="x"><i></i>'+t+'</span><span class="k num">'+L.length+'</span></div><div class="lst" tabindex="0" aria-label="'+t+'">'+filas+'</div></div></div>';
+}
+function _bv2WaLink(txt){
+  var t=encodeURIComponent(String(txt||''));
+  // En el celular el esquema de la app; wa.me desde otra pestaña manda al iPhone a la página de descarga.
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'') ? 'whatsapp://send?text='+t : 'https://wa.me/?text='+t;
 }
 function _bv2Copiar(i){
   var txt=(_BV2.msgs||[])[i]; if(!txt) return;
@@ -677,6 +686,8 @@ function bienvenida2Mostrar(){
     if(e.target.closest('[data-bv2reset]')){ try{ localStorage.removeItem(_bv2NNKey()); }catch(err){} _BV2.edit=-1; _bv2Pintar(); return; }
     if(e.target.closest('[data-bv2entrar]')){ bienvenida2Cerrar(); return; }
     if((b=e.target.closest('[data-bv2copy]'))){ _bv2Copiar(+b.dataset.bv2copy); return; }
+    // «Enviar» sigue el link a WhatsApp; además deja el texto copiado por si la app lo pierde.
+    if((b=e.target.closest('[data-bv2wa]'))){ _bv2Copiar(+b.dataset.bv2wa); return; }
     if((b=e.target.closest('[data-bv2sug]'))){ _bv2Popup(+b.dataset.bv2sug); return; }
     if((b=e.target.closest('[data-bv2rep]'))){ _bv2Reporte(+b.dataset.bv2rep); return; }
     // El nombre de un cliente, en cualquier tarjeta, abre su reporte de campañas; las sugerencias, en el botón «Ver sugerencias».
