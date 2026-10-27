@@ -1489,6 +1489,17 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 /* ── El popup de la reunion ──────────────────────────────────────────────
    Se abre desde el icono de la tarjeta y vive en el body, por encima de todo:
    adentro de la tarjeta lo cortaba el scroll de la columna. */
+.climenu{width:290px}
+.climenu .cm-ops{display:grid;gap:8px;margin-top:10px}
+/* Con .cpop.climenu y no .climenu: .cpop .cp-b va mas abajo y, con la misma
+   especificidad, le pisaba el display y el radio (titulo y bajada quedaban
+   uno al lado del otro, en pastilla). */
+.cpop.climenu .cm-op{display:grid;gap:2px;justify-items:start;text-align:left;
+  border-radius:10px;padding:9px 12px;width:100%}
+.cpop.climenu .cm-op b{font-weight:600;font-size:13px}
+.cpop.climenu .cm-op span{font-weight:400;font-size:11.5px;color:var(--text3);line-height:1.35}
+.cpop.climenu .cm-op.falta span{color:var(--amberx)}
+.p3kmenu .p3kcapb{font-size:14px;line-height:1;letter-spacing:-.05em}
 .cpop{position:fixed;z-index:9000;width:300px;max-width:calc(100vw - 24px);
   background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-lg);
   padding:16px;box-shadow:0 18px 40px rgba(0,0,0,.45);font-family:var(--font)}
@@ -12124,6 +12135,14 @@ function _capacitacionHtml(){
     +'<div class="form-2col">'
       +'<div class="form-row"><label class="form-label">Duracion (minutos)</label>'
         +'<input id="cap-min" type="number" min="5" max="480" value="'+(k.minutos||'')+'" placeholder="la del calendario"></div>'
+      // La sala donde de verdad pasa la capacitacion. Es la que va en el mensaje
+      // del menu ⋯ de la tarjeta, no el Meet que arma GHL (ver cliMenu).
+      +'<div class="form-row"><label class="form-label">Link de la sala</label>'
+        +'<input id="cap-link" value="'+esc((DB.capacitacion&&DB.capacitacion.link)||'')+'" placeholder="https://meet.google.com/..."></div>'
+    +'</div>'
+    +'<div class="form-2col">'
+      +'<div class="form-row"><label class="form-label">Agenda de Martin (uno a uno)</label>'
+        +'<input id="cap-unoauno" value="'+esc(DB.unoAUnoLink||'')+'" placeholder="https://..."></div>'
     +'</div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap">'
       +'<button class="btn btn-sm btn-primary" onclick="capGuardar()">Guardar</button>'
@@ -12136,7 +12155,7 @@ function _capacitacionHtml(){
         +'como invitados a los clientes cuyo mail ya figure ahi. No invita a nadie.">'
         +'Traer invitados de Google</button>'
       +'<span style="font-size:11.5px;color:var(--text3)">'
-      +(capActiva()?(n+' cliente'+(n===1?'':'s')+' invitado'+(n===1?'':'s')):'Sin configurar: el icono no aparece')
+      +(capActiva()?(n+' cliente'+(n===1?'':'s')+' invitado'+(n===1?'':'s')):'Sin configurar')
       +'</span>'
     +'</div>'
     +'<div id="cap-sync-msg" style="font-size:11.5px;color:var(--text3);margin-top:8px;'
@@ -12165,7 +12184,10 @@ function capGuardar(){
   DB.capacitacion={nombre:v('cap-nombre'), cal:v('cap-cal'), inicio:iso,
                    minutos:parseInt(v('cap-min'),10)||0,
                    sesiones:Math.max(1,Math.min(52,parseInt(v('cap-ses'),10)||1)),
-                   userId:(DB.capacitacion&&DB.capacitacion.userId)||''};
+                   userId:(DB.capacitacion&&DB.capacitacion.userId)||'',
+                   link:_cmLink(v('cap-link'))};
+  DB.unoAUnoLink=_cmLink(v('cap-unoauno'));
+  if(v('cap-link') && !DB.capacitacion.link) toast('El link de la sala tiene que empezar con https://','red');
   save();
   toast(capActiva()?'Capacitacion guardada':'Guardado. Falta nombre, calendario o fecha');
   abrirConfigAgencia();
@@ -31291,6 +31313,130 @@ function capIconoHtml(c, antes){
     +'aria-hidden="true"><path d="M22 9L12 5 2 9l10 4 10-4z"/>'
     +'<path d="M6 11v5c0 1 2.7 2.5 6 2.5s6-1.5 6-2.5v-5"/></svg></span></span>';
 }
+/* ── El menu ⋯ de la tarjeta (Angie con Santi, 27/10/2026) ─────────────────
+   Reemplaza al birrete de la capacitacion en la tarjeta. Ese invitaba por GHL,
+   y GHL manda el Meet de SU calendario: el 23/10 Martin Oyola entro por ese
+   link, la reunion de verdad era otra y se quedo media hora esperando. Desde
+   aca no se manda nada: cada opcion copia un mensaje con el link correcto y el
+   CSM lo pega en el WhatsApp del cliente.
+   Los dos links que cambian (la sala del bootcamp y la agenda de Martin) se
+   cargan una vez en Configuracion → Capacitacion. Si falta uno, la opcion lo
+   dice en vez de copiar un mensaje con el link equivocado, que es justo lo que
+   paso. */
+var CLI_INSTRUCTIVOS_URL='https://claude.ai/artifact/1YzBFGS4VTUaQEyc88gyFB';
+// Termina adentro de un mensaje que se pega al cliente: solo https y sin
+// espacios ni comillas, para que un dato mal cargado no rompa el texto.
+function _cmLink(u){ u=String(u||'').trim(); return /^https:\/\/[^\s"'<>]+$/.test(u)?u:''; }
+function _cmNombre(c){
+  var n=String((c&&c.contacto)||'').trim().split(/\s+/)[0]||'';
+  return n?(n.charAt(0).toUpperCase()+n.slice(1)):'';
+}
+// La proxima sesion de la capacitacion: es semanal desde `inicio`. Si ya
+// pasaron todas, no se inventa una fecha: el mensaje sale sin dia.
+function _cmProxima(){
+  var k=capCfg(), d=new Date(k.inicio);
+  if(isNaN(d.getTime())) return null;
+  var fin=60*60000*Math.max(1,(k.minutos||60)/60);
+  for(var i=0;i<k.sesiones;i++){
+    var x=new Date(d.getTime()+i*7*864e5);
+    if(x.getTime()+fin>Date.now()) return x;
+  }
+  return null;
+}
+function _cmMensaje(c, tipo){
+  var hola='Hola'+(_cmNombre(c)?(' '+_cmNombre(c)):'')+'!';
+  if(tipo==='instructivos'){
+    return {t:hola+' Te dejo en un solo link los instructivos para configurar el CRM '
+      +'y darnos los accesos a Meta:\n'+CLI_INSTRUCTIVOS_URL+'\n\nCualquier duda nos escribís por acá.'};
+  }
+  if(tipo==='capacitacion'){
+    var k=capCfg(), u=_cmLink(DB.capacitacion&&DB.capacitacion.link);
+    if(!u) return {falta:'Falta cargar el link de la sala de la capacitación en Configuración → Capacitación.'};
+    var x=_cmProxima(), cuando='';
+    if(x){
+      var dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+      cuando=' Es el '+dias[x.getDay()]+' '+x.getDate()+'/'+(x.getMonth()+1)
+        +' a las '+x.getHours()+':'+('0'+x.getMinutes()).slice(-2)+' h.';
+    }
+    return {t:hola+' Te invito a la capacitación'+(k.nombre?(' «'+k.nombre+'»'):'')+'.'+cuando
+      +' Entrás desde este link:\n'+u+'\n\nTe esperamos!'};
+  }
+  if(tipo==='unoauno'){
+    var m=_cmLink(DB.unoAUnoLink);
+    if(!m) return {falta:'Falta cargar el link de la agenda de Martín en Configuración → Capacitación.'};
+    return {t:hola+' Para el uno a uno con Martín, elegí el horario que mejor te quede acá:\n'+m};
+  }
+  return {falta:'Opción desconocida'};
+}
+function cliMenuIconoHtml(c, antes){
+  var n=parseInt(antes,10)||0;
+  var t='Mandar instructivos, invitar a la capacitación o al uno a uno con Martín';
+  return '<span class="p3kcap p3kmenu'+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
+    +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
+    +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();cliMenu(this,'+c.id+');}">'
+    +'<span class="p3kcapb">⋯</span></span>';
+}
+function cliMenuCerrar(){
+  var p=document.getElementById('cli-menu');
+  if(p) p.remove();
+  document.removeEventListener('mousedown', _cliMenuFuera, true);
+  document.removeEventListener('keydown', _cliMenuTecla, true);
+  window.removeEventListener('resize', cliMenuCerrar);
+}
+function _cliMenuFuera(e){
+  var p=document.getElementById('cli-menu');
+  if(p && !p.contains(e.target)) cliMenuCerrar();
+}
+function _cliMenuTecla(e){ if(e.key==='Escape'){ e.stopPropagation(); cliMenuCerrar(); } }
+function cliMenu(ancla, clientId){
+  var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });
+  if(!c) return;
+  var abierto=document.getElementById('cli-menu');
+  cliMenuCerrar();
+  if(abierto && abierto.dataset.cli===String(clientId)) return;
+  var op=function(tipo, tit, sub){
+    var m=_cmMensaje(c, tipo);
+    return '<button class="cp-b cm-op'+(m.falta?' falta':'')+'" role="menuitem" '
+      +'onclick="cliMenuCopiar('+clientId+',\''+tipo+'\')">'
+      +'<b>'+esc(tit)+'</b><span>'+esc(m.falta||sub)+'</span></button>';
+  };
+  var p=document.createElement('div');
+  p.id='cli-menu'; p.className='cpop climenu'; p.dataset.cli=String(clientId);
+  p.setAttribute('role','menu');
+  p.addEventListener('click', function(e){ e.stopPropagation(); });
+  p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+'</div>'
+    +'<div class="cm-ops">'
+    +op('instructivos','Mandar instructivos','Copia el mensaje con el link de los instructivos')
+    +op('capacitacion','Invitar a la capacitación','Copia el mensaje con el link de la sala')
+    +op('unoauno','Agendar uno a uno con Martín','Copia el mensaje con la agenda de Martín')
+    +'</div><div class="cp-nota">Se copia el mensaje: pegalo en el WhatsApp del cliente.</div>';
+  document.body.appendChild(p);
+  var base=(ancla.closest && ancla.closest('.p3tk2')) || ancla;
+  var r=base.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
+  var x=Math.min(Math.max(12, r.left), window.innerWidth-w-12), y=r.bottom+8;
+  if(y+h>window.innerHeight-12 && r.top-h-8>12) y=r.top-h-8;
+  p.style.left=Math.round(x)+'px'; p.style.top=Math.round(Math.max(12,y))+'px';
+  document.addEventListener('mousedown', _cliMenuFuera, true);
+  document.addEventListener('keydown', _cliMenuTecla, true);
+  window.addEventListener('resize', cliMenuCerrar);
+  var b=p.querySelector('button'); if(b) b.focus();
+}
+function cliMenuCopiar(clientId, tipo){
+  var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });
+  if(!c) return;
+  var m=_cmMensaje(c, tipo);
+  if(m.falta){ toast(m.falta,'red'); return; }
+  cliMenuCerrar();
+  _copiarTexto(m.t, 'Mensaje copiado: pegalo en el WhatsApp de '+(c.name||'el cliente'));
+}
+// El nombre de la tarjeta abre la ficha en el Success tracker: es donde se
+// carga lo que manda el cliente (material, accesos, demo), y lo que Santi
+// busca casi siempre (27/10/2026). Antes abria la ficha en Embudo.
+function p360AbrirSuccess(clientId){
+  selectClient(clientId);
+  if(typeof openClientTab==='function') openClientTab('success');
+}
 /* Los cobros desbloqueados de un cliente, LEIDOS de la marca ya guardada.
    `cobrosDesbloqueados` vuelve a verificar cada hito con `_hitoEstado`, que
    mira campanas y ventas: correrlo una vez por tarjeta en cada pintada del
@@ -43477,7 +43623,9 @@ function p360Html(){
     if(extra) lineas=extra+lineas;
     // Cuantas insignias hay arriba a la derecha, para reservarles el lugar.
     var _nAntes=((calBtn||masBtn)?1:0)+(esProspecto(d.c)?1:0);
-    var _capIco=capIconoHtml(d.c, _nAntes);
+    // El birrete de la capacitacion se saco de la tarjeta (27/10/2026): no se
+    // usaba y molestaba. En su lugar va el menu ⋯ (ver cliMenuIconoHtml).
+    var _capIco=cliMenuIconoHtml(d.c, _nAntes);
     var _cobIco=cobroIconoHtml(d.c, _nAntes+(_capIco?1:0));
     var _ofeIco=ofertaIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0));
     var _onbIco=onbIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0));
@@ -43533,10 +43681,10 @@ function p360Html(){
           +'<div class="p3knom'+(_nb?(' b'+Math.min(_nb,7)):'')+'">'
             +_catChip(d.c)
             +'<span class="p3knomlk" role="link" tabindex="0" '
-            +'title="'+esc('Abrir la ficha de '+(d.c.name||''))+'" '
-            +'onclick="event.stopPropagation();selectClient('+d.c.id+')" '
+            +'title="'+esc('Abrir el Success tracker de '+(d.c.name||''))+'" '
+            +'onclick="event.stopPropagation();p360AbrirSuccess('+d.c.id+')" '
             +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){'
-              +'event.preventDefault();event.stopPropagation();selectClient('+d.c.id+');}">'
+              +'event.preventDefault();event.stopPropagation();p360AbrirSuccess('+d.c.id+');}">'
             +esc(d.c.name||'')+'</span></div>'
           +_p3kPersona(d.c)
           // Sin texto no se dibuja el renglon: un div vacio deja un hueco que

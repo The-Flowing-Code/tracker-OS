@@ -651,12 +651,16 @@ function _bv2Html(){
     +'<div class="usos">'+U.map(function(u){ return '<div><i style="background:'+u.c+'"></i><span>'+esc(u.l)+'</span><b class="num">'+_bv2Dur(u.m)+'</b></div>'; }).join('')
     +'<p>Llamadas que grabaste vos en Fathom y minutos con la app abierta y en uso en este navegador. El resto del trabajo la app no lo mide.</p></div></div>';
   var P=_bv2Pendiente();
+  var _csm=(typeof _soyCsm==='function' && _soyCsm());
   var pend='<div class="card"><div class="tt">Lo que espera tu decisión <small>'+(P.length?'hoy':'nada pendiente')+'</small></div><div>'
     +(P.length?P.map(function(r){ return '<div class="reco '+r.t+'"><span class="tipo">'+esc(r.l)+'</span><span class="w">'+esc(r.w)+'<span>'+esc(r.s)+'</span></span><button data-bv2go="'+esc(r.go)+'">'+esc(r.b)+'</button></div>'; }).join('')
       :'<div class="vac" style="border:0;padding:0">No hay cambios propuestos, tickets que venzan hoy ni comentarios sin leer.</div>')
     +'</div></div>';
   return '<div class="fx" aria-hidden="true"><div class="faro"></div><div class="lampara"></div></div>'
-    +'<div class="in">'+top+hero+linea+_bv2CarteraHtml()+_bv2MensHtml(false)+_bv2VigHtml(false)+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
+    /* Al CSM los mensajes para mandar hoy le van arriba de todo (Santi,
+       27/10/2026): es lo que usa todos los dias y quedaba abajo de la jornada
+       y de la cartera. Para el resto el orden sigue igual. */
+    +'<div class="in">'+top+(_csm?_bv2MensHtml(false):'')+hero+linea+_bv2CarteraHtml()+(_csm?'':_bv2MensHtml(false))+_bv2VigHtml(false)+_bv2AvisosHtml()+cuadro+'<div class="tiempo">'+usos+pend+'</div>'+_bv2PieHtml('Entrar →')+'</div>';
 }
 
 // Para el CSM: su trabajo del dia, los avisos y seguimientos al cliente.
