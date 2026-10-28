@@ -1699,7 +1699,9 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 /* Tablero de tareas por estado. La columna se ilumina al arrastrar encima:
    sin eso no se sabe donde se va a soltar. */
 .tk-col{display:flex;flex-direction:column;gap:8px;min-height:64px;padding:8px;border-radius:var(--radius-lg);
-  background:rgba(255,255,255,0.015);border:1px dashed transparent;transition:background .15s,border-color .15s}
+  background:rgba(255,255,255,0.015);border:1px dashed transparent;transition:background .15s,border-color .15s;
+  max-height:calc(100vh - 220px);overflow-y:auto;overscroll-behavior:contain}
+.tk-col>*{flex-shrink:0}
 .tk-col.vacia{border-color:var(--border);align-items:center;justify-content:center}
 .tk-col.sobre{background:rgba(200,255,71,0.07);border-color:rgba(200,255,71,0.45)}
 .tk-pipe{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;
