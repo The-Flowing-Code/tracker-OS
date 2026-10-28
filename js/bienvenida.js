@@ -530,18 +530,28 @@ function _bv2MensGuardar(k, cambio){
   try{ save(); }catch(e){}
 }
 function _bv2MensHtml(noche){
-  var M=null; (DB.clients||[]).forEach(function(c){ if(c && c.mensajesDia && typeof c.mensajesDia==='object') M=c.mensajesDia; });
-  M=M||{};
+  /* CADA MENSAJE EN SU CLIENTE (Angie, 28/10/2026). Antes vivian todos en el
+     cliente interno, y la regla de cartera de la base (cartera_alcanza) no le
+     deja a un CSM leer ese cliente: Santi no veia ninguno. Ahora la rutina
+     guarda los mensajes de cada cliente en su propia fila y se juntan de todos
+     los clientes que esta persona puede leer. Lo que siga en el interno (lo
+     viejo) se lee igual. Si un mensaje no dice de que cliente es, es del
+     cliente donde esta guardado. */
   var hoy=rvISO(new Date());
   var vale=function(p){ return p && (noche ? p.fecha>hoy : p.fecha===hoy); };
   var E=_bv2MensEstado(), cuenta={};
   var L=[];
-  ['leads','whatsapp'].forEach(function(f){
-    if(!vale(M[f])) return;
-    (M[f].mensajes||[]).forEach(function(x){
-      var cl=String(x.cliente||''), n=cuenta[f+cl]=(cuenta[f+cl]||0)+1;
-      var k=M[f].fecha+'|'+f+'|'+cl+'|'+n, e=E[k]||{};
-      L.push({x:x, k:k, texto:(e.t!=null?String(e.t):String(x.texto||'')), editado:e.t!=null, listo:e.listo||''});
+  (DB.clients||[]).forEach(function(c){
+    var M=(c && c.mensajesDia && typeof c.mensajesDia==='object') ? c.mensajesDia : null;
+    if(!M) return;
+    ['leads','whatsapp'].forEach(function(f){
+      if(!vale(M[f])) return;
+      (M[f].mensajes||[]).forEach(function(x0){
+        var x=x0.cliente ? x0 : Object.assign({}, x0, {cliente:c.name||''});
+        var cl=String(x.cliente||''), n=cuenta[f+cl]=(cuenta[f+cl]||0)+1;
+        var k=M[f].fecha+'|'+f+'|'+cl+'|'+n, e=E[k]||{};
+        L.push({x:x, en:c, k:k, texto:(e.t!=null?String(e.t):String(x.texto||'')), editado:e.t!=null, listo:e.listo||''});
+      });
     });
   });
   // Los mandados bajan al final; adentro de cada grupo, el orden de la rutina.
@@ -550,7 +560,7 @@ function _bv2MensHtml(noche){
      tenga asignado», en vez del artifact aparte). Angie sigue viendo todos. */
   if(typeof _soyCsm==='function' && _soyCsm() && typeof esDeMiCartera==='function'){
     var _porNom=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
-    L=L.filter(function(m){ var c=_porNom(m.x.cliente); return !!(c && esDeMiCartera(c)); });
+    L=L.filter(function(m){ var c=_porNom(m.x.cliente)||m.en; return !!(c && !c.archived && esDeMiCartera(c)); });
   }
   L=L.filter(function(m){ return !m.listo; }).concat(L.filter(function(m){ return m.listo; }));
   _BV2.mlist=L; _BV2.msgs=L.map(function(m){ return m.texto; });
