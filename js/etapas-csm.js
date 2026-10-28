@@ -145,7 +145,8 @@ function csmTareaEstado(c, t, def, ahora){
     if(ci && (ci.estado==='agendada' || ci.estado==='hecha'))
       return {ok:true, auto:true, cita:ci, at:'', por:''};
   }
-  return {ok:ok, auto:false, cita:null, at:(ok&&m)?(m.at||''):'', por:(ok&&m)?(m.por||''):''};
+  return {ok:ok, auto:false, cita:null, at:(ok&&m)?(m.at||''):'', por:(ok&&m)?(m.por||''):'',
+    evidencia:(ok&&m)?String(m.evidencia||''):''};
 }
 
 function _csmCliente(id){
@@ -162,6 +163,71 @@ function csmTildar(clientId, tareaId, val){
   else delete c.csmTareas[tareaId];
   save();
   if(typeof p360Repintar==='function') p360Repintar();
+}
+
+/* Lo que hace Claude o una rutina también tilda la tarea del CSM (Angie,
+   28/10/2026). Las rutinas no pueden escribir `datos` (lo pisaría la app
+   abierta de cualquiera), así que mandan el hecho a `maquina.hechos` con
+   rpc/agregar_hechos (migración 051) y un campo `csmTarea` con el id de
+   CSM_ETAPAS; la app, que sí escribe `datos`, lo pasa a `c.csmTareas`.
+   - Lo manual manda: si la tarea ya estaba tildada a mano, no se toca.
+   - Se aplica una sola vez por hecho, y el registro va aparte
+     (`c.csmHechosAplicados`) y no adentro de `c.csmTareas[id]`: destildar a
+     mano borra esa entrada, y con ella se perdería que el hecho ya se usó y
+     se volvería a tildar sola en el próximo ciclo, contra lo que decidió la
+     persona. Tampoco se comparte `c.hechosAplicados`: ese lo marca
+     hechosAplicar() al cerrar el ticket, y si corre antes, esto se saltearía.
+   - La fecha es la del hecho, a las 12 locales: «2026-10-28» solo se lee como
+     medianoche UTC, que en Argentina es el 27 a la noche, y una de las que se
+     repiten («mensaje diario») quedaría tildada para el día anterior. */
+function _csmTareaDeId(id){
+  for(var i=0;i<CSM_ETAPAS.length;i++){
+    var t=CSM_ETAPAS[i].tareas.filter(function(x){ return x.id===id; })[0];
+    if(t) return {def:CSM_ETAPAS[i], t:t};
+  }
+  return null;
+}
+function csmHechosCliente(c, ahora){
+  var r={tildadas:0, vistos:0};
+  if(!c) return r;
+  var L=((c.hechos||{}).items)||[];
+  if(!Array.isArray(L) || !L.length) return r;
+  ahora=ahora||new Date();
+  L.forEach(function(h){
+    if(!h || !h.id || !h.csmTarea) return;
+    c.csmHechosAplicados=(c.csmHechosAplicados && typeof c.csmHechosAplicados==='object')?c.csmHechosAplicados:{};
+    if(c.csmHechosAplicados[h.id]) return;
+    c.csmHechosAplicados[h.id]=ahora.toISOString(); r.vistos++;
+    // Un id que no existe (mal escrito, o una tarea que se sacó) no tilda nada.
+    var x=_csmTareaDeId(String(h.csmTarea));
+    if(!x) return;
+    // Con csmTareaEstado y no con «hay entrada»: un «mensaje diario» de ayer
+    // ya no cuenta como tildado hoy. La agenda no cuenta como mano (auto).
+    var st=csmTareaEstado(c, x.t, x.def, ahora);
+    if(st.ok && !st.auto) return;
+    var f=/^\d{4}-\d{2}-\d{2}$/.test(String(h.fecha||'')) ? new Date(h.fecha+'T12:00:00') : ahora;
+    c.csmTareas=(c.csmTareas && typeof c.csmTareas==='object')?c.csmTareas:{};
+    c.csmTareas[x.t.id]={ok:true, at:(isNaN(f)?ahora:f).toISOString(), por:'claude',
+      evidencia:String(h.evidencia||'').slice(0,300), hecho:String(h.id)};
+    r.tildadas++;
+  });
+  return r;
+}
+/* Igual que hechosAplicar: solo con la nube ya bajada, para no guardar encima
+   de datos viejos ni tildar con una máquina que todavía no llegó. Se guarda
+   también cuando solo se marcó un hecho como visto (la tarea ya estaba tildada
+   a mano): si no, al destildarla después el hecho la volvería a tildar. */
+function csmHechosAplicar(){
+  if(typeof SB!=='object' || !SB || !SB.listo) return 0;
+  var n=0, vistos=0, ahora=new Date();
+  ((typeof DB==='object' && DB && DB.clients)||[]).forEach(function(c){
+    var r=csmHechosCliente(c, ahora); n+=r.tildadas; vistos+=r.vistos;
+  });
+  if(vistos){
+    save();
+    if(n && typeof p360Repintar==='function') p360Repintar();
+  }
+  return n;
 }
 
 // Ver otra etapa que no es la de ahora (la columna puede estar corrida, o se
@@ -210,6 +276,8 @@ function _csmFecha(d, conHora){
 function _csmNom(mail){
   if(!mail) return '';
   if(mail==='cliente') return 'el cliente';
+  // La tildó un hecho de maquina.hechos (rutina o Claude), no una persona.
+  if(mail==='claude') return 'Claude';
   return (typeof _petNom==='function')?_petNom(mail):mail;
 }
 
@@ -324,7 +392,13 @@ function _csmEtapaHtml(c){
           +(st.cita.estado==='hecha'?'ya se hizo':('agendada para el '+esc(_csmFecha(st.cita.cuando, true))))
           +' · la tildó la agenda</span>');
       }else if(st.ok){
-        meta.push('<span>hecha'+(st.at?(' el '+esc(new Date(st.at).toLocaleDateString('es-AR'))):'')
+        /* La evidencia del hecho en el title, y al tocar sale en un aviso: en
+           el celular no hay mouse, y sin ver la evidencia un tildado de Claude
+           no se puede auditar. */
+        var ev=st.evidencia
+          ? (' title="'+esc(st.evidencia)+'" style="cursor:help;border-bottom:1px dotted var(--border2)" '
+            +'onclick="if(typeof toast===\'function\')toast(this.title)"') : '';
+        meta.push('<span'+ev+'>hecha'+(st.at?(' el '+esc(new Date(st.at).toLocaleDateString('es-AR'))):'')
           +(st.por?(' por '+esc(_csmNom(st.por))):'')+'</span>');
       }
       if(t.cada && !st.ok) meta.push('<span class="amb">'+(t.cada==='dia'?'falta hoy':'falta esta semana')+'</span>');

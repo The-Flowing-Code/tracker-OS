@@ -169,7 +169,7 @@ function accionesTicketsAplicar(){
   }
   return n;
 }
-function _avisosCiclo(){ try{ avisosACsm(); }catch(e){} try{ seguimientosCsm(); }catch(e){} try{ accionesTicketsAplicar(); }catch(e){} }
+function _avisosCiclo(){ try{ csmHechosAplicar(); }catch(e){} try{ avisosACsm(); }catch(e){} try{ seguimientosCsm(); }catch(e){} try{ accionesTicketsAplicar(); }catch(e){} }
 function avisosArrancar(){
   if(window._avisosT) return;
   setTimeout(_avisosCiclo, 2500);

@@ -42,7 +42,11 @@ plantilla en la ficha del Panel 360 (`_csmEtapaHtml`). Son del rol, valen para
 todos los clientes sin cargar nada; lo tildado va en `datos.csmTareas[id]`
 ({ok, at, por}) y el bloqueante de cada etapa en `datos.etapaTraba[k]`
 ({t, quien, para, at, por}). La tarea «agendar» se tilda sola con una cita de
-GHL o cargada a mano de esa etapa; una adivinada NO la tilda.
+GHL o cargada a mano de esa etapa; una adivinada NO la tilda. Las rutinas y
+Claude tildan una tarea mandando un hecho a `maquina.hechos` (agregar_hechos,
+051) con `csmTarea:'<id>'`: `csmHechosAplicar()` (en el ciclo de js/avisos.js)
+lo pasa a `csmTareas[id]` con `por:'claude'`, `evidencia` y la fecha del hecho,
+una sola vez (`datos.csmHechosAplicados`) y nunca encima de una tildada a mano.
 
 ## Base de datos
 - Leer: `sbq`, libre.
