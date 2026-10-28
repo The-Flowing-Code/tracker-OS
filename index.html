@@ -2914,6 +2914,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/meta.js?v=DEV"></script>
 <script src="js/bienvenida.js?v=DEV"></script>
 <script src="js/avisos.js?v=DEV"></script>
+<script src="js/etapas-csm.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -40226,6 +40227,9 @@ function _p360FichaHtml(c, conAgenda){
       +cab
     +'</div>'
     +'<div class="p3fi-cuerpo">'
+      /* Las tareas del CSM de la etapa (js/etapas-csm.js, 28/10/2026), arriba
+         de las de la plantilla: son las que se tildan todos los dias. */
+      +((typeof _csmEtapaHtml==='function')?_csmEtapaHtml(c):'')
       +_petHtml(c)
       +_p360TicketsHtml(c)
       +'<details class="p3fi-ruta"><summary title="La etapa la marcan las llamadas '

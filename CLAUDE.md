@@ -36,6 +36,14 @@ La app se publica SOLO si pasan los tests (`.github/workflows/tests.yml`
 publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
 `<script src>` se cambia por el commit.
 
+`js/etapas-csm.js` (28/10/2026): las tareas del CSM por etapa (`CSM_ETAPAS`:
+onboarding, estrategia, sistemas, lanzamiento, recurrente), arriba de las de la
+plantilla en la ficha del Panel 360 (`_csmEtapaHtml`). Son del rol, valen para
+todos los clientes sin cargar nada; lo tildado va en `datos.csmTareas[id]`
+({ok, at, por}) y el bloqueante de cada etapa en `datos.etapaTraba[k]`
+({t, quien, para, at, por}). La tarea «agendar» se tilda sola con una cita de
+GHL o cargada a mano de esa etapa; una adivinada NO la tilda.
+
 ## Base de datos
 - Leer: `sbq`, libre.
 - Escribir: `sbw` / `sbsql`, **solo avisándome antes**.
