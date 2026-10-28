@@ -3819,7 +3819,35 @@ function _clienteDeFila(f){
 }
 
 var _sbReintentos=0;
-async function sbSubir(){
+/* ⚠️  UNA SOLA SUBIDA A LA VEZ, Y ESPERAR MAS SI LA BASE ANDA LENTA (28/10/2026).
+   save() programa una subida a los 2 s de cada cambio. Con la base lenta cada
+   subida tardaba minutos, asi que arrancaban otras encima de la que seguia
+   corriendo: ninguna llegaba a estampar las huellas y todas volvian a mandar
+   la `maquina` de todos los clientes. El 28/10 eso hizo ~800 escrituras por
+   minuto desde una sola pestaña y dejo la base al 100% de CPU sin saldo de
+   disco. Ahora, si hay una subida en curso, la nueva no arranca: se anota y
+   corre cuando termina la que esta, despues de una espera que crece si la
+   subida tardo o fallo (2 s, 10 s, 30 s, hasta 2 min) y vuelve a 2 s cuando
+   todo entra. Nada se pierde: lo local ya esta guardado en el navegador. */
+var _sbEnCurso=null, _sbOtraVez=false, _sbEspera=2000;
+function sbSubir(){
+  if(_sbEnCurso){ _sbOtraVez=true; return _sbEnCurso; }
+  var t0=Date.now();
+  _sbEnCurso=_sbSubirUnaVez().catch(function(){}).then(function(){
+    var dur=Date.now()-t0, mal=_sbUltimoMal;
+    _sbUltimoMal=false;
+    _sbEspera=(mal || dur>20000) ? Math.min(120000, Math.max(10000, _sbEspera*3)) : 2000;
+    _sbEnCurso=null;
+    if(_sbOtraVez){
+      _sbOtraVez=false;
+      clearTimeout(_sbPendiente);
+      _sbPendiente=setTimeout(function(){ sbSubir(); }, _sbEspera);
+    }
+  });
+  return _sbEnCurso;
+}
+var _sbUltimoMal=false;
+async function _sbSubirUnaVez(){
   if(!SB.listo) return;
   var pend=[], pendMaq=[];
   /* Lo que el POST dijo haber guardado y la base no confirmo. No se estampa su
@@ -4053,17 +4081,19 @@ async function sbSubir(){
        un par de veces: el caso tipico es un corte de un segundo, no algo que
        se arregle machacando. */
     if(_noEntraron.length){
+      _sbUltimoMal=true;
       _sbMarcar('falta', _noEntraron.join(', '));
       if(_sbReintentos<3){
         _sbReintentos++;
         clearTimeout(_sbPendiente);
-        _sbPendiente=setTimeout(function(){ sbSubir(); }, 15000);
+        _sbPendiente=setTimeout(function(){ sbSubir(); }, Math.max(15000, _sbEspera));
       }
       return;
     }
     _sbReintentos=0;
     _sbMarcar('ok');
   }catch(e){
+    _sbUltimoMal=true;
     console.warn('[SB] no se pudo subir:', e.message);
     _sbMarcar('error', e.message);
   }
