@@ -1526,8 +1526,16 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .cpop.climenu .cm-op.falta .cm-tx b{color:var(--text2)}
 .cpop.climenu .cm-op.falta .cm-tx span{color:var(--amberx)}
 .cpop.climenu .cm-op.falta .cm-cp{opacity:1;color:var(--amberx)}
-.climenu .cp-nota{display:flex;gap:7px;align-items:center;margin:8px 10px 0;padding-top:10px;
-  border-top:1px solid var(--border)}
+.climenu .cm-sep{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);margin:10px 10px 0;padding-top:12px;border-top:1px solid var(--border)}
+.cpop.climenu .cm-ir .cm-cp{opacity:.6}
+.cpop.climenu .cm-ir:hover .cm-cp{opacity:1;color:var(--text)}
+/* El boton para copiar el mensaje de una tarea de la etapa (instructivos,
+   capacitacion, cafecito): va a la derecha de la tarea, chico. */
+.pet-msg{flex-shrink:0;align-self:center;font:500 11.5px var(--font);padding:5px 10px;border-radius:999px;
+  border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;white-space:nowrap}
+.pet-msg:hover{border-color:var(--accent);color:var(--accent)}
+.pet-msg.falta{color:var(--amberx);border-color:rgba(240,138,40,.45)}
 /* Vertical y sin circulo (Angie, 27/10/2026): no es una insignia de estado
    como las de al lado, es un menu, y con el circulo se confundia con ellas. */
 .p3kmenub{width:14px;height:22px;display:inline-flex;align-items:center;justify-content:center;
@@ -31440,6 +31448,24 @@ function _cmMensaje(c, tipo){
     return {t:hola+' Te invito a la capacitación'+(k.nombre?(' «'+k.nombre+'»'):'')+'.'+cuando
       +' Entrás desde este link:\n'+u+'\n\nTe esperamos!'};
   }
+  if(tipo==='cafecito'){
+    /* El cafecito de cultura (Angie, 28 y 29/10/2026): una vez por mes, el
+       ultimo viernes a las 16 h de Argentina, en lugar del Bootcamp de ese dia.
+       El primero es el 27/11/2026: antes de esa fecha no se calcula otro. La
+       invitacion la manda Santi desde Google Calendar; este mensaje la anuncia. */
+    var hoyC=new Date(), prox=null;
+    for(var mi=0;mi<14 && !prox;mi++){
+      var ult=new Date(hoyC.getFullYear(), hoyC.getMonth()+mi+1, 0);
+      while(ult.getDay()!==5) ult.setDate(ult.getDate()-1);
+      ult.setHours(16,0,0,0);
+      if(ult>=new Date(2026,10,27) && ult.getTime()+3600000>hoyC.getTime()) prox=ult;
+    }
+    return {t:hola+' Una vez por mes hacemos un «cafecito» con Martín y los partners: '
+      +'una charla más tranqui para conocernos y compartir cómo le va a cada uno, no para ver la operación. '
+      +'Es el último viernes de cada mes a las 16 (hora de Argentina), en lugar del Bootcamp de ese día.'
+      +(prox?(' El próximo es el viernes '+prox.getDate()+'/'+(prox.getMonth()+1)+'.'):'')
+      +' En estos días te llega la invitación ☕'};
+  }
   if(tipo==='unoauno'){
     var m=_cmLink(DB.unoAUnoLink);
     if(!m) return {falta:'Falta cargar el link de la agenda de Martín en Configuración → Capacitación.'};
@@ -31449,7 +31475,7 @@ function _cmMensaje(c, tipo){
 }
 function cliMenuIconoHtml(c, antes){
   var n=parseInt(antes,10)||0;
-  var t='Mandar instructivos, invitar a la capacitación o al uno a uno con Martín';
+  var t='Uno a uno con Martín, ver el embudo o el reporte';
   return '<span class="p3kcap p3kmenu'+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
     +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
     +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
@@ -31482,9 +31508,10 @@ function cliMenu(ancla, clientId){
   };
   var COPIA=_svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/>');
   var AVISO=_svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/>');
+  var IR=_svg('<path d="M9 6l6 6-6 6"/>');
   // La bajada corta del que falta; la explicacion entera va en el tooltip y
   // en el aviso que sale al tocarlo (cliMenuCopiar).
-  var CORTO={capacitacion:'Falta el link de la sala', unoauno:'Falta el link de la agenda de Martín'};
+  var CORTO={unoauno:'Falta el link de la agenda de Martín'};
   var op=function(tipo, tit, sub){
     var m=_cmMensaje(c, tipo);
     return '<button class="cp-b cm-op'+(m.falta?' falta':'')+'" role="menuitem" '
@@ -31494,16 +31521,33 @@ function cliMenu(ancla, clientId){
       +'<span class="cm-tx"><b>'+esc(tit)+'</b><span>'+esc(m.falta?(CORTO[tipo]||m.falta):sub)+'</span></span>'
       +'<span class="cm-cp">'+(m.falta?AVISO:COPIA)+'</span></button>';
   };
+  /* Ir directo a una parte de la ficha (Angie, 29/10/2026: «que me muestre
+     directamente el bottom of funnel, o middle, o top, y el reporte»). Los
+     mensajes de instructivos, capacitacion y cafecito se mudaron a la tarea
+     de su etapa (js/etapas-csm.js, `msg`). */
+  var ir=function(onclick, icono, tit, sub){
+    return '<button class="cp-b cm-op cm-ir" role="menuitem" onclick="'+onclick+'">'
+      +'<span class="cm-ic">'+icono+'</span>'
+      +'<span class="cm-tx"><b>'+esc(tit)+'</b><span>'+esc(sub)+'</span></span>'
+      +'<span class="cm-cp">'+IR+'</span></button>';
+  };
+  var r=c.reporteCampana||null, hayRep=!!(r && (r.storage||r.url));
   var p=document.createElement('div');
   p.id='cli-menu'; p.className='cpop climenu'; p.dataset.cli=String(clientId);
   p.setAttribute('role','menu');
   p.addEventListener('click', function(e){ e.stopPropagation(); });
   p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+'</div>'
     +'<div class="cm-ops">'
-    +op('instructivos','Mandar instructivos','Mensaje con el link de los instructivos')
-    +op('capacitacion','Invitar a la capacitación','Mensaje con el link de la sala')
-    +op('unoauno','Agendar uno a uno con Martín','Mensaje con la agenda de Martín')
-    +'</div><div class="cp-nota">'+_svg('<path d="M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2.1-5.6A8.5 8.5 0 1121 11.5z"/>')+'Se copia el mensaje: pegalo en el WhatsApp del cliente.</div>';
+    +op('unoauno','Agendar uno a uno con Martín','Copia el mensaje con la agenda de Martín')
+    +'</div>'
+    +'<div class="cm-sep">Ver</div>'
+    +'<div class="cm-ops">'
+    +ir('cliMenuIr('+clientId+',\'top\')', _svg('<path d="M3 11l18-8-8 18-2-8z"/>'),'Top of Funnel','Gasto, alcance, CPL y avisos de Meta')
+    +ir('cliMenuIr('+clientId+',\'middle\')', _svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/>'),'Middle of Funnel','Landing y test de promesas')
+    +ir('cliMenuIr('+clientId+',\'bottom\')', _svg('<path d="M12 2v20M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),'Bottom of Funnel','Agendas, cierres, revenue y CAC')
+    +(hayRep?ir('cliMenuCerrar();embReporte('+clientId+')', _svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/>'),'Reporte de campaña',
+        'El de la mañana'+(r.at?(' · '+String(r.at).slice(8,10)+'/'+String(r.at).slice(5,7)):'')):'')
+    +'</div>';
   document.body.appendChild(p);
   var base=(ancla.closest && ancla.closest('.p3tk2')) || ancla;
   var r=base.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
@@ -31514,6 +31558,12 @@ function cliMenu(ancla, clientId){
   document.addEventListener('keydown', _cliMenuTecla, true);
   window.addEventListener('resize', cliMenuCerrar);
   var b=p.querySelector('button'); if(b) b.focus();
+}
+function cliMenuIr(clientId, hoja){
+  cliMenuCerrar();
+  selectClient(clientId);
+  S.tab='embudo'; S._hoja=hoja; S.clientView='full';
+  renderClient();
 }
 function cliMenuCopiar(clientId, tipo){
   var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });

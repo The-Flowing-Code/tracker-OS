@@ -29,7 +29,10 @@
    palabra y no por el texto exacto.
    `llamada` es la reunión de la etapa: la tarea con `agenda` se tilda sola
    cuando hay una cita de verdad de esa etapa. `cada` es para las que se repiten:
-   tildada vale por ese día o esa semana, no para siempre. */
+   tildada vale por ese día o esa semana, no para siempre.
+   `msg` (Angie, 29/10/2026) es el mensaje que va con la tarea: un botón a la
+   derecha lo copia para pegarlo en el WhatsApp del cliente (`_cmMensaje` y
+   `cliMenuCopiar`, en index.html). Antes vivían en el menú ⋮ de la tarjeta. */
 var CSM_ETAPAS=[
   {k:'onboarding', n:'Onboarding', re:/onboard|bienvenida/i, llamada:'Llamada de bienvenida',
    tareas:[
@@ -40,10 +43,11 @@ var CSM_ETAPAS=[
     {id:'onb-accesos', t:'Cargar accesos y demos en la ficha'},
     {id:'onb-formulario', t:'Mandar el formulario personalizado',
      ayuda:'Se genera en la ficha y se copia y pega.'},
-    {id:'onb-cafecito', t:'Sumarlo a la invitación del cafecito mensual'}]},
+    {id:'onb-cafecito', t:'Sumarlo a la invitación del cafecito mensual', msg:'cafecito',
+     ayuda:'Último viernes de cada mes, 16 h. La invitación sale de Google Calendar.'}]},
   {k:'estrategia', n:'Estrategia', re:/estrateg|strategy/i, llamada:'Llamada de estrategia',
    tareas:[
-    {id:'est-instructivos', t:'Mandar los instructivos de accesos (CRM y Meta)',
+    {id:'est-instructivos', t:'Mandar los instructivos de accesos (CRM y Meta)', msg:'instructivos',
      ayuda:'Cuando ya tuvieron un primer contacto.'},
     {id:'est-dataset', t:'Mandar el link del dataset', ayuda:'Cuando Angie lo termina.'},
     {id:'est-agendar', t:'Agendar la llamada de estrategia', agenda:true}]},
@@ -56,7 +60,7 @@ var CSM_ETAPAS=[
    tareas:[
     {id:'lan-prueba', t:'Probar el embudo entero como lead',
      ayuda:'Cuando el cliente da el OK: anuncio, agenda o registro, WhatsApp y CRM.'},
-    {id:'lan-grupal', t:'Sumarlo a las capacitaciones grupales de los viernes'}]},
+    {id:'lan-grupal', t:'Sumarlo a las capacitaciones grupales de los viernes', msg:'capacitacion'}]},
   {k:'recurrente', n:'Recurrente', re:/recurrent|gesti[oó]n mensual/i, llamada:'',
    tareas:[
     {id:'rec-diario', t:'Mensaje diario', cada:'dia', ayuda:'De lunes a viernes.'},
@@ -422,7 +426,16 @@ function _csmEtapaHtml(c){
                +esc((t.t.match(/\S+$/)||[''])[0])+cal+'</span>')
             : esc(t.t))+'</div>'
           +(meta.length?('<div class="pet-meta">'+meta.join('<span class="pt">·</span>')+'</div>'):'')
-        +'</div></div>';
+        +'</div>'
+        +(function(){
+          if(!t.msg || typeof _cmMensaje!=='function') return '';
+          var m=_cmMensaje(c, t.msg)||{};
+          return '<button class="pet-msg'+(m.falta?' falta':'')+'" '
+            +'title="'+esc(m.falta||'Copia el mensaje para pegarlo en el WhatsApp del cliente')+'" '
+            +'onclick="event.stopPropagation();cliMenuCopiar('+c.id+',\''+t.msg+'\')">'
+            +(m.falta?'Falta el link':'Copiar mensaje')+'</button>';
+        })()
+        +'</div>';
     }).join('')
     +_csmEstadoHtml(c, def);
   }
