@@ -1500,16 +1500,34 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 /* ── El popup de la reunion ──────────────────────────────────────────────
    Se abre desde el icono de la tarjeta y vive en el body, por encima de todo:
    adentro de la tarjeta lo cortaba el scroll de la columna. */
-.climenu{width:290px}
-.climenu .cm-ops{display:grid;gap:8px;margin-top:10px}
-/* Con .cpop.climenu y no .climenu: .cpop .cp-b va mas abajo y, con la misma
-   especificidad, le pisaba el display y el radio (titulo y bajada quedaban
-   uno al lado del otro, en pastilla). */
-.cpop.climenu .cm-op{display:grid;gap:2px;justify-items:start;text-align:left;
-  border-radius:10px;padding:9px 12px;width:100%}
-.cpop.climenu .cm-op b{font-weight:600;font-size:13px}
-.cpop.climenu .cm-op span{font-weight:400;font-size:11.5px;color:var(--text3);line-height:1.35}
-.cpop.climenu .cm-op.falta span{color:var(--amberx)}
+/* .cpop.climenu y no .climenu: .cpop (mas abajo) le pisaba el ancho. */
+.cpop.climenu{width:340px;padding:14px 8px 10px}
+.climenu .cp-lbl{padding:0 10px}
+/* Rediseño (Angie, 29/10/2026: «mejorame el diseño de las opciones»): una
+   lista de menu, no tres cajas con borde. Cada opcion lleva su icono, el
+   titulo, una bajada corta y a la derecha el icono de copiar. La que no se
+   puede usar todavia queda apagada con su aviso corto en ambar; la
+   explicacion completa sale en el tooltip y en el aviso al tocarla. */
+.climenu .cm-ops{display:grid;gap:2px;margin-top:8px}
+.cpop.climenu .cm-op{display:grid;grid-template-columns:32px 1fr 16px;align-items:center;gap:11px;
+  text-align:left;width:100%;padding:9px 10px;border:0;border-radius:10px;background:transparent;
+  color:var(--text);cursor:pointer;font:inherit;transition:background .15s}
+.cpop.climenu .cm-op:hover,.cpop.climenu .cm-op:focus-visible{background:color-mix(in srgb,var(--text) 6%,transparent);outline:0}
+.cpop.climenu .cm-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;background:var(--bg4);color:var(--accent)}
+.cpop.climenu .cm-op.falta:hover{background:transparent}
+.cpop.climenu .cm-tx{display:grid;gap:2px;min-width:0}
+.cpop.climenu .cm-tx b{font-weight:600;font-size:13px;line-height:1.25}
+.cpop.climenu .cm-tx span{font-weight:400;font-size:11.5px;color:var(--text3);line-height:1.35}
+.cpop.climenu .cm-cp{color:var(--text3);display:flex;justify-content:flex-end;opacity:0;transition:opacity .15s}
+.cpop.climenu .cm-op:hover .cm-cp,.cpop.climenu .cm-op:focus-visible .cm-cp{opacity:1}
+.cpop.climenu .cm-op.falta{cursor:default}
+.cpop.climenu .cm-op.falta .cm-ic{color:var(--text3)}
+.cpop.climenu .cm-op.falta .cm-tx b{color:var(--text2)}
+.cpop.climenu .cm-op.falta .cm-tx span{color:var(--amberx)}
+.cpop.climenu .cm-op.falta .cm-cp{opacity:1;color:var(--amberx)}
+.climenu .cp-nota{display:flex;gap:7px;align-items:center;margin:8px 10px 0;padding-top:10px;
+  border-top:1px solid var(--border)}
 /* Vertical y sin circulo (Angie, 27/10/2026): no es una insignia de estado
    como las de al lado, es un menu, y con el circulo se confundia con ellas. */
 .p3kmenub{width:14px;height:22px;display:inline-flex;align-items:center;justify-content:center;
@@ -31456,11 +31474,25 @@ function cliMenu(ancla, clientId){
   var abierto=document.getElementById('cli-menu');
   cliMenuCerrar();
   if(abierto && abierto.dataset.cli===String(clientId)) return;
+  var _svg=function(d){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>'; };
+  var IC={
+    instructivos:_svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'),
+    capacitacion:_svg('<path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>'),
+    unoauno:_svg('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>')
+  };
+  var COPIA=_svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/>');
+  var AVISO=_svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/>');
+  // La bajada corta del que falta; la explicacion entera va en el tooltip y
+  // en el aviso que sale al tocarlo (cliMenuCopiar).
+  var CORTO={capacitacion:'Falta el link de la sala', unoauno:'Falta el link de la agenda de Martín'};
   var op=function(tipo, tit, sub){
     var m=_cmMensaje(c, tipo);
     return '<button class="cp-b cm-op'+(m.falta?' falta':'')+'" role="menuitem" '
+      +(m.falta?('aria-disabled="true" title="'+esc(m.falta)+'" '):'')
       +'onclick="cliMenuCopiar('+clientId+',\''+tipo+'\')">'
-      +'<b>'+esc(tit)+'</b><span>'+esc(m.falta||sub)+'</span></button>';
+      +'<span class="cm-ic">'+(IC[tipo]||'')+'</span>'
+      +'<span class="cm-tx"><b>'+esc(tit)+'</b><span>'+esc(m.falta?(CORTO[tipo]||m.falta):sub)+'</span></span>'
+      +'<span class="cm-cp">'+(m.falta?AVISO:COPIA)+'</span></button>';
   };
   var p=document.createElement('div');
   p.id='cli-menu'; p.className='cpop climenu'; p.dataset.cli=String(clientId);
@@ -31468,10 +31500,10 @@ function cliMenu(ancla, clientId){
   p.addEventListener('click', function(e){ e.stopPropagation(); });
   p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+'</div>'
     +'<div class="cm-ops">'
-    +op('instructivos','Mandar instructivos','Copia el mensaje con el link de los instructivos')
-    +op('capacitacion','Invitar a la capacitación','Copia el mensaje con el link de la sala')
-    +op('unoauno','Agendar uno a uno con Martín','Copia el mensaje con la agenda de Martín')
-    +'</div><div class="cp-nota">Se copia el mensaje: pegalo en el WhatsApp del cliente.</div>';
+    +op('instructivos','Mandar instructivos','Mensaje con el link de los instructivos')
+    +op('capacitacion','Invitar a la capacitación','Mensaje con el link de la sala')
+    +op('unoauno','Agendar uno a uno con Martín','Mensaje con la agenda de Martín')
+    +'</div><div class="cp-nota">'+_svg('<path d="M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2.1-5.6A8.5 8.5 0 1121 11.5z"/>')+'Se copia el mensaje: pegalo en el WhatsApp del cliente.</div>';
   document.body.appendChild(p);
   var base=(ancla.closest && ancla.closest('.p3tk2')) || ancla;
   var r=base.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
