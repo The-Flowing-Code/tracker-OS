@@ -1950,6 +1950,10 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .mm-tab th.mm-met,.mm-tab td.mm-met{position:sticky;left:0;z-index:2;width:200px;text-align:left;padding-left:0;padding-right:20px;background:var(--bg2);color:var(--text2);font-weight:400;white-space:normal}
 .mm-tab tbody tr:hover td.mm-met{background:var(--bg3)}
 .mm-tab td.mm-zero{color:var(--text3)}
+.mm-tab th.mm-tot,.mm-tab td.mm-tot{border-left:1px solid var(--border2);font-weight:600;width:110px}
+.mm-tab .mm-var{display:block;font-size:10.5px;font-weight:400;color:var(--text3);margin-top:2px}
+.mm-tab .mm-var.mm-up{color:var(--accent)}
+.mm-tab .mm-var.mm-down{color:var(--redx)}
 .mm-tab th.mm-hoy{color:var(--text2)}
 .mm-tab td.mm-hoy,.mm-tab th.mm-hoy{background:var(--bg3)}
 .mm-tab tbody tr:hover td.mm-hoy{background:var(--bg4)}
@@ -69804,6 +69808,23 @@ function _mmInversion(c, meses){
   });
   return out;
 }
+/* La flecha de la columna Total: cuanto cambio la metrica de los meses
+   cerrados a la vista contra el periodo anterior del mismo largo. Verde si
+   mejoro y rojo si empeoro, segun hacia donde es mejor esa fila (dir de las
+   tasas y costos, t de los volumenes); sin direccion, gris. Las tasas van en
+   puntos porque un 10% que pasa a 15% no «subio 50%». */
+function _mmVar(f, act, ant, fPct){
+  if(!act||!ant) return '';
+  var a=act[f.k], b=ant[f.k];
+  if(a==null||b==null||!isFinite(a)||!isFinite(b)) return '';
+  var d, txt;
+  if(f.f===fPct){ d=a-b; txt=(Math.round(Math.abs(d)*10)/10).toFixed(1).replace('.',',')+' pts'; }
+  else { if(b===0) return ''; d=(a-b)/Math.abs(b)*100; txt=Math.round(Math.abs(d))+'%'; }
+  if(Math.abs(d)<0.05) return '<span class="mm-var">= igual</span>';
+  var sent=f.dir==='max'?1:(f.dir==='min'?-1:(f.t||0));
+  var sube=d>0, sg=sent*(sube?1:-1);
+  return '<span class="mm-var'+(sg>0?' mm-up':(sg<0?' mm-down':''))+'" title="Meses cerrados a la vista contra el periodo anterior del mismo largo">'+(sube?'▲':'▼')+' '+txt+'</span>';
+}
 function mensualMatrizHtml(ops, rules, money, c){
   if(!ops || !ops.length) return '';
   var stamps=[];
@@ -69836,7 +69857,11 @@ function mensualMatrizHtml(ops, rules, money, c){
     if(!arr||!arr.length) return null;   // regla sin configurar: la fila entera se omite
     return sub.filter(function(o){ return arr.indexOf(_n(o.pipelineStage))>=0; }).length;
   };
-  var col=buckets.map(function(sub){
+  /* Lo que se calcula de cada grupo de oportunidades. Es una funcion y no va
+     adentro del map porque la columna Total y la comparacion con el periodo
+     anterior usan la MISMA cuenta sobre otro grupo: asi una tasa del total se
+     recalcula sobre la suma y no sale de promediar porcentajes. */
+  var calc=function(sub){
     var ag=cnt(sub,rules.agendas), asi=cnt(sub,rules.asistencias);
     var won=sub.filter(function(o){ return deriveEstado(o).label==='Ganado'; });
     var rev=won.reduce(function(s,o){ return s+(Number(o.monetaryValue)||0); },0);
@@ -69887,7 +69912,8 @@ function mensualMatrizHtml(ops, rules, money, c){
           return s2+((new Date(o.updatedAt)-new Date(o.createdAt))/86400000); },0)/conF.length*10)/10;
       })()
     };
-  });
+  };
+  var col=buckets.map(calc);
 
   // Se calcula despues de col porque necesita la facturacion de cada mes.
   var inv=_mmInversion(c, meses);
@@ -69909,24 +69935,48 @@ function mensualMatrizHtml(ops, rules, money, c){
       return (v==null||!isFinite(n))?v:(n/_fxB);
     });
   }
-  col.forEach(function(cc,i){
-    cc.inversion=inv[i];
+  var deriv=function(cc,iv){
+    cc.inversion=iv;
     // Sin inversion no hay ROAS: dividir por cero da infinito y un mes sin
     // pauta no es un mes con retorno infinito, es un mes sin pauta.
-    cc.roas=(inv[i]&&inv[i]>0)?(cc.valor/inv[i]):null;
+    cc.roas=(iv&&iv>0)?(cc.valor/iv):null;
     // Lo que costo traer cada cliente nuevo ese mes. Sin cierres no hay CAC:
     // no es que salio cero conseguir clientes, es que no se consiguio ninguno,
     // y un guion dice eso mucho mejor que un $0.
-    cc.cac=(cc.cierres>0 && inv[i]!=null) ? (inv[i]/cc.cierres) : null;
+    cc.cac=(cc.cierres>0 && iv!=null) ? (iv/cc.cierres) : null;
     // Lo que costo cada paso del embudo, con la misma cuenta que las barras de
     // arriba: la inversion del mes dividida por cuantos llegaron a ese paso.
     // Sin nadie en el paso no hay costo, igual que con el CAC.
-    var _cst=function(n){ return (n>0 && inv[i]!=null) ? (inv[i]/n) : null; };
+    var _cst=function(n){ return (n>0 && iv!=null) ? (iv/n) : null; };
     cc.cpAgenda=_cst(cc.agendas);
     cc.cpViva=_cst(cc.viva);
     cc.cpCalif=_cst(cc.calif);
     cc.cpPres=_cst(cc.pres);
-  });
+  };
+  col.forEach(function(cc,i){ deriv(cc,inv[i]); });
+
+  /* Columna Total y flecha de si subio o bajo (Angie, 29/10/2026). El total es
+     la misma cuenta sobre todas las oportunidades de los meses a la vista. La
+     flecha compara los meses CERRADOS a la vista contra la misma cantidad de
+     meses justo antes: el mes en curso va por la mitad y contra un periodo
+     entero siempre daria que bajo. Sin oportunidades antes, no hay flecha. */
+  var _suma=function(a){ var s=null; a.forEach(function(v){ var n=Number(v); if(v!=null&&isFinite(n)) s=(s||0)+n; }); return s; };
+  var _conv=function(a){ return _fxB ? a.map(function(v){ var n=Number(v); return (v==null||!isFinite(n))?v:(n/_fxB); }) : a; };
+  var tot=calc([].concat.apply([],buckets)); deriv(tot,_suma(inv));
+  var _esHoy=function(mm){ return mm.y===hoy.getFullYear()&&mm.m===hoy.getMonth(); };
+  var cerr=[]; meses.forEach(function(mm,i){ if(!_esHoy(mm)) cerr.push(i); });
+  var act=null, ant=null;
+  if(cerr.length){
+    var antMeses=[];
+    for(var k=cerr.length;k>=1;k--){ var dd=new Date(meses[0].y, meses[0].m-k, 1); antMeses.push({y:dd.getFullYear(), m:dd.getMonth()}); }
+    var antIdx={}; antMeses.forEach(function(mm){ antIdx[mm.y+'-'+mm.m]=1; });
+    var antOps=ops.filter(function(o){ if(!o.createdAt) return false; var d=new Date(o.createdAt); return !isNaN(d) && !!antIdx[d.getFullYear()+'-'+d.getMonth()]; });
+    if(antOps.length){
+      act=calc([].concat.apply([],cerr.map(function(i){ return buckets[i]; })));
+      deriv(act,_suma(cerr.map(function(i){ return inv[i]; })));
+      ant=calc(antOps); deriv(ant,_suma(_conv(_mmInversion(c, antMeses))));
+    }
+  }
 
   var fNum=function(v){ return v==null?null:Math.round(v).toLocaleString('es-AR'); };
   var fRoas=function(v){
@@ -69938,26 +69988,26 @@ function mensualMatrizHtml(ops, rules, money, c){
   // Mismo orden que el resumen de arriba: top, middle y bottom del embudo, y
   // recien al final la plata. Asi las dos vistas se leen en el mismo sentido.
   var FILAS=[
-    {k:'leads',l:'Oportunidades',f:fNum},
-    {k:'agendas',l:'Agendas',f:fNum},
+    {k:'leads',l:'Oportunidades',f:fNum,t:1},
+    {k:'agendas',l:'Agendas',f:fNum,t:1},
     {k:'califica',l:'Agendan (%)',f:fPct,dir:'max'},
     {k:'pend',l:'Shows pendientes',f:fNum},
-    {k:'asistencias',l:'Asistencias',f:fNum},
-    {k:'noshow',l:'No shows',f:fNum},
+    {k:'asistencias',l:'Asistencias',f:fNum,t:1},
+    {k:'noshow',l:'No shows',f:fNum,t:-1},
     {k:'noshowPct',l:'No shows (%)',f:fPct,dir:'min'},
     {k:'show',l:'Show rate',f:fPct,dir:'max'},
-    {k:'viva',l:'Llamadas en vivo',f:fNum},
-    {k:'calif',l:'Llamadas calificadas',f:fNum},
+    {k:'viva',l:'Llamadas en vivo',f:fNum,t:1},
+    {k:'calif',l:'Llamadas calificadas',f:fNum,t:1},
     {k:'califVivo',l:'% Calificado en vivo',f:fPct,dir:'max'},
-    {k:'pres',l:'Presentaciones',f:fNum},
-    {k:'cierres',l:'Cierres',f:fNum},
-    {k:'perdidos',l:'Perdidos',f:fNum},
+    {k:'pres',l:'Presentaciones',f:fNum,t:1},
+    {k:'cierres',l:'Cierres',f:fNum,t:1},
+    {k:'perdidos',l:'Perdidos',f:fNum,t:-1},
     {k:'closeCalif',l:'Close rate (calificadas)',f:fPct,dir:'max'},
     {k:'closePres',l:'Close rate (presentacion)',f:fPct,dir:'max'},
     {k:'tasa',l:'Close rate (asistencias)',f:fPct,dir:'max'},
     {k:'ttc',l:'Time to cierre',f:fDias,dir:'min'},
-    {k:'pipeline',l:'Valor pipeline',f:fMon},
-    {k:'valor',l:'Facturacion',f:fMon},
+    {k:'pipeline',l:'Valor pipeline',f:fMon,t:1},
+    {k:'valor',l:'Facturacion',f:fMon,t:1},
     {k:'revPerShow',l:'Revenue per show',f:fMon,dir:'max'},
     {k:'inversion',l:'Inversion en pauta',f:fMon},
     {k:'roas',l:'ROAS',f:fRoas,dir:'max'},
@@ -69981,11 +70031,12 @@ function mensualMatrizHtml(ops, rules, money, c){
 
   return '<div class="mm">'
     +'<div class="mm-top"><div class="mm-title">Mes a mes</div><div class="vh-seg">'+rangos+'</div></div>'
-    +'<div class="mm-scroll"><table class="mm-tab" style="min-width:'+(200+meses.length*92)+'px"><thead><tr><th class="mm-met">Metrica</th>'
+    +'<div class="mm-scroll"><table class="mm-tab" style="min-width:'+(310+meses.length*92)+'px"><thead><tr><th class="mm-met">Metrica</th>'
     +meses.map(function(mm){
         return '<th class="'+(enCurso(mm)?'mm-hoy':'')+'">'+MES[mm.m]+' '+String(mm.y).slice(2)
           +(enCurso(mm)?'<span class="mm-tag">en curso</span>':'')+'</th>';
       }).join('')
+    +'<th class="mm-tot">Total</th>'
     +'</tr></thead><tbody>'
     +FILAS.map(function(f){
         // La mejor marca de la fila entre los meses a la vista.
@@ -70000,6 +70051,7 @@ function mensualMatrizHtml(ops, rules, money, c){
                 +(esRec?(' title="Mejor marca de los '+col.length+' meses a la vista"'):'')+'>'
                 +(v==null?'&mdash;':v)+'</td>';
             }).join('')
+          +'<td class="mm-tot">'+(f.f(tot[f.k])==null?'&mdash;':f.f(tot[f.k]))+_mmVar(f, act, ant, fPct)+'</td>'
           +'</tr>';
       }).join('')
     +'</tbody></table></div>'
@@ -70021,6 +70073,7 @@ function mensualMatrizHtml(ops, rules, money, c){
     +'del mes: lo que costo traer cada cliente. Los <b>costos por etapa</b> son esa misma '
     +'inversion dividida por cuantos llegaron a cada paso, igual que las barras de arriba. '
     +'Un mes sin nadie en una etapa va en guion, porque cero no salen cero pesos. '
+    +'La columna <b>Total</b> suma los meses a la vista y recalcula las tasas sobre esa suma (no promedia porcentajes). La flecha compara los meses cerrados a la vista contra la misma cantidad de meses justo antes: verde si mejoro, rojo si empeoro; en las tasas, la diferencia va en puntos. '
     +'Lo marcado en verde es la <b>mejor marca</b> de la fila entre los meses a la vista. Se marca solo donde mejor no es discutible -tasas y costos-, no en los volumenes: el mes con mas leads suele ser el mes que mas se gasto. El mes en curso no compite, que va por la mitad. '+'</div>'
     +'</div>';
 }
