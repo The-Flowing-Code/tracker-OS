@@ -31543,7 +31543,7 @@ function cliMenu(ancla, clientId){
     +'<div class="cm-sep">Ver</div>'
     +'<div class="cm-ops">'
     +ir('cliMenuIr('+clientId+',\'top\')', _svg('<path d="M3 11l18-8-8 18-2-8z"/>'),'Top of Funnel','Gasto, alcance, CPL y avisos de Meta')
-    +ir('cliMenuIr('+clientId+',\'middle\')', _svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/>'),'Middle of Funnel','Landing y test de promesas')
+    +ir('cliMenuIr('+clientId+',\'middle\')', _svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/>'),'Middle of Funnel','Visitas y conversión de la landing')
     +ir('cliMenuIr('+clientId+',\'bottom\')', _svg('<path d="M12 2v20M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),'Bottom of Funnel','Agendas, cierres, revenue y CAC')
     +(hayRep?ir('cliMenuCerrar();embReporte('+clientId+')', _svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/>'),'Reporte de campaña',
         'El de la mañana'+(r.at?(' · '+String(r.at).slice(8,10)+'/'+String(r.at).slice(5,7)):'')):'')
@@ -33692,10 +33692,16 @@ async function resumirLlamada(clientId, callId){
 // momentos distintos: la plata (contrato), lo que paso (hitos y tareas) y lo
 // que se dijo (llamadas). Verlas apiladas obligaba a scrollear por las otras
 // dos para llegar a la que se necesitaba.
-var SH_HOJAS=[
+/* ARCHIVADAS (Angie, 29/10/2026: «línea de tiempo y board, eliminalo, porque
+   no lo estamos usando»). No se borra el código: sus secciones (#sh-tiempo,
+   #sh-board) se siguen armando, pero sin pastilla no se llega. Para volver a
+   prenderlas, pasarlas de SH_HOJAS_ARCHIVADAS a SH_HOJAS. */
+var SH_HOJAS_ARCHIVADAS=[
   {k:'tiempo',      l:'Linea de tiempo'},
-  {k:'contexto',    l:'Contexto'},
   {k:'board',       l:'Board'}
+];
+var SH_HOJAS=[
+  {k:'contexto',    l:'Contexto'}
 ];
 function _shHoja(){
   var k=S._shHoja;
@@ -35038,6 +35044,8 @@ function lpDockAcciones(){
 }
 function successDock(){
   var sel=_shHoja();
+  // Con una sola hoja la isla es un boton que no lleva a ningun lado.
+  if(SH_HOJAS.length<2) return '<div id="sh-dock"></div>';
   return '<div id="sh-dock" style="position:sticky;bottom:14px;z-index:9;margin-top:22px;'
       +'display:flex;justify-content:center;pointer-events:none">'
     +'<div style="display:flex;align-items:center;gap:4px;pointer-events:auto;flex-wrap:wrap;'
@@ -66823,6 +66831,8 @@ function capDeleteBatch(id){
 // mira lo que ya paso; se decide y se arma en el mismo lugar.
 function middleConMenu(sel){
   var on=(sel==='middle'||sel==='landing');
+  if(EMB_ARCHIVADAS.landing)
+    return '<button class="eb'+(on?' on':'')+'" onclick="setHoja(\'middle\')">Middle of Funnel</button>';
   var abierto=!!S._midMenu;
   return '<span style="position:relative;display:inline-flex;align-items:center">'
     +'<button class="eb'+(on?' on':'')+'" onclick="setHoja(\'middle\')">'
@@ -66856,6 +66866,8 @@ function elegirMid(k){ S._midMenu=false; setHoja(k); }
 function abDockAcciones(){
   var c=S._hojaCliente;
   if(!c) return '';
+  // «Generar landing» y las acciones del test de promesas, archivadas.
+  if(EMB_ARCHIVADAS.abtest && EMB_ARCHIVADAS.landing) return '';
   var abierto=!!S._abMenu;
   var it=function(fn, l){
     return '<button onclick="S._abMenu=false;'+fn+'">'+esc(l)+'</button>';
@@ -66901,8 +66913,7 @@ function embudoSubNav(){
   // la isla la separacion la hace el separador, no un borde distinto.
   return '<div id="emb-dock" class="emb-fijo">'
     +'<div class="emb-isla">'
-      +b('informes','Informes')
-      +'<span class="ebsep"></span>'
+      // Informes se archivo (EMB_ARCHIVADAS): la reemplazo el reporte.
       +topConMenu(sel)+middleConMenu(sel)+bottomConMenu(sel)
       // Records salio del dock: las mejores marcas ahora van marcadas en el mes
       // a mes, sobre los meses de verdad, en vez de en una lista aparte. El
@@ -66973,6 +66984,8 @@ function embudoCtrlHtml(){
 // cuelgan de esta hoja, no en otra pestana.
 function topConMenu(sel){
   var on=(sel==='top'||sel==='guion'||sel==='mercado');
+  if(EMB_ARCHIVADAS.guion && EMB_ARCHIVADAS.mercado)
+    return '<button class="eb'+(on?' on':'')+'" onclick="setHoja(\'top\')">Top of Funnel</button>';
   var abierto=!!S._topMenu;
   // Los tres puntos y no una flecha, igual que en la isla de la landing: la
   // pastilla lleva a su hoja de una y el menu queda para las otras dos. Con la
@@ -67062,8 +67075,24 @@ document.addEventListener('click',function(){
     _repintarSubNav(); }
 });
 
+/* HOJAS ARCHIVADAS DEL EMBUDO (Angie, 29/10/2026). No se borran: el codigo y
+   sus contenedores siguen, pero no hay pastilla ni menu que lleve, y si algo
+   pide una (un atajo, un boton viejo, la vista guardada) va a la que la
+   reemplaza.
+   - informes: la vista de entrada; la reemplazo el reporte de campañas.
+   - guion y mercado: el Guionizador y el Analisis de mercado de Top of Funnel.
+   - landing: Construir la landing (Middle of Funnel) y su «Generar landing».
+   - abtest: el test de promesas; Middle of Funnel queda con la tabla de la
+     landing.
+   Para volver a prender una, sacarla de aca. */
+var EMB_ARCHIVADAS={informes:'top', guion:'top', mercado:'top', landing:'middle', abtest:1};
+function _embHojaViva(k){
+  if(k===undefined||k===null||k==='') return 'top';
+  var a=EMB_ARCHIVADAS[k];
+  return (typeof a==='string') ? a : k;
+}
 function embudoHojasHtml(topHtml, c){
-  if(S._hoja===undefined||S._hoja===null||S._hoja==='') S._hoja='informes'; // vista de entrada
+  S._hoja=_embHojaViva(S._hoja); // vista de entrada: Top of Funnel
   var sel=S._hoja||'';
   // La columna ocupa la altura de la pantalla y el cuerpo se estira: sin eso,
   // con una hoja corta el sticky se apoyaba en el final del contenido y la isla
@@ -67091,7 +67120,7 @@ function montarHojas(c){
   S._hojaCliente=c;
   // Una sola vez por dia y por cliente, y solo si hay algo que decir.
   setTimeout(function(){ try{ abrirAvisosDelDia(c); }catch(e){ console.warn('avisos del dia:',e); } }, 400);
-  if(S._hoja==='informes'||!S._hoja) kickLiveRefresh(c); // solo se autoactualiza si esta a la vista           // lo necesita setHoja para dibujar el funnel
+  if(S._hoja==='informes'||S._hoja==='top'||!S._hoja) kickLiveRefresh(c); // solo se autoactualiza si esta a la vista           // lo necesita setHoja para dibujar el funnel
   S._hojaVentasMontada=null; // se rearma al volver a entrar a la pestana
   S._hojaGuionMontada=false;
   S._hojaMercadoMontada=false;
@@ -67180,7 +67209,9 @@ function _dibujarVentas(vista){
 }
 
 function setHoja(k){
-  S._hoja=(S._hoja===k&&k!=='informes')?'informes':k; // cerrar una hoja vuelve a Informes
+  // Antes, tocar la hoja abierta la cerraba y volvia a Informes; Informes se
+  // archivo (29/10/2026), asi que la hoja queda abierta.
+  S._hoja=_embHojaViva(k);
   var top=document.getElementById('hoja-top-body');
   var ven=document.getElementById('hoja-ventas-body');
   var mid=document.getElementById('hoja-middle-body');
@@ -67209,7 +67240,7 @@ function setHoja(k){
   if(S._hoja==='middle') dibujarMiddle(S._hojaCliente);
   if(S._hoja==='quiz') dibujarQuiz(S._hojaCliente);
   if(vac) vac.style.display=(S._hoja==='informes')?'block':'none';
-  if(S._hoja==='informes' && S._hojaCliente) kickLiveRefresh(S._hojaCliente);
+  if((S._hoja==='informes'||S._hoja==='top') && S._hojaCliente) kickLiveRefresh(S._hojaCliente);
   _repintarSubNav();   // solo las pildoras, para no rearmar todo el contenido
   if(esVentas) _dibujarVentas(_vistaDeHoja(S._hoja));
 }
@@ -67586,7 +67617,7 @@ function dibujarMiddle(c){
   var tabla=lpTablaLandingsHtml(c, lpVentana(c));
   // Guardado: queda la tabla de landings, que es lo que se mira todos los
   // dias. El resto se prende en Configuracion de agencia.
-  if(!abTestPrendido()){ body.innerHTML=tabla; return; }
+  if(!abTestPrendido() || EMB_ARCHIVADAS.abtest){ body.innerHTML=tabla; return; }
   if(!a.contactId||!a.fieldId||!c.ghl||!c.ghl.token){
     body.innerHTML=tabla+middleConfigHtml(c);
     return;
