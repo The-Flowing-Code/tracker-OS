@@ -43927,35 +43927,21 @@ function p360Html(){
       var o=d.c.oferta;
       if(!o || !o.texto) return;
       var completa=(o.estado==='completa');
-      /* El link se vuelve a validar aca aunque la funcion de la base ya lo
-         valide: termina adentro de un `onclick`, y dar por limpio un dato que
-         viene de la base es exactamente por donde se cuela un script. */
-      var url=(typeof o.url==='string'
-        && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9_-]{6,64}$/.test(o.url))
-        ? o.url : '';
       var tit=completa
-        ? ('El dataset de oferta esta terminado'
-           +(url?'. Tocalo para abrirlo en otra pestaña.':'.'))
+        ? 'El dataset de oferta esta terminado. Se abre con el icono de arriba.'
         : ('El dataset de oferta esta a medias. Esto es lo ultimo que se cerro; '
-           +'lo que sigue se escribe desde el chat.'
-           +(url?' Tocalo para abrir lo que hay hasta ahora.':''));
+           +'lo que sigue se escribe desde el chat.');
       /* El renglon va SIEMPRE en gris, tambien cuando la oferta esta
          terminada. Lo pinta el icono de arriba, que es el que lleva el anillo
          y se pone en lima al cerrarse: con los dos en lima la tarjeta decia
          dos veces lo mismo y el color dejaba de significar algo.
          Antes era `completa?'var(--accent)':'var(--text3)'`. */
       var col='var(--text3)';
-      if(!url){
-        lineaOferta='<span class="p3klin" style="color:'+col+'" title="'+esc(tit)+'">'
-          +esc(o.texto)+'</span>';
-        return;
-      }
-      var _ab='window.open(\''+url+'\',\'_blank\',\'noopener\')';
-      lineaOferta='<span class="p3klin p3kofl" role="link" tabindex="0" '
-        +'style="color:'+col+'" title="'+esc(tit)+'" '
-        +'onclick="event.stopPropagation();'+_ab+'" '
-        +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){'
-          +'event.preventDefault();event.stopPropagation();'+_ab+';}">'
+      /* El renglón ya no abre el dataset (Angie, 02/11/2026): tocarlo abría el
+         artifact cuando lo que se quería era la ficha con las tareas. Ahora el
+         toque sigue de largo a la tarjeta, como en cualquier otro lado; el
+         dataset se abre desde su icono (ofertaIconoHtml). */
+      lineaOferta='<span class="p3klin" style="color:'+col+'" title="'+esc(tit)+'">'
         +esc(o.texto)+'</span>';
     })();
     if(lineaOferta) lineas=lineaOferta+lineas;
