@@ -328,18 +328,22 @@ function csmHechosCliente(c, ahora){
   if(!Array.isArray(L) || !L.length) return r;
   ahora=ahora||new Date();
   L.forEach(function(h){
-    if(!h || !h.id || !h.csmTarea) return;
+    /* `notaTarea` es la nota sin tildar con otro nombre: una versión vieja de
+       la app abierta en otra pestaña no lo conoce y no tilda nada por error. */
+    var _id=h && (h.csmTarea||h.notaTarea);
+    if(!h || !h.id || !_id) return;
     c.csmHechosAplicados=(c.csmHechosAplicados && typeof c.csmHechosAplicados==='object')?c.csmHechosAplicados:{};
     if(c.csmHechosAplicados[h.id]) return;
     // Un id que no existe (mal escrito, o una tarea que todavía no está en la
     // lista) no tilda nada y tampoco se da por usado: si después se suma la
     // tarea, el hecho la tilda.
-    var x=_csmTareaDeId(String(h.csmTarea));
+    var x=_csmTareaDeId(String(_id));
     if(!x) return;
     c.csmHechosAplicados[h.id]=ahora.toISOString(); r.vistos++;
     /* `soloNota` (02/11/2026): el ticket repetía una tarea de la etapa. Su
        detalle pasa como nota a esa tarea y la tarea NO se tilda: que exista el
        ticket no quiere decir que la tarea esté hecha. */
+    if(h.notaTarea && !h.csmTarea) h=Object.assign({}, h, {soloNota:true});
     if(h.soloNota || h.nota){
       csmNotaSumar(c, x.t.id, {t:String(h.nota||h.texto||''), at:String(h.fecha||''), de:String(h.ticket||''), hecho:String(h.id)});
       if(h.soloNota) return;

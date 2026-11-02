@@ -38,10 +38,10 @@ const hoy = new Date().toISOString().slice(0, 10);
 describe('tickets que repiten una tarea de etapa', () => {
   it('se cierran como «ya no corresponde» y el detalle queda como nota, sin tildar', () => {
     const c = { id: 1, name: 'A', tasks: [{ id: 555, text: 'Angie hace los estáticos de seguridad privada', done: false, delegated: true, ticket: '#7' }],
-      hechos: { items: [{ id: 'd1', texto: 'Estáticos de seguridad privada', fecha: hoy, origen: 'claude', taskId: '555', csmTarea: 'sis-estaticos', soloNota: true }] } };
+      hechos: { items: [{ id: 'd1', texto: 'Estáticos de seguridad privada', fecha: hoy, origen: 'claude', taskId: '555', notaTarea: 'sis-estaticos', soloNota: true }] } };
     const ctx = app([c]);
     const id = ctx.CSM_ETAPAS.flatMap((e) => e.tareas).find((t) => /^Estáticos creados/.test(t.t)).id;
-    c.hechos.items[0].csmTarea = id;
+    c.hechos.items[0].notaTarea = id;
     ctx.hechosAplicar();
     ctx.csmHechosAplicar();
     expect(c.tasks.length).toBe(1);

@@ -260,12 +260,12 @@ function hechosAplicar(){
       var origen=(h.origen==='claude')?'claude':'rutina';
       var cierre=(origen==='claude')?'hecho con Claude':'hecho y verificado (rutina)';
       if(dec[h.id] && dec[h.id].estado==='descartado'){ c.hechosAplicados[h.id]=ahora.toISOString(); return; }
-      if(h.soloNota){
+      if(h.soloNota || (h.notaTarea && !h.csmTarea)){
         /* Ticket que repetía una tarea de etapa (02/11/2026): se cierra como «ya
            no corresponde» y su detalle pasa como nota a la tarea (lo hace
            csmHechosCliente). No es «hecho»: nadie lo hizo. Sin ticket, nada. */
         if(t && !t.done){
-          var _x=(typeof _csmTareaDeId==='function')?_csmTareaDeId(String(h.csmTarea||'')):null;
+          var _x=(typeof _csmTareaDeId==='function')?_csmTareaDeId(String(h.csmTarea||h.notaTarea||'')):null;
           t.done=true; t.doneAt=ahora.toISOString(); t.cerradoPorHecho=h.id; cerrados++;
           t.cierre='ya no corresponde: es la tarea de la etapa'+(_x?(' «'+_x.t.t+'»'):'')+', con su detalle como nota';
         }
