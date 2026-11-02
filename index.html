@@ -1279,6 +1279,11 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .p3fi-h.ok{border-color:var(--accent);color:var(--accent)}
 .p3fi-h.tarde{border-color:var(--redx);color:var(--redx)}
 .p3fi-cuerpo{padding:0 20px 4px}
+/* A pantalla completa el popup tiene alto fijo: el cuerpo ocupa lo que sobra y
+   scrollea adentro, y los botones quedan pegados abajo (sin hueco vacío). */
+.p3fi-modal{display:flex;flex-direction:column}
+.p3fi-modal>.p3fi{flex:1;min-height:0;display:flex;flex-direction:column}
+.p3fi-modal .p3fi-cuerpo{flex:1;min-height:0;overflow:auto}
 .p3fi-cols{display:grid;gap:18px}
 .p3fi-col{min-width:0}
 @media (min-width:1000px){.p3fi-cols{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}}
@@ -36885,15 +36890,18 @@ function p360FichaModal(clientId, conAgenda){
   // Se guarda para que los repintados -tildar una tarea, mover una cita- no
   // cierren la agenda que se acababa de abrir.
   if(conAgenda!==undefined) S.p360FichaAgenda=!!conAgenda;
+  // Al tildar se repinta todo el popup: el scroll del cuerpo se repone.
+  var _cu=document.querySelector('#p3-ficha-modal .p3fi-cuerpo'), _y=(_cu&&S.p360Abierto===clientId)?_cu.scrollTop:0;
   root.innerHTML=''
     +'<div class="modal-overlay" onclick="if(event.target===this)p360FichaCerrar()">'
     /* Ocupa toda la pantalla (Angie, 02/11/2026): a 680 px las tareas, los
        tickets y la ruta iban uno debajo del otro y había que bajar para todo.
        En pantallas anchas el cuerpo se parte en dos columnas (.p3fi-cols). */
     +'<div class="modal p3fi-modal" id="p3-ficha-modal" style="max-width:none;'
-      +'width:calc(100vw - 24px);height:calc(100dvh - 24px);max-height:none;overflow:auto">'
+      +'width:calc(100vw - 24px);height:calc(100dvh - 24px);max-height:none;overflow:hidden">'
       +_p360FichaHtml(c, !!S.p360FichaAgenda)
     +'</div></div>';
+  if(_y){ var _cn=document.querySelector('#p3-ficha-modal .p3fi-cuerpo'); if(_cn) _cn.scrollTop=_y; }
 }
 /* Repintar lo que este a la vista. Tildar una tarea tiene que actualizar el
    popup -donde se tildo- y tambien la tarjeta de atras, que lleva la cuenta.
