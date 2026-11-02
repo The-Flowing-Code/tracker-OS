@@ -529,7 +529,12 @@ function csmSeccion(clientId, k, sec){
 }
 function _csmSeccAbierta(clientId, k, sec){
   var v=((typeof S==='object' && S && S.csmSecc)||{})[clientId+':'+k+':'+sec];
-  return v===undefined ? sec==='tuyo' : !!v;
+  if(v!==undefined) return !!v;
+  // En pantalla ancha hay lugar: el resto del equipo y lo del partner vienen
+  // abiertos en la columna de la derecha. En el celular, solo «Tuyo».
+  var ancho=false;
+  try{ ancho=!!(window.matchMedia && window.matchMedia('(min-width:1000px)').matches); }catch(e){}
+  return sec==='tuyo' || (ancho && (sec==='equipo' || sec==='partner'));
 }
 function _csmEtapaHtml(c){
   if(!c) return '';
@@ -623,7 +628,7 @@ function _csmEtapaHtml(c){
     ['partner','Esperando al partner',{}],
     ['hechas','Hechas',{quien:true}]
   ];
-  var cuerpo=SECC.map(function(s){
+  var bloques=SECC.map(function(s){
     var xs=sec[s[0]], abierta=_csmSeccAbierta(c.id, def.k, s[0]);
     return '<button class="csm-sec'+(abierta?' on':'')+'" aria-expanded="'+abierta+'" '
         +'onclick="csmSeccion('+c.id+',\''+def.k+'\',\''+s[0]+'\')">'
@@ -634,7 +639,11 @@ function _csmEtapaHtml(c){
             : '<div class="csm-vacio">'+(s[0]==='tuyo'?'Nada tuyo pendiente en esta etapa.':'Nada.')+'</div>')
           +'</div>')
         : '');
-  }).join('');
+  });
+  /* Dos columnas en pantalla ancha (02/11/2026): lo tuyo a la izquierda, lo
+     de los demás a la derecha. Antes la derecha quedaba vacía sin tickets. */
+  var cuerpo='<div class="csm-grid"><div class="csm-col">'+bloques[0]+'</div>'
+    +'<div class="csm-col">'+bloques.slice(1).join('')+'</div></div>';
   return '<div class="csm-blq">'
     +'<div class="csm-res"><b>'+esc(def.n)+'</b> · '+hechas+' de '+def.tareas.length
       +((act && act.k!==def.k)?' · <a href="javascript:void(0)" onclick="csmVerEtapa('+c.id+',\''+act.k+'\')">volver a la de ahora</a>':'')
