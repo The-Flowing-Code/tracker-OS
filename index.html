@@ -42709,6 +42709,11 @@ function dashCambiosPendientes(){
     (cp.items||[]).forEach(function(it){
       if(!it||!it.id||!it.texto) return;
       if(dec[it.id] && dec[it.id].estado && dec[it.id].estado!=='pendiente') return;
+      /* Santi (21/10/2026): «¿qué hago con sacar el token de GHL del código?».
+         Lo técnico y de seguridad (tokens, claves, código, permisos) no es del
+         CSM: no se le muestra; lo sigue viendo Angie. */
+      if(typeof _soyCsm==='function' && _soyCsm()
+         && /\b(token|tokens|api ?key|clave de api|credencial|secret|secreto|c[oó]digo fuente|en el c[oó]digo|permisos? del token)\b/i.test(String(it.texto||'')+' '+String(it.porque||''))) return;
       // Los pendientes de llamadas viven en la misma lista que los de la rutina
       // (id "llamada-..."): se deciden igual, solo cambia la etiqueta.
       out.push({c:c, origen:'rutina', tipo:(String(it.id).indexOf('llamada-')===0?'llamada':'rutina'), it:_propEditada(c, it), ts:ts});
@@ -42717,7 +42722,11 @@ function dashCambiosPendientes(){
        360 (Angie, 14/10/2026): asi se ve que falta armar la landing, la
        estrategia o el dataset sin entrar a cada ficha. Al crear el ticket y
        marcarlo hecho, la tarea de la etapa se tilda sola. */
-    if(!(typeof esAgencia==='function'&&esAgencia(c)) && !(typeof esProspecto==='function'&&esProspecto(c))){
+    /* Desde el 01/11/2026 las tareas de la etapa viven en una sola lista
+       (js/etapas-csm.js) y se tildan en la ficha. Las de la plantilla vieja
+       repetían en el Dashboard lo mismo con otro texto (Santi, 21/10: «Dashboard
+       y ticket… ¿están las mismas tareas?»), así que ya no se suman acá. */
+    if(false && !(typeof esAgencia==='function'&&esAgencia(c)) && !(typeof esProspecto==='function'&&esProspecto(c))){
       var _ea=(typeof petEtapaActual==='function')?petEtapaActual(c):null;
       ((_ea&&_ea.tareas)||[]).forEach(function(t){
         if(!t||t.ok||!t.t) return;
@@ -43081,6 +43090,10 @@ async function agDecidir(id, estado){
 function agAbrir(id){ S._agAb=S._agAb||{}; S._agAb[id]=!S._agAb[id]; var caja=document.getElementById('ag-panel'); if(caja) caja.outerHTML=agPanelHtml(); }
 function agPanelHtml(){
   if(!SB||!SB.listo) return '';
+  /* Santi (20 y 21/10/2026): «¿esto no tengo que hacer nada?», «parece que no le
+     da bola». Los pedidos al agente solo corren con Claude en la compu de Angie:
+     al CSM no le sirven y lo confunden. No se le muestran. */
+  if(typeof _soyCsm==='function' && _soyCsm()) return '<div id="ag-panel"></div>';
   var P=S._agPed;
   if(!P || (Date.now()-(P.at||0))>120000) _agCargar();
   P=S._agPed||{};
@@ -45752,9 +45765,19 @@ function matAgregar(clientId){
   if(!u){ toast('Pega un link'); return; }
   var l=String((document.getElementById('mat-label')||{}).value||'').trim();
   c.material=c.material||[];
+  /* Santi (28/10/2026): «lo apreté cuatro veces… no sé si son cuatro videos».
+     Guardar no daba ninguna señal y el formulario quedaba abierto con el link,
+     así que se volvía a tocar y se cargaba repetido. Ahora un link que ya está
+     no se suma de nuevo, y al guardar se cierra el formulario y avisa. */
+  if(c.material.some(function(m){ return m && m.url && _matNormUrl(m.url)===u; })){
+    toast('Ese link ya estaba en el material');
+    if(typeof matCerrar==='function') matCerrar(); if(typeof renderTab==='function') renderTab();
+    return;
+  }
   c.material.unshift({id:Date.now(), label:l||_matDominio(u)||'Link', url:u, at:new Date().toISOString()});
   save();
-  if(typeof renderTab==='function') renderTab();
+  toast('Guardado en el material');
+  if(typeof matCerrar==='function') matCerrar(); if(typeof renderTab==='function') renderTab();
 }
 function matQuitar(clientId, id){
   var c=DB.clients.find(function(x){return x.id===clientId;});
@@ -46841,8 +46864,8 @@ function materialHtml(c){
         +'style="font-size:10.5px;padding:2px 8px;'+(abierto?'border-color:var(--accent);color:var(--accent)':'')+'" '
         +'title="Ver el '+_embedNombre(u)+' aca mismo">'+(abierto?'Cerrar':'Ver')+'</button>'):'')
       +'<span style="font-size:10.5px;color:var(--text3);white-space:nowrap">'+esc(de)+'</span>'
-      +(id?('<button onclick="matQuitar('+c.id+','+id+')" aria-label="Quitar" '
-        +'style="border:0;background:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0 2px">&times;</button>'):'')
+      +(id?('<button onclick="matQuitar('+c.id+','+id+')" aria-label="Quitar" title="Quitar del material" '
+        +'style="border:1px solid var(--border);border-radius:6px;background:none;color:var(--text2);cursor:pointer;font-size:15px;line-height:1;padding:3px 8px;flex:none">&times;</button>'):'')
       +'</div>'
       +(abierto?('<div style="padding:0 0 12px">'
         +'<iframe src="'+esc(emb)+'" loading="lazy" allowfullscreen '
