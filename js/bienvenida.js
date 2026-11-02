@@ -700,7 +700,14 @@ function _bv2Pintar(){
   var el=document.getElementById('bv2'); if(!el) return;
   // Un mensaje a medio editar sobrevive al repintado (el reloj y la sincronización repintan solos).
   var ta=document.getElementById('bv2MT'), mt=ta?{v:ta.value,a:ta.selectionStart,b:ta.selectionEnd,f:document.activeElement===ta}:null;
+  /* Las listas de adentro (mensajes, avisos) tienen su propio scroll. El
+     repintado de cada minuto las volvía a arriba y se perdía dónde estabas
+     (Santi, 02/11/2026). Se guarda el scroll de cada una por su posición y se
+     repone después de dibujar. */
+  var todos=el.querySelectorAll('*'), sc=[];
+  for(var i=0;i<todos.length;i++){ var n=todos[i]; if(n.scrollTop>0) sc.push({i:i, c:n.className, y:n.scrollTop}); }
   var y=el.scrollTop; el.innerHTML=_BV2.noche?_bv2HtmlNoche():_bv2Html(); el.scrollTop=y;
+  if(sc.length){ var nuevos=el.querySelectorAll('*'); sc.forEach(function(s){ var n=nuevos[s.i]; if(n && n.className===s.c) n.scrollTop=s.y; }); }
   var tb=mt&&document.getElementById('bv2MT');
   if(tb){ tb.value=mt.v; if(mt.f){ tb.focus(); try{ tb.setSelectionRange(mt.a,mt.b); }catch(e){} } el.scrollTop=y; }
 }
