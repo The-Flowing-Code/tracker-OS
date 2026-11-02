@@ -43,6 +43,8 @@ describe('hechos que tildan tareas del CSM', () => {
     expect(m.evidencia).toBe('CUIT ok en el formulario');
     // A las 12 locales: el día del hecho, no el anterior por la zona horaria.
     expect(new Date(m.at).getDate()).toBe(27);
+    // Lo tildado vive en la sección «Hechas», que arranca cerrada.
+    a.csmSeccion(1, 'onboarding', 'hechas');
     const html = a._csmEtapaHtml(c);
     expect(html).toContain('por Claude');
     expect(html).toContain('title="CUIT ok en el formulario"');

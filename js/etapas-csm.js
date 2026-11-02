@@ -462,11 +462,25 @@ function _csmEstadoHtml(c, def){
       +'onclick="csmTrabaEditar('+c.id+',\''+def.k+'\')" style="color:var(--text2);text-decoration:none;'
       +'border-bottom:1px dotted var(--border2)">cargar uno</a></span></div>';
   }
-  return '<div style="margin-top:6px;padding:9px 8px 2px;border-top:1px dashed var(--border)">'+out+'</div>';
+  return '<div class="csm-est">'+out+'</div>';
 }
 
-/* El bloque de la ficha. Va arriba de las etapas de la plantilla porque es lo
-   que se opera todos los días; las de la plantilla siguen abajo, como antes. */
+/* El bloque de la ficha (diseño elegido por Angie el 02/11/2026, «secciones con
+   contador»). Antes eran 16 renglones de todos mezclados y abrumaba: ahora una
+   línea de resumen, la etapa en pestañas de texto y cuatro secciones con su
+   número. Solo «Tuyo» viene abierta; el resto del equipo, lo que espera del
+   cliente y lo hecho se abren con un toque. «Tuyo» es lo del CSM si mira el
+   CSM, y lo de delivery si mira cualquier otro del equipo. */
+function csmSeccion(clientId, k, sec){
+  S.csmSecc=S.csmSecc||{};
+  var key=clientId+':'+k+':'+sec;
+  S.csmSecc[key]=!_csmSeccAbierta(clientId, k, sec);
+  if(typeof p360Repintar==='function') p360Repintar();
+}
+function _csmSeccAbierta(clientId, k, sec){
+  var v=((typeof S==='object' && S && S.csmSecc)||{})[clientId+':'+k+':'+sec];
+  return v===undefined ? sec==='tuyo' : !!v;
+}
 function _csmEtapaHtml(c){
   if(!c) return '';
   if(typeof esProspecto==='function' && esProspecto(c)) return '';
@@ -475,84 +489,104 @@ function _csmEtapaHtml(c){
     ? csmEtapaDef(S.csmEtapaVer[c.id]) : null;
   var def=ver||act;
   var csm=(typeof _csmMail==='function')?_csmMail():'';
+  var yo=(typeof _soyCsm==='function' && _soyCsm())?'csm':'delivery';
   var ahora=new Date();
-  // Las etapas en pastillas: la de ahora marcada, para saltar a otra con un toque.
-  var chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px">'
+  // Las etapas como pestañas de texto. La de ahora lleva un punto lima.
+  var tabs='<div class="csm-tabs">'
     +CSM_ETAPAS.map(function(e){
-      var on=!!(def && def.k===e.k);
-      var hechas=e.tareas.filter(function(t){ return csmTareaEstado(c, t, e, ahora).ok; }).length;
-      return '<button class="pet-tag" style="cursor:pointer;background:none;font-family:var(--font);'
-        +(on?'border-color:var(--accent);color:var(--accent)':'')+'" '
+      var on=!!(def && def.k===e.k), esAhora=!!(act && act.k===e.k);
+      return '<button class="'+(esAhora?'ahora':'')+'" aria-pressed="'+on+'" '
         +'onclick="csmVerEtapa('+c.id+',\''+e.k+'\')"'
-        +(act&&act.k===e.k?' title="La etapa en la que está"':'')+'>'
-        +esc(e.n)+(act&&act.k===e.k?' · ahora':'')
-        +' <span style="opacity:.7">'+hechas+'/'+e.tareas.length+'</span></button>';
+        +(esAhora?' title="La etapa en la que está"':'')+'>'
+        +esc(e.n.split(' ')[0])+'</button>';
     }).join('')+'</div>';
-  var cuerpo;
   if(!def){
-    cuerpo='<div style="font-size:12px;color:var(--text2);padding:6px 2px">'
-      +'La etapa de ahora no tiene tareas del CSM. Tocá una etapa para ver las suyas.</div>';
-  }else{
-    cuerpo=def.tareas.map(function(t){
-      var st=csmTareaEstado(c, t, def, ahora);
-      var meta=[];
-      if(t.quien && CSM_QUIEN[t.quien]) meta.push('<span style="color:'
-        +(t.quien==='cliente'?'var(--amberx)':(t.quien==='delivery'?'var(--text2)':'var(--accent)'))+'">'
-        +esc(t.quien==='csm'?(csm?_csmNom(csm):CSM_QUIEN.csm):CSM_QUIEN[t.quien])+'</span>');
-      if(t.ayuda) meta.push('<span>'+esc(t.ayuda)+'</span>');
-      if(st.auto){
-        meta.push('<span style="color:var(--accent)">'
-          +(st.cita.estado==='hecha'?'ya se hizo':('agendada para el '+esc(_csmFecha(st.cita.cuando, true))))
-          +' · la tildó la agenda</span>');
-      }else if(st.ok){
-        /* La evidencia del hecho en el title, y al tocar sale en un aviso: en
-           el celular no hay mouse, y sin ver la evidencia un tildado de Claude
-           no se puede auditar. */
-        var ev=st.evidencia
-          ? (' title="'+esc(st.evidencia)+'" style="cursor:help;border-bottom:1px dotted var(--border2)" '
-            +'onclick="if(typeof toast===\'function\')toast(this.title)"') : '';
-        meta.push('<span'+ev+'>hecha'+(st.at?(' el '+esc(new Date(st.at).toLocaleDateString('es-AR'))):'')
-          +(st.por?(' por '+esc(_csmNom(st.por))):'')+'</span>');
-      }
-      if(t.cada && !st.ok) meta.push('<span class="amb">'+(t.cada==='dia'?'falta hoy':(t.cada==='mes'?'falta este mes':'falta esta semana'))+'</span>');
-      /* El 📅 en verde al lado de la tarea de agendar, una vez tildada (pedido
-         de Angie): se ve de un vistazo que la llamada está puesta. */
-      var cal=(t.agenda && st.ok)
-        ? ' <span title="Agendada" style="display:inline-flex;align-items:center;justify-content:center;'
-          +'width:20px;height:20px;border-radius:6px;background:rgba(200,255,71,.14);'
-          +'vertical-align:-3px;font-size:12px">📅</span>' : '';
-      var click=st.auto
-        ? ' disabled title="La tilda la cita de la agenda. Si no corresponde, sacá la cita."'
-        : (' title="'+(st.ok?'Destildar':'Marcar como hecha')+'" '
-          +'onclick="csmTildar('+c.id+',\''+t.id+'\','+(st.ok?'false':'true')+')"');
-      return '<div class="pet-fila'+(st.ok?' hecha':'')+'">'
-        +'<button class="pet-chk'+(st.ok?' ok':'')+'"'+click+'>✓</button>'
-        +'<div class="pet-cuerpo">'
-          /* La última palabra va pegada al 📅: en el celular el ícono bajaba solo
-             a un renglón aparte y dejaba de leerse como parte de la tarea. */
-          +'<div class="pet-txt">'+(cal
-            ? (esc(t.t.replace(/\s*\S+$/,''))+' <span style="white-space:nowrap">'
-               +esc((t.t.match(/\S+$/)||[''])[0])+cal+'</span>')
-            : esc(t.t))+'</div>'
-          +(meta.length?('<div class="pet-meta">'+meta.join('<span class="pt">·</span>')+'</div>'):'')
-        +'</div>'
-        +(function(){
-          if(!t.msg || typeof _cmMensaje!=='function') return '';
-          var m=_cmMensaje(c, t.msg)||{};
-          return '<button class="pet-msg'+(m.falta?' falta':'')+'" '
-            +'title="'+esc(m.falta||'Copia el mensaje para pegarlo en el WhatsApp del cliente')+'" '
-            +'onclick="event.stopPropagation();cliMenuCopiar('+c.id+',\''+t.msg+'\')">'
-            +(m.falta?'Falta el link':'Copiar mensaje')+'</button>';
-        })()
-        +'</div>';
-    }).join('')
-    +_csmEstadoHtml(c, def);
+    return '<div class="csm-blq">'+tabs
+      +'<div style="font-size:12.5px;color:var(--text2);padding:10px 0 2px">'
+      +'La etapa de ahora no tiene tareas. Tocá una etapa para ver las suyas.</div></div>';
   }
-  return '<div class="pet-et" style="padding-bottom:9px">'
-    +'<div class="pet-eth" style="cursor:default;padding-bottom:0">'
-      +'<span>Tareas de la etapa</span>'
-      +(def?('<span class="pet-cnt">'+esc(def.n)+'</span>'):'')
+  function quienNom(q){ return q==='csm'?(csm?_csmNom(csm):CSM_QUIEN.csm):(q==='cliente'?'Partner':CSM_QUIEN[q]); }
+  function fila(t, st, o){
+    var meta=[];
+    if(o.quien) meta.push('<span>'+esc(quienNom(t.quien))+'</span>');
+    if(o.ayuda && t.ayuda) meta.push('<span>'+esc(t.ayuda)+'</span>');
+    if(st.auto){
+      meta.push('<span style="color:var(--accent)">'
+        +(st.cita.estado==='hecha'?'ya se hizo':('agendada para el '+esc(_csmFecha(st.cita.cuando, true))))
+        +' · la tildó la agenda</span>');
+    }else if(st.ok){
+      /* La evidencia del hecho en el title, y al tocar sale en un aviso: en
+         el celular no hay mouse, y sin ver la evidencia un tildado de Claude
+         no se puede auditar. */
+      var ev=st.evidencia
+        ? (' title="'+esc(st.evidencia)+'" style="cursor:help;border-bottom:1px dotted var(--border2)" '
+          +'onclick="if(typeof toast===\'function\')toast(this.title)"') : '';
+      meta.push('<span'+ev+'>hecha'+(st.at?(' el '+esc(new Date(st.at).toLocaleDateString('es-AR'))):'')
+        +(st.por?(' por '+esc(_csmNom(st.por))):'')+'</span>');
+    }
+    if(t.cada && !st.ok) meta.push('<span class="amb">'+(t.cada==='dia'?'falta hoy':(t.cada==='mes'?'falta este mes':'falta esta semana'))+'</span>');
+    /* El 📅 en verde al lado de la tarea de agendar, una vez tildada (pedido
+       de Angie): se ve de un vistazo que la llamada está puesta. */
+    var cal=(t.agenda && st.ok)
+      ? ' <span title="Agendada" style="display:inline-flex;align-items:center;justify-content:center;'
+        +'width:20px;height:20px;border-radius:6px;background:rgba(200,255,71,.14);'
+        +'vertical-align:-3px;font-size:12px">📅</span>' : '';
+    var click=st.auto
+      ? ' disabled title="La tilda la cita de la agenda. Si no corresponde, sacá la cita."'
+      : (' title="'+(st.ok?'Destildar':'Marcar como hecha')+'" '
+        +'onclick="csmTildar('+c.id+',\''+t.id+'\','+(st.ok?'false':'true')+')"');
+    return '<div class="pet-fila'+(st.ok?' hecha':'')+'">'
+      +'<button class="pet-chk'+(st.ok?' ok':'')+'"'+click+'>✓</button>'
+      +'<div class="pet-cuerpo">'
+        /* La última palabra va pegada al 📅: en el celular el ícono bajaba solo
+           a un renglón aparte y dejaba de leerse como parte de la tarea. */
+        +'<div class="pet-txt">'+(cal
+          ? (esc(t.t.replace(/\s*\S+$/,''))+' <span style="white-space:nowrap">'
+             +esc((t.t.match(/\S+$/)||[''])[0])+cal+'</span>')
+          : esc(t.t))+'</div>'
+        +(meta.length?('<div class="pet-meta">'+meta.join('<span class="pt">·</span>')+'</div>'):'')
+      +'</div>'
+      +(function(){
+        if(!t.msg || typeof _cmMensaje!=='function') return '';
+        var m=_cmMensaje(c, t.msg)||{};
+        return '<button class="pet-msg'+(m.falta?' falta':'')+'" '
+          +'title="'+esc(m.falta||'Copia el mensaje para pegarlo en el WhatsApp del cliente')+'" '
+          +'onclick="event.stopPropagation();cliMenuCopiar('+c.id+',\''+t.msg+'\')">'
+          +(m.falta?'Falta el link':'Copiar mensaje')+'</button>';
+      })()
+      +'</div>';
+  }
+  var sec={tuyo:[], equipo:[], partner:[], hechas:[]}, hechas=0;
+  def.tareas.forEach(function(t){
+    var st=csmTareaEstado(c, t, def, ahora), x={t:t, st:st};
+    if(st.ok){ hechas++; sec.hechas.push(x); }
+    else if(t.quien==='cliente') sec.partner.push(x);
+    else if(t.quien===yo) sec.tuyo.push(x);
+    else sec.equipo.push(x);
+  });
+  var SECC=[
+    ['tuyo','Tuyo',{ayuda:true}],
+    ['equipo','Resto del equipo',{quien:true}],
+    ['partner','Esperando al partner',{}],
+    ['hechas','Hechas',{quien:true}]
+  ];
+  var cuerpo=SECC.map(function(s){
+    var xs=sec[s[0]], abierta=_csmSeccAbierta(c.id, def.k, s[0]);
+    return '<button class="csm-sec'+(abierta?' on':'')+'" aria-expanded="'+abierta+'" '
+        +'onclick="csmSeccion('+c.id+',\''+def.k+'\',\''+s[0]+'\')">'
+        +'<span>'+s[1]+'</span><span class="n">'+xs.length+'</span></button>'
+      +(abierta
+        ? ('<div class="csm-secb">'+(xs.length
+            ? xs.map(function(x){ return fila(x.t, x.st, s[2]); }).join('')
+            : '<div class="csm-vacio">'+(s[0]==='tuyo'?'Nada tuyo pendiente en esta etapa.':'Nada.')+'</div>')
+          +'</div>')
+        : '');
+  }).join('');
+  return '<div class="csm-blq">'
+    +'<div class="csm-res"><b>'+esc(def.n)+'</b> · '+hechas+' de '+def.tareas.length
+      +((act && act.k!==def.k)?' · <a href="javascript:void(0)" onclick="csmVerEtapa('+c.id+',\''+act.k+'\')">volver a la de ahora</a>':'')
     +'</div>'
-    +chips+cuerpo
+    +_csmEstadoHtml(c, def)
+    +tabs+cuerpo
   +'</div>';
 }

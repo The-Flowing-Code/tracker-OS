@@ -106,6 +106,9 @@ describe('tareas del CSM por etapa', () => {
   it('la ficha dibuja las tareas de la etapa de ahora con el 📅 en la de agendar', () => {
     const c = { id: 1, citas: { Estrategia: { inicio: enDias(2), estado: 'confirmed', como: 'mano' } } };
     const a = app([c], 'Estrategia');
+    // La de agendar ya está tildada por la cita: va en «Hechas», cerrada al abrir.
+    expect(a._csmEtapaHtml(c).replace(/<[^>]+>/g, '')).not.toContain('Chequear que agendó la llamada de estrategia');
+    a.csmSeccion(1, 'estrategia', 'hechas');
     const h = a._csmEtapaHtml(c);
     expect(h.replace(/<[^>]+>/g, '')).toContain('Chequear que agendó la llamada de estrategia');
     expect(h).toContain('📅');

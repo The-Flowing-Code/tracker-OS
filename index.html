@@ -1276,6 +1276,28 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .p3fi-h.ok{border-color:var(--accent);color:var(--accent)}
 .p3fi-h.tarde{border-color:var(--redx);color:var(--redx)}
 .p3fi-cuerpo{padding:0 20px 4px}
+.p3fi-cols{display:grid;gap:18px}
+.p3fi-col{min-width:0}
+@media (min-width:1000px){.p3fi-cols{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start}}
+/* Tareas por etapa, «secciones con contador» (02/11/2026): resumen, pestañas de
+   texto y cuatro secciones; solo «Tuyo» abierta. Un solo acento, sin cajas. */
+.csm-blq{padding:2px 0 8px}
+.csm-res{font-size:13.5px;color:var(--text2)}
+.csm-res b{color:var(--strong);font-weight:600}
+.csm-res a{color:var(--text2);border-bottom:1px dotted var(--border2);text-decoration:none}
+.csm-est{margin:4px 0 0}
+.csm-tabs{display:flex;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin:14px 0 2px}
+.csm-tabs button{background:none;border:0;border-bottom:1px solid transparent;margin-bottom:-1px;padding:0 0 8px;
+  font:inherit;font-size:13px;color:var(--text2);cursor:pointer}
+.csm-tabs button[aria-pressed="true"]{color:var(--strong);border-color:var(--strong)}
+.csm-tabs button.ahora::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:var(--accent);margin-left:6px;vertical-align:2px}
+.csm-sec{display:flex;justify-content:space-between;align-items:baseline;width:100%;background:none;border:0;
+  border-bottom:1px solid var(--border);padding:11px 2px;font:inherit;font-size:13.5px;color:var(--text2);cursor:pointer;text-align:left}
+.csm-sec.on{color:var(--strong)}
+.csm-sec .n{font-size:12px;font-variant-numeric:tabular-nums}
+.csm-secb{border-bottom:1px solid var(--border);padding:2px 0 6px 6px}
+.csm-vacio{font-size:12.5px;color:var(--text2);padding:8px 2px}
 .p3fi-pie{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
   padding:13px 20px;background:var(--bg2);box-shadow:0 -1px 0 var(--border)}
 .p3fi-pie .p3fi-sep{flex:1}
@@ -36681,6 +36703,9 @@ function _p360AreasHtml(c, etapa){
      de cerrar: abrir cliente T parado en Sistemas escupia "SIN AREA 0/22" arriba
      de todo. Ahora pregunta por la plantilla, que es donde vive el proceso. */
   if(etapa && typeof _plIndexDe==='function' && _plIndexDe(etapa)>=0) return '';
+  /* Con las tareas por etapa (js/etapas-csm.js) lo que falta ya está en el
+     bloque de tareas: la lista de entregables repetía 22 renglones arriba. */
+  if(typeof csmEtapaActual==='function' && csmEtapaActual(c)) return '';
   var k=null;
   try{ k=_compromiso(c); }catch(e){ return ''; }
   if(!k||!k.items||!k.items.length) return '';
@@ -36721,12 +36746,8 @@ function _p360SubprocesoHtml(c, etapa){
     return t.sopId && !t.done && !t.deleted && !t.archivada; });
   if(!tareas.length){
     var sops=(DB.sops||[]);
-    if(!sops.length){
-      return '<div style="padding:2px 0 2px 14px;font-size:11px;color:var(--text3)">'
-        +'No hay procedimientos cargados todavia. Se arman en '
-        +'<a href="javascript:void(0)" onclick="abrirSopsModal()" '
-        +'style="color:var(--text2);text-decoration:none">Operaciones</a>.</div>';
-    }
+    // Igual que sin procedimiento: no pide hacer nada en la ficha (02/11/2026).
+    if(!sops.length) return '';
     /* ⚠️  ACA NO SE ENGANCHA MAS. Elegir el procedimiento es configurar la
        etapa, no trabajar un cliente, y estaba metido justo donde uno entra a
        mirar que falta. Ahora el SOP es de la etapa y se elige en "Etapas del
@@ -36735,12 +36756,9 @@ function _p360SubprocesoHtml(c, etapa){
     var _def=null;
     try{ _def=rutaDef().filter(function(x){ return x.l===etapa; })[0]; }catch(e2){}
     var _s=(_def&&_def.sop)?_sop(+_def.sop):null;
-    if(!_s){
-      return '<div style="padding:2px 0 2px 14px;font-size:11px;color:var(--text3)">'
-        +'Esta etapa no tiene procedimiento. Se le asigna en '
-        +'<a href="javascript:void(0)" onclick="rutaModal()" '
-        +'style="color:var(--text2);text-decoration:none">Etapas del cliente</a>.</div>';
-    }
+    // Sin procedimiento no se dice nada: era un renglón más en cada ficha
+    // que no pedía hacer nada (02/11/2026). Se asigna en «Etapas del cliente».
+    if(!_s) return '';
     return '<div style="padding:2px 0 2px 14px;font-size:11px;color:var(--text3)">'
       +'Procedimiento de la etapa: <b style="color:var(--text2);font-weight:500">'
       +esc(_s.titulo||'SOP')+'</b> \u00b7 todavía no arrancó para este cliente.</div>';
@@ -36859,8 +36877,11 @@ function p360FichaModal(clientId, conAgenda){
   if(conAgenda!==undefined) S.p360FichaAgenda=!!conAgenda;
   root.innerHTML=''
     +'<div class="modal-overlay" onclick="if(event.target===this)p360FichaCerrar()">'
-    +'<div class="modal p3fi-modal" id="p3-ficha-modal" style="max-width:680px;width:96%;'
-      +'max-height:88vh;overflow:auto">'
+    /* Ocupa toda la pantalla (Angie, 02/11/2026): a 680 px las tareas, los
+       tickets y la ruta iban uno debajo del otro y había que bajar para todo.
+       En pantallas anchas el cuerpo se parte en dos columnas (.p3fi-cols). */
+    +'<div class="modal p3fi-modal" id="p3-ficha-modal" style="max-width:none;'
+      +'width:calc(100vw - 24px);height:calc(100dvh - 24px);max-height:none;overflow:auto">'
       +_p360FichaHtml(c, !!S.p360FichaAgenda)
     +'</div></div>';
 }
@@ -40409,7 +40430,9 @@ function _p360FichaHtml(c, conAgenda){
     +'<div class="p3fi-cuerpo">'
       /* Las tareas del CSM de la etapa (js/etapas-csm.js, 28/10/2026), arriba
          de las de la plantilla: son las que se tildan todos los dias. */
+      +'<div class="p3fi-cols"><div class="p3fi-col">'
       +((typeof _csmEtapaHtml==='function')?_csmEtapaHtml(c):'')
+      +'</div><div class="p3fi-col">'
       /* La plantilla de etapas (_petHtml) ya no va acá (01/11/2026): sus tareas
          pasaron a CSM_ETAPAS y dos listas parecidas que no se hablaban era lo
          que hacía que nunca quedaran bien. Lo tildado sigue en datos.etapasTareas. */
@@ -40420,6 +40443,7 @@ function _p360FichaHtml(c, conAgenda){
       +ruta.map(fila).join('')
       +'</details>'
       +(conAgenda?_citasHtml(c):'')
+      +'</div></div>'
     +'</div>'
     /* Las cuatro acciones eran texto de 10.5px en el gris mas apagado, dos
        arriba y dos perdidas en el medio. Son botones y estan juntas. */
