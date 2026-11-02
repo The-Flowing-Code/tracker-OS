@@ -98,6 +98,8 @@ var CSM_ETAPAS=[
     {id:'sis-accesos-cli', t:'Dio los accesos al CRM y a Meta', quien:'cliente', ayuda:'Con los instructivos que le mandó Santi en Estrategia.'},
     {id:'sis-whatsapp', t:'Conectó su WhatsApp al CRM', quien:'cliente', ayuda:'Sin esto no sale el mensaje 1.'},
     {id:'sis-pago-meta', t:'Medio de pago de Meta al día', quien:'cliente', ayuda:'Con un pago pendiente Meta no entrega ni deja editar anuncios.'},
+    {id:'sis-aceptar', t:'Aceptar las invitaciones al portfolio de Meta y al CRM', quien:'claude',
+     ayuda:'Apenas el cliente las manda: desde la cuenta de Angie, y avisa en la ficha qué quedó aceptado.'},
     {id:'sis-accesos', t:'Chequear que dieron los accesos (CRM y Meta)', quien:'csm', ayuda:'Los da el cliente con los instructivos que se mandaron en Estrategia.'},
     {id:'sis-estaticos', t:'Estáticos creados y auditados', quien:'delivery',
      ayuda:'4 o 5 por conjunto, persona fija, el avatar nombrado y la promesa arriba, fotos que parezcan reales.'},
