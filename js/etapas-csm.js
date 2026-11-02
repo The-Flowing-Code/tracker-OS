@@ -52,6 +52,8 @@ var CSM_ETAPAS=[
     {id:'onb-llamadas', t:'Llamadas de venta cargadas en la ficha', quien:'claude',
      ayuda:'Arranca solo con el alta: busca en Fathom las llamadas de venta con el cliente y las ata a su ficha.'},
     {id:'onb-factura', t:'Verificar los datos de la factura', quien:'csm'},
+    {id:'onb-crm', t:'Crear la subcuenta del CRM y mandarle la invitación al cliente', quien:'claude',
+     ayuda:'Al alta: subcuenta en GoHighLevel con el nombre del cliente, su usuario invitado y el link en la ficha.'},
     {id:'onb-form-armado', t:'Armar el formulario personalizado con lo que dijo en la venta', quien:'claude',
      ayuda:'Arranca solo con el alta del cliente. Sin preguntar accesos: competencia, diferencial, qué resuelve, costos fijos y rentabilidad.'},
     {id:'onb-pagina', t:'Armar la página de bienvenida (video, formulario y calendario)', quien:'claude',
