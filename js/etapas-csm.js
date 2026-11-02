@@ -33,45 +33,129 @@
    `msg` (Angie, 29/10/2026) es el mensaje que va con la tarea: un botón a la
    derecha lo copia para pegarlo en el WhatsApp del cliente (`_cmMensaje` y
    `cliMenuCopiar`, en index.html). Antes vivían en el menú ⋮ de la tarjeta. */
+/* El roadmap del cliente (Angie, 01/11/2026): una sola lista por etapa con
+   TODO lo que tiene que pasar, no solo lo del CSM. Antes había dos listas que
+   decían cosas parecidas y no se hablaban (esta y la plantilla de etapas, que
+   se copiaba a cada cliente y la tenían 12 de 69); la plantilla dejó de verse
+   en la ficha y sus tareas pasaron acá. `quien` dice de quién depende:
+   'csm' (Santi), 'delivery' (Angie y el equipo), 'claude' (lo arranca Claude solo) o 'cliente'. Los ids no se
+   cambian nunca: lo tildado de cada cliente cuelga de ellos. */
 var CSM_ETAPAS=[
-  {k:'onboarding', n:'Onboarding', re:/onboard|bienvenida/i, llamada:'Llamada de bienvenida',
+  /* Onboarding sin llamada de bienvenida (Angie, 01/11/2026): se le manda al
+     cliente un link con una landing que tiene el video de bienvenida, el
+     formulario personalizado y, al final, el calendario para agendar la
+     llamada de estrategia. La agenda la tilda la cita (est-agendar). */
+  {k:'onboarding', n:'Onboarding', re:/onboard|bienvenida|alta|pago/i, llamada:'',
    tareas:[
-    {id:'onb-agendar', t:'Agendar la llamada de bienvenida', agenda:true,
-     ayuda:'15 min. Hasta fin de octubre con Angie; desde noviembre, con Santi.'},
-    {id:'onb-llamadas', t:'Chequear que las llamadas estén agendadas'},
-    {id:'onb-factura', t:'Verificar los datos de la factura'},
-    {id:'onb-accesos', t:'Cargar accesos y demos en la ficha'},
-    {id:'onb-formulario', t:'Mandar el formulario personalizado',
-     ayuda:'Se genera en la ficha y se copia y pega.'},
-    {id:'onb-cafecito', t:'Sumarlo a la invitación del cafecito mensual', msg:'cafecito',
+    {id:'onb-redes', t:'Cargar web, Instagram, página de Facebook y Biblioteca en la ficha', quien:'claude',
+     ayuda:'Arranca solo con el alta: desde la web del cliente y la Biblioteca de anuncios. Lo que no aparezca va como pregunta en el formulario.'},
+    {id:'onb-llamadas', t:'Llamadas de venta cargadas en la ficha', quien:'claude',
+     ayuda:'Arranca solo con el alta: busca en Fathom las llamadas de venta con el cliente y las ata a su ficha.'},
+    {id:'onb-factura', t:'Verificar los datos de la factura', quien:'csm'},
+    {id:'onb-form-armado', t:'Armar el formulario personalizado con lo que dijo en la venta', quien:'claude',
+     ayuda:'Arranca solo con el alta del cliente. Sin preguntar accesos: competencia, diferencial, qué resuelve, costos fijos y rentabilidad.'},
+    {id:'onb-pagina', t:'Armar la página de bienvenida (video, formulario y calendario)', quien:'claude',
+     ayuda:'Con su marca; el calendario es el de Strategy Call. Deja el mensaje con el link listo para que Santi lo copie.'},
+    {id:'onb-link', t:'Pasarle a Santi el mensaje con el link de bienvenida', quien:'claude', msg:'bienvenida',
+     ayuda:'Claude se lo manda a Santi por WhatsApp y Santi lo reenvía al grupo del cliente. Si no se pudo mandar, igual le queda de recordatorio en su escritorio («Mensajes para mandar hoy») y acá, listo para copiar.'},
+    {id:'onb-form-ok', t:'Completó el formulario', quien:'cliente',
+     ayuda:'Si a los 2 días no lo completó o no agendó, escribirle.'},
+    {id:'onb-agendo', t:'Agendó la llamada de estrategia desde el link', quien:'cliente'},
+    {id:'onb-accesos', t:'Cargar accesos y demos en la ficha', quien:'csm'},
+    {id:'onb-cafecito', t:'Sumarlo a la invitación del cafecito mensual', quien:'csm', msg:'cafecito',
      ayuda:'Último viernes de cada mes, 16 h. La invitación sale de Google Calendar.'}]},
-  {k:'estrategia', n:'Estrategia', re:/estrateg|strategy/i, llamada:'Llamada de estrategia',
+  /* Proceso comercial ya no es una etapa aparte (Angie, 02/11/2026): se arma con
+     la primera parte del dataset, así que sus tareas viven en Estrategia. Los
+     instructivos del CRM (videos del calendario y el pipeline) van dentro de la
+     página del resultado final. */
+  {k:'estrategia', n:'Estrategia', re:/estrateg|strategy|dataset|comercial/i, llamada:'Llamada de estrategia',
    tareas:[
-    {id:'est-instructivos', t:'Mandar los instructivos de accesos (CRM y Meta)', msg:'instructivos',
-     ayuda:'Cuando ya tuvieron un primer contacto.'},
-    {id:'est-dataset', t:'Mandar el link del dataset', ayuda:'Cuando Angie lo termina.'},
-    {id:'est-agendar', t:'Agendar la llamada de estrategia', agenda:true}]},
-  {k:'sistemas', n:'Sistemas y montado del embudo', re:/sistema|montado/i, llamada:'',
+    {id:'est-agendar', t:'Chequear que agendó la llamada de estrategia', quien:'csm', agenda:true,
+     ayuda:'La agenda el cliente desde el link de bienvenida; Santi chequea que esté en el calendario. La lidera Santi: presenta, Angie explica la estrategia y Santi cierra con los próximos pasos.'},
+    {id:'est-dataset-armado', t:'Dataset completo antes de la llamada', quien:'claude',
+     ayuda:'Arranca solo cuando el cliente completa el formulario, con la skill dataset-casa. El mercado va adentro: si ya pautó, su cuenta es la primera fuente; se parte de un cliente parecido con resultados.'},
+    {id:'pc-recorridos', t:'Proceso comercial y recorridos del lead', quien:'claude',
+     ayuda:'En la primera parte del dataset: mensaje 1 automático, mensaje 2 en audio si no agendó, recordatorios sin opción de mover.'},
+    {id:'pc-documento', t:'Documento de proceso comercial', quien:'claude'},
+    {id:'est-oferta', t:'Estado de la oferta actualizado en el tablero', quien:'claude', ayuda:'Al cerrar cada parte del dataset.'},
+    {id:'est-comercial-rev', t:'Revisión del proceso comercial', quien:'delivery',
+     ayuda:'Va en el mismo WhatsApp que el dataset: Claude le manda los dos links a Angie.'},
+    {id:'est-dataset-rev', t:'Revisión del dataset', quien:'delivery', ayuda:'Claude le manda el link a Angie por WhatsApp cuando está listo; ella lo revisa antes de que Santi lo mande.'},
+    {id:'est-dataset', t:'Mandar el link del dataset', quien:'csm', ayuda:'Cuando Angie lo revisó.'},
+    {id:'est-instructivos', t:'Mandar los instructivos de accesos (CRM y Meta)', quien:'csm', msg:'instructivos'},
+    {id:'est-material', t:'Mandó el material (logo, capturas del producto, casos o testimonios)', quien:'cliente'},
+    {id:'est-llamada-angie', t:'Presentar el dataset en la llamada de estrategia', quien:'delivery',
+     ayuda:'Angie explica la estrategia y el dataset.'},
+    {id:'est-llamada-santi', t:'Llamada de estrategia: presentar y cerrar con los próximos pasos', quien:'csm',
+     ayuda:'Santi abre la llamada y la cierra con lo que sigue.'},
+    {id:'est-asistio', t:'Asistió a la llamada de estrategia', quien:'cliente'},
+    {id:'est-dataset-ok', t:'Dataset aprobado por el cliente', quien:'cliente'},
+    {id:'est-guiones', t:'Guiones escritos', quien:'claude', ayuda:'Arrancan solos con el dataset aprobado. Para la segunda tanda: no frenan el paso a Sistemas.'},
+    {id:'est-guiones-rev', t:'Revisión de los guiones', quien:'delivery', ayuda:'Angie los revisa antes de mandarlos.'},
+    {id:'est-guiones-ok', t:'Guiones aprobados por el cliente', quien:'cliente', ayuda:'No frena el paso a Sistemas.'}]},
+  {k:'sistemas', n:'Sistemas y montado del embudo', re:/sistema|montado|sprint/i, llamada:'',
    tareas:[
-    {id:'sis-accesos', t:'Dieron los accesos'},
-    {id:'sis-resultado', t:'Mandar el mensaje con el link del resultado final',
-     ayuda:'Estáticos, landing e instructivos del pipeline.'}]},
-  {k:'lanzamiento', n:'Lanzamiento', re:/lanzam|launch/i, llamada:'',
+    {id:'sis-accesos-cli', t:'Dio los accesos al CRM y a Meta', quien:'cliente', ayuda:'Con los instructivos que le mandó Santi en Estrategia.'},
+    {id:'sis-whatsapp', t:'Conectó su WhatsApp al CRM', quien:'cliente', ayuda:'Sin esto no sale el mensaje 1.'},
+    {id:'sis-pago-meta', t:'Medio de pago de Meta al día', quien:'cliente', ayuda:'Con un pago pendiente Meta no entrega ni deja editar anuncios.'},
+    {id:'sis-accesos', t:'Chequear que dieron los accesos (CRM y Meta)', quien:'csm', ayuda:'Los da el cliente con los instructivos que se mandaron en Estrategia.'},
+    {id:'sis-estaticos', t:'Estáticos creados y auditados', quien:'delivery',
+     ayuda:'4 o 5 por conjunto, persona fija, el avatar nombrado y la promesa arriba, fotos que parezcan reales.'},
+    {id:'sis-estaticos-ok', t:'Estáticos aprobados por el cliente', quien:'cliente'},
+    {id:'sis-embudo', t:'Landing y embudo montados', quien:'delivery', ayuda:'Con la skill lanzar-embudo: marca del cliente, gracias con 5 s a WhatsApp y evento Lead, un solo pipeline si es de agenda.'},
+    {id:'sis-landing-ok', t:'Landing aprobada por el cliente', quien:'cliente'},
+    {id:'sis-mensaje1', t:'Mensaje 1 automático y mail de nueva oportunidad al cliente', quien:'delivery'},
+    {id:'sis-medicion', t:'CRM y medición conectados (píxel, CAPI y eventos)', quien:'delivery'},
+    {id:'sis-campana', t:'Campaña montada en pausa', quien:'delivery',
+     ayuda:'Con la nomenclatura. Cuenta nueva: un solo anuncio a USD 5 por día los primeros 3 o 4 días.'},
+    {id:'sis-videos', t:'Grabó los videos de los guiones aprobados', quien:'cliente', ayuda:'Para la segunda tanda: no frena el lanzamiento.'},
+    {id:'sis-prueba', t:'Probar el embudo con el número de prueba', quien:'delivery',
+     ayuda:'«Prueba Test» y el 11 3305-5322: verificar en WhatsApp Web el mensaje 1 y de qué número sale.'},
+    {id:'sis-resultado-armado', t:'Armar la página del resultado final', quien:'claude',
+     ayuda:'Estáticos, landing y los videos del calendario y el pipeline (instructivos del CRM), para que Santi la mande.'},
+    {id:'sis-resultado', t:'Mandar el mensaje con el link del resultado final', quien:'csm',
+     ayuda:'Al cliente y a quien atiende los leads.'}]},
+  {k:'lanzamiento', n:'Lanzamiento', re:/^(?!.*sprint).*(lanzam|launch)/i, llamada:'',
    tareas:[
-    {id:'lan-prueba', t:'Probar el embudo entero como lead',
-     ayuda:'Cuando el cliente da el OK: anuncio, agenda o registro, WhatsApp y CRM.'},
-    {id:'lan-grupal', t:'Sumarlo a las capacitaciones grupales de los viernes', msg:'capacitacion'}]},
+    {id:'lan-prueba', t:'Probar el embudo entero como lead', quien:'csm',
+     ayuda:'Con el número de prueba y «Prueba Test»: anuncio, agenda o registro, WhatsApp y CRM.'},
+    {id:'lan-prendidas', t:'Campañas prendidas', quien:'delivery',
+     ayuda:'Cuenta nueva: un solo anuncio a USD 5 por día los primeros 3 o 4 días, después el resto.'},
+    {id:'lan-72h', t:'72 h de monitoreo', quien:'delivery', ayuda:'Menos de 7 días es aprendizaje: no se alarma por costo.'},
+    {id:'lan-videos', t:'Segunda tanda: videos editados y auditados', quien:'delivery',
+     ayuda:'Con lo que grabó el cliente; auditoría de cortes en 0 antes de mostrarlos.'},
+    {id:'lan-reporte', t:'Link del reporte de campañas cargado y enviado', quien:'delivery'},
+    {id:'lan-audio', t:'Audio explicando los mensajes diarios y pidiendo feedback', quien:'csm',
+     ayuda:'Antes del primer mensaje diario.'},
+    {id:'lan-prueba-cli', t:'Probó cómo le llega un lead (mensaje 1 y mail)', quien:'cliente'},
+    {id:'lan-instructivos-cli', t:'Recibió y vio los instructivos del CRM', quien:'cliente', ayuda:'Están en la página del resultado final.'},
+    {id:'lan-grupal', t:'Sumarlo a las capacitaciones grupales de los viernes', quien:'csm', msg:'capacitacion'}]},
   {k:'recurrente', n:'Recurrente', re:/recurrent|gesti[oó]n mensual/i, llamada:'',
    tareas:[
-    {id:'rec-diario', t:'Mensaje diario', cada:'dia', ayuda:'De lunes a viernes.'},
-    {id:'rec-grupal', t:'Conectarse a la grupal de los viernes', cada:'semana'}]}
+    {id:'rec-diario', t:'Mensaje diario', quien:'csm', cada:'dia',
+     ayuda:'De lunes a viernes: presupuesto, qué trajo, pipeline, qué vemos y qué hacemos.'},
+    {id:'rec-grupal', t:'Conectarse a la grupal de los viernes', quien:'csm', cada:'semana'},
+    {id:'rec-revision', t:'Revisar los reportes con Angie antes de la grupal', quien:'csm', cada:'semana', ayuda:'Cerca del viernes, para llevarle a Martín qué recomendamos con cada cliente.'},
+    {id:'rec-viernes', t:'Reporte de los viernes para Martín', quien:'delivery', cada:'semana',
+     ayuda:'Datos duros, contexto del equipo y feedback del cliente (3 pilares).'},
+    {id:'rec-pipeline', t:'Movió las oportunidades en el pipeline', quien:'cliente', cada:'semana',
+     ayuda:'Así el reporte muestra agendas, asistencias y ventas reales.'},
+    {id:'rec-feedback', t:'Dio feedback de la calidad de los leads', quien:'cliente', cada:'semana'},
+    {id:'rec-grupal-cli', t:'Se conectó a la grupal de los viernes', quien:'cliente', cada:'semana'},
+    {id:'rec-cambios', t:'Aplicar los cambios de campañas acordados', quien:'delivery', cada:'semana',
+     ayuda:'Los del reporte del viernes, con el OK de Angie.'},
+    {id:'rec-creativos', t:'Nuevos creativos al aire', quien:'delivery', cada:'mes'}]}
 ];
+var CSM_QUIEN={csm:'CSM', delivery:'Delivery', claude:'Claude', cliente:'Cliente'};
 
 function csmEtapaDef(k){
   return CSM_ETAPAS.filter(function(e){ return e.k===k; })[0]||null;
 }
 /* De un label de la ruta o del tablero a la etapa del CSM. Lanzamiento va antes
-   que sistemas a propósito: un «Lanzamiento del embudo» es lanzamiento. */
+   que sistemas a propósito: un «Lanzamiento del embudo» es lanzamiento. El
+   «Sprint de lanzamiento» es el montaje, así que es de sistemas (su `re` lo
+   saca de lanzamiento). «Alta Cliente» y «Pago / onboarding» son onboarding,
+   y «Documento dataset», estrategia. */
 function csmEtapaDeLabel(label){
   var l=String(label||'');
   if(!l) return null;
@@ -102,7 +186,11 @@ function csmCita(c, def){
   var hecha=null;
   try{
     var r=(typeof _ruta==='function')?(_ruta(c)||[]):[];
-    var h=r.filter(function(x){ return !x.manual && def.re.test(String(x.l||'')) && x.estado==='hecho'; })[0];
+    /* Una etapa que quedó «hecha» porque se arrastró la tarjeta más adelante
+       (p360Mover, `c.rutaMovida`) no es una llamada que se hizo: el 29/10 eso
+       tildó solas las de agendar de Apc, Automia, Savia y Atentamente. */
+    var mov=(c.rutaMovida && typeof c.rutaMovida==='object')?c.rutaMovida:{};
+    var h=r.filter(function(x){ return !x.manual && !(mov[x.l] && x.aMano) && def.re.test(String(x.l||'')) && x.estado==='hecho'; })[0];
     if(h) hecha={estado:'hecha', cuando:h.fecha||null};
   }catch(err){}
   var citas=(c.citas && typeof c.citas==='object')?c.citas:{};
@@ -143,6 +231,7 @@ function csmTareaEstado(c, t, def, ahora){
     if(isNaN(at)) ok=false;
     else if(t.cada==='dia') ok=(at.toDateString()===ahora.toDateString());
     else if(t.cada==='semana') ok=(at>=_csmLunes(ahora));
+    else if(t.cada==='mes') ok=(at.getFullYear()===ahora.getFullYear() && at.getMonth()===ahora.getMonth());
   }
   if(!ok && t.agenda){
     var ci=csmCita(c, def);
@@ -160,13 +249,29 @@ function _csmYo(){ return String((typeof SB==='object' && SB && SB.email)||''); 
 
 // Quién y cuándo, como en las tareas de la plantilla: una tarea tildada sin
 // rastro no se puede auditar, y es lo que se pregunta cuando algo no se hizo.
-function csmTildar(clientId, tareaId, val){
+/* El tilde se guarda con _cliEditarEnNube: se aplica sobre la copia de la nube
+   si otra sesión guardó ese cliente en el medio. Con save() a secas, dos
+   personas con el tracker abierto se pisaban y el tilde de una desaparecía. */
+function _csmEditar(clientId, fn){
   var c=_csmCliente(clientId); if(!c) return;
-  c.csmTareas=(c.csmTareas && typeof c.csmTareas==='object')?c.csmTareas:{};
-  if(val) c.csmTareas[tareaId]={ok:true, at:new Date().toISOString(), por:_csmYo()};
-  else delete c.csmTareas[tareaId];
-  save();
+  // Se ve al instante en esta copia; el cambio es idempotente, así que
+  // aplicarlo de nuevo sobre la de la nube no lo duplica.
+  fn(c);
+  if(typeof _cliEditarEnNube==='function'){
+    var ap={}; ap[String(clientId)]=fn;
+    var pr=_cliEditarEnNube(ap);
+    if(pr && typeof pr.then==='function')
+      pr.then(function(){ if(typeof p360Repintar==='function') p360Repintar(); });
+  }else save();
   if(typeof p360Repintar==='function') p360Repintar();
+}
+function csmTildar(clientId, tareaId, val){
+  var yo=_csmYo(), at=new Date().toISOString();
+  _csmEditar(clientId, function(d){
+    d.csmTareas=(d.csmTareas && typeof d.csmTareas==='object')?d.csmTareas:{};
+    if(val) d.csmTareas[tareaId]={ok:true, at:at, por:yo};
+    else delete d.csmTareas[tareaId];
+  });
 }
 
 /* Lo que hace Claude o una rutina también tilda la tarea del CSM (Angie,
@@ -201,10 +306,12 @@ function csmHechosCliente(c, ahora){
     if(!h || !h.id || !h.csmTarea) return;
     c.csmHechosAplicados=(c.csmHechosAplicados && typeof c.csmHechosAplicados==='object')?c.csmHechosAplicados:{};
     if(c.csmHechosAplicados[h.id]) return;
-    c.csmHechosAplicados[h.id]=ahora.toISOString(); r.vistos++;
-    // Un id que no existe (mal escrito, o una tarea que se sacó) no tilda nada.
+    // Un id que no existe (mal escrito, o una tarea que todavía no está en la
+    // lista) no tilda nada y tampoco se da por usado: si después se suma la
+    // tarea, el hecho la tilda.
     var x=_csmTareaDeId(String(h.csmTarea));
     if(!x) return;
+    c.csmHechosAplicados[h.id]=ahora.toISOString(); r.vistos++;
     // Con csmTareaEstado y no con «hay entrada»: un «mensaje diario» de ayer
     // ya no cuenta como tildado hoy. La agenda no cuenta como mano (auto).
     var st=csmTareaEstado(c, x.t, x.def, ahora);
@@ -246,22 +353,18 @@ function csmVerEtapa(clientId, k){
    equipo o el cliente) y para cuándo. Cada campo guarda al salir, sin botón
    que se pueda olvidar, igual que la plantilla. */
 function csmTrabaSet(clientId, k, campo, valor){
-  var c=_csmCliente(clientId); if(!c || !csmEtapaDef(k)) return;
-  if(['t','quien','para'].indexOf(campo)<0) return;
-  c.etapaTraba=(c.etapaTraba && typeof c.etapaTraba==='object')?c.etapaTraba:{};
-  var tr=c.etapaTraba[k]||{t:'', quien:'', para:''};
-  tr[campo]=String(valor||'').trim();
-  tr.at=new Date().toISOString(); tr.por=_csmYo();
-  if(!tr.t && !tr.quien && !tr.para) delete c.etapaTraba[k];
-  else c.etapaTraba[k]=tr;
-  save();
-  if(typeof p360Repintar==='function') p360Repintar();
+  if(!csmEtapaDef(k) || ['t','quien','para'].indexOf(campo)<0) return;
+  var yo=_csmYo(), at=new Date().toISOString(), v=String(valor||'').trim();
+  _csmEditar(clientId, function(d){
+    d.etapaTraba=(d.etapaTraba && typeof d.etapaTraba==='object')?d.etapaTraba:{};
+    var tr=d.etapaTraba[k]||{t:'', quien:'', para:''};
+    tr[campo]=v; tr.at=at; tr.por=yo;
+    if(!tr.t && !tr.quien && !tr.para) delete d.etapaTraba[k];
+    else d.etapaTraba[k]=tr;
+  });
 }
 function csmTrabaQuitar(clientId, k){
-  var c=_csmCliente(clientId); if(!c || !c.etapaTraba) return;
-  delete c.etapaTraba[k];
-  save();
-  if(typeof p360Repintar==='function') p360Repintar();
+  _csmEditar(clientId, function(d){ if(d.etapaTraba) delete d.etapaTraba[k]; });
 }
 function csmTrabaEditar(clientId, k){
   S.csmTrabaAbierta=clientId+':'+k;
@@ -368,7 +471,6 @@ function _csmEtapaHtml(c){
     ? csmEtapaDef(S.csmEtapaVer[c.id]) : null;
   var def=ver||act;
   var csm=(typeof _csmMail==='function')?_csmMail():'';
-  var nom=csm?_csmNom(csm):'el CSM';
   var ahora=new Date();
   // Las etapas en pastillas: la de ahora marcada, para saltar a otra con un toque.
   var chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px">'
@@ -390,6 +492,9 @@ function _csmEtapaHtml(c){
     cuerpo=def.tareas.map(function(t){
       var st=csmTareaEstado(c, t, def, ahora);
       var meta=[];
+      if(t.quien && CSM_QUIEN[t.quien]) meta.push('<span style="color:'
+        +(t.quien==='cliente'?'var(--amberx)':(t.quien==='delivery'?'var(--text2)':'var(--accent)'))+'">'
+        +esc(t.quien==='csm'?(csm?_csmNom(csm):CSM_QUIEN.csm):CSM_QUIEN[t.quien])+'</span>');
       if(t.ayuda) meta.push('<span>'+esc(t.ayuda)+'</span>');
       if(st.auto){
         meta.push('<span style="color:var(--accent)">'
@@ -405,7 +510,7 @@ function _csmEtapaHtml(c){
         meta.push('<span'+ev+'>hecha'+(st.at?(' el '+esc(new Date(st.at).toLocaleDateString('es-AR'))):'')
           +(st.por?(' por '+esc(_csmNom(st.por))):'')+'</span>');
       }
-      if(t.cada && !st.ok) meta.push('<span class="amb">'+(t.cada==='dia'?'falta hoy':'falta esta semana')+'</span>');
+      if(t.cada && !st.ok) meta.push('<span class="amb">'+(t.cada==='dia'?'falta hoy':(t.cada==='mes'?'falta este mes':'falta esta semana'))+'</span>');
       /* El 📅 en verde al lado de la tarea de agendar, una vez tildada (pedido
          de Angie): se ve de un vistazo que la llamada está puesta. */
       var cal=(t.agenda && st.ok)
@@ -441,7 +546,7 @@ function _csmEtapaHtml(c){
   }
   return '<div class="pet-et" style="padding-bottom:9px">'
     +'<div class="pet-eth" style="cursor:default;padding-bottom:0">'
-      +'<span>'+(csm?('Tareas de '+esc(nom)):'Tareas del CSM')+'</span>'
+      +'<span>Tareas de la etapa</span>'
       +(def?('<span class="pet-cnt">'+esc(def.n)+'</span>'):'')
     +'</div>'
     +chips+cuerpo

@@ -3829,11 +3829,17 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                     'vigilancia',
                     /* Los mensajes armados para mandar a los clientes ese dia, que
                        redactan las mismas rutinas (22/10/2026, migracion 049). */
-                    'mensajesDia'];
+                    'mensajesDia',
+                    /* Lo hecho de cada cliente (26/10/2026, migracion 051): lo suman las
+                       rutinas de revision y Claude con rpc/agregar_hechos; js/avisos.js
+                       cierra o crea su ticket y el Dashboard lo lista en «Hechos».
+                       Cumple el filtro a medias: lo aplicado queda en datos.hechosAplicados,
+                       asi que si se pierde la lista solo se deja de ver, no se rehace. */
+                    'hechos'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.
@@ -5210,7 +5216,7 @@ function celBarraMarcar(){
   if(S.view==='client') k='clientes';
   else if(S.view==='tickets'){
     var t=S.torreVista||'panel360';
-    k=(t==='panel360'||t==='dashboard') ? 'panel360' : (t==='tickets' ? t : 'mas');
+    k=(t==='panel360'||t==='dashboard'||t==='materiales') ? 'panel360' : (t==='tickets' ? t : 'mas');
   }
   barra.querySelectorAll('button').forEach(function(b){
     b.classList.toggle('on', b.dataset.k===k);
@@ -18477,7 +18483,7 @@ function irTorre(k){
   /* El Dashboard es una solapa del Panel 360 y la ve tambien quien tiene solo
      su cartera: la solapa estaba a la vista pero esto la devolvia al Panel 360,
      y para Santi el boton "no abria". dashboardHtml filtra a su cartera. */
-  S.torreVista=(soloCartera()&&_k!=='calendario'&&_k!=='dashboard'&&_k!=='tickets')?'panel360':_k;
+  S.torreVista=(soloCartera()&&_k!=='calendario'&&_k!=='dashboard'&&_k!=='tickets'&&_k!=='materiales')?'panel360':_k;
   collapseSidebar();
   showTickets();
 }
@@ -18511,7 +18517,7 @@ function _torreSubVisible(){
 }
 function _torreSubMarcar(){
   var k=S.torreVista||'mirador';
-  if(k==='dashboard'||k==='tickets') k='panel360';   // Dashboard y Tickets son solapas del Panel 360
+  if(k==='dashboard'||k==='tickets'||k==='materiales') k='panel360';   // Dashboard y Tickets son solapas del Panel 360
   _torreSubVisible();
   document.querySelectorAll('#torre-sub .torre-sub-item').forEach(function(el){
     el.classList.toggle('sel', el.dataset.k===k);
@@ -19193,6 +19199,26 @@ function _torreVacio(titulo, texto){
     +'<div style="font-size:11.5px;color:var(--text3);max-width:460px;margin:0 auto">'+texto+'</div></div>';
 }
 
+// ---- Materiales ---------------------------------------------------------
+// Solapa del Panel 360 (16/10/2026): los documentos de apoyo del equipo.
+// Cada material es un artifact con link fijo; sumar uno es agregar una fila.
+// Los links no abren sin cuenta con acceso: el artifact es privado.
+var MATERIALES=[
+  {t:'Instructivos del CRM', d:'Videos paso a paso del CRM, en orden, con el tilde de «ya lo vi».',
+   url:'https://claude.ai/artifact/1YzBFGS4VTUaQEyc88gyFB'}
+];
+function materialesHtml(){
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">'
+    +MATERIALES.map(function(m){
+      return '<a href="'+m.url+'" target="_blank" rel="noopener noreferrer" '
+        +'style="display:block;text-decoration:none;background:var(--bg2);border:1px solid var(--border);'
+        +'border-radius:var(--radius-lg);padding:16px 18px">'
+        +'<div style="font-size:14px;font-weight:600;color:var(--strong);margin-bottom:4px">'+esc(m.t)+'</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+esc(m.d)+'</div>'
+        +'<span style="font-size:12px;color:var(--accent)">Abrir &rarr;</span></a>';
+    }).join('')+'</div>';
+}
+
 // ---- Prioridad ----------------------------------------------------------
 // Dos cosas separadas a proposito: el nivel lo elegis vos y no se toca solo;
 // la antiguedad suma aparte y se muestra. Si el envejecimiento pisara tu
@@ -19287,7 +19313,7 @@ function showTickets(){
   if(!S.torreVista || S.torreVista==='mirador') S.torreVista='panel360';
   if(S.torreVista==='calendario' && !puedeCalendario()) S.torreVista='panel360';
   if(soloCartera() && S.torreVista!=='panel360' && S.torreVista!=='calendario'
-     && S.torreVista!=='dashboard' && S.torreVista!=='tickets')
+     && S.torreVista!=='dashboard' && S.torreVista!=='tickets' && S.torreVista!=='materiales')
     S.torreVista='panel360';
   var _torre=S.torreVista||'mirador';
   S.view='tickets'; S.clientId=null; renderSidebar();
@@ -19675,13 +19701,13 @@ function showTickets(){
     +'<div class="content">'
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:3px">'
     +'<div style="display:flex;align-items:center;gap:16px;min-width:0">'
-    +((_torre==='panel360'||_torre==='dashboard'||_torre==='tickets')
+    +((_torre==='panel360'||_torre==='dashboard'||_torre==='tickets'||_torre==='materiales')
       /* Panel 360 y Dashboard son dos miradas de la misma cartera: van como
          solapas pegadas al titulo, no como dos entradas del sidebar
          (Angie, 08/10/2026). Tickets se sumo como tercera el 14/10/2026. Quien
          tiene solo su cartera la ve con lo suyo (ver _ticketRows). */
       ? ('<div style="display:flex;gap:4px;flex:none;background:var(--bg2);border:1px solid var(--border);border-radius:999px;padding:3px">'
-         +[['panel360','Panel 360'],['dashboard','Dashboard'],['tickets','Tickets']].map(function(t){
+         +[['panel360','Panel 360'],['dashboard','Dashboard'],['tickets','Tickets'],['materiales','Materiales']].map(function(t){
              var on=(_torre===t[0]);
              return '<button onclick="irTorre(\''+t[0]+'\')" style="border:0;cursor:pointer;border-radius:999px;padding:5px 14px;'
                +'font:600 13px var(--font);'+(on?'background:var(--accent);color:#0A0C11':'background:none;color:var(--text2)')+'">'+t[1]+'</button>';
@@ -19689,7 +19715,7 @@ function showTickets(){
       : ('<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
       +({mirador:'Mirador',tickets:'Tickets',actividad:'Actividad',
          panel360:'Panel 360',dashboard:'Dashboard',rentabilidad:'Rentabilidad',calendario:'Calendario',
-         editor:'Editor con IA',estaticos:'Estaticos con IA'}[_torre]||'Mirador')+'</div>'))
+         editor:'Editor con IA',estaticos:'Estaticos con IA',materiales:'Materiales'}[_torre]||'Mirador')+'</div>'))
     // El periodo va pegado al titulo: es la otra mitad de "donde estoy parada".
     +((_torre==='calendario'&&typeof _calNavHtml==='function')?_calNavHtml():'')
     +'</div>'
@@ -19720,6 +19746,7 @@ function showTickets(){
        actividad:'Lo que se movio en los pipelines y en las tareas. ',
        editor:'Subis el video crudo y el servidor le saca los silencios y le pone los subtitulos. '
          +'Nada del video sale hacia una API de terceros. ',
+       materiales:'Los instructivos y guias del equipo, en un solo lugar. ',
        estaticos:'Pegas el documento de la oferta y sale una tanda de angulos distintos, '
          +'cada uno con sus prompts de imagen. '}[_torre]||'')
     +((_torre==='tickets'&&sinDelegar)?sinDelegar+' tareas pendientes sin delegar en los clientes. ':'')
@@ -19742,7 +19769,8 @@ function showTickets(){
          el 13/10/26: los informes los arman las rutinas de reporte. `rvPanelHtml`
          queda definida. */
       ? (mpPanelHtml())
-      :((soloCartera()&&_torre!=='calendario'&&_torre!=='dashboard'&&_torre!=='tickets')?p360Html()
+      :((soloCartera()&&_torre!=='calendario'&&_torre!=='dashboard'&&_torre!=='tickets'&&_torre!=='materiales')?p360Html()
+      :(_torre==='materiales'?materialesHtml()
       :(_torre==='estaticos'?estaticosHtml()
       :(_torre==='editor'?editorIaHtml()
       :(_torre==='panel360'?p360Html()
@@ -19778,6 +19806,7 @@ function showTickets(){
     +rvAprobacionesHtml()
     +agPanelHtml()
     +dashCambiosHtml(false)
+    +dashHechosHtml()
     +progresoHtml
     // El periodo tambien se esconde detras del embudo: son cinco botones que se
     // tocan una vez cada tanto y ocupaban una fila entera.
@@ -19799,7 +19828,7 @@ function showTickets(){
     +kpi('Tiempo en proceso',avgProceso!=null?(avgProceso*24).toFixed(1)+' hs':'-')
     +kpi('Entregas a tiempo',aTiempo!=null?aTiempo+'%':'-')
     +'</div>'
-    +''))))))))))
+    +'')))))))))))
     +'</div>';
   // La campanita se repinta en cada render: lo que muestra depende de la
   // pantalla, y el render es el unico momento en que se sabe cual es.
@@ -31466,6 +31495,15 @@ function _cmMensaje(c, tipo){
       +(prox?(' El próximo es el viernes '+prox.getDate()+'/'+(prox.getMonth()+1)+'.'):'')
       +' En estos días te llega la invitación ☕'};
   }
+  if(tipo==='bienvenida'){
+    /* El link de bienvenida (video, formulario y calendario de estrategia) lo
+       deja Claude en datos.linkBienvenida al armar la página (Angie, 02/11/2026). */
+    var lb=_cmLink(c&&c.datos&&c.datos.linkBienvenida);
+    if(!lb) return {falta:'Todavía no está el link de bienvenida: lo deja Claude al armar la página.'};
+    return {t:hola+' Bienvenidos a The Flowing Code 🙌 Te dejo acá un video cortito de bienvenida, '
+      +'unas preguntas para conocerlos mejor y, al final, el calendario para agendar la llamada de estrategia:\n'+lb
+      +'\n\nCualquier duda nos escribís por acá.'};
+  }
   if(tipo==='unoauno'){
     var m=_cmLink(DB.unoAUnoLink);
     if(!m) return {falta:'Falta cargar el link de la agenda de Martín en Configuración → Capacitación.'};
@@ -32100,13 +32138,16 @@ var NC_SECCIONES=[
   {k:'comercial', n:'Comercial'},
   {k:'contactos', n:'Contactos'},
   {k:'llamadas',  n:'Llamadas'},
-  {k:'ghl',       n:'GHL'}
+  {k:'ghl',       n:'GHL'},
+  // Ultimo paso (Angie, 16/10/2026): agendar la primera llamada sin salir del alta.
+  {k:'agenda',    n:'Agendar llamada'}
 ];
 
 // Las secciones se ocultan con display, no se redibujan: si se reconstruyera el
 // panel al cambiar de solapa se perderia lo escrito en las otras.
 function _ncSeccion(k){
   NC_SECCIONES.forEach(function(s){
+    if(s.k==='agenda') return;   // es un boton, no una solapa
     var pane=document.getElementById('nc-sec-'+s.k);
     if(pane) pane.style.display=(s.k===k)?'':'none';
     var nav=document.getElementById('nc-nav-'+s.k);
@@ -32137,7 +32178,8 @@ function _ncNavPuntos(){
                || !!(document.getElementById('nc-garantia')||{}).checked,
     contactos: lleno(['nc-owner']) || _ncEquipo.length>0,
     llamadas:  _ncLlamadas.length>0,
-    ghl:       !!(chk&&chk.checked)
+    ghl:       !!(chk&&chk.checked),
+    agenda:    false
   };
   NC_SECCIONES.forEach(function(s){
     var d=document.getElementById('nc-pt-'+s.k);
@@ -32297,11 +32339,18 @@ function _ncBuscar(){
     +filas+filasPap;
 }
 function openNewClientModal(){
+  _ncAgendarAlCrear=false;
   _ncPagos=[];
   _ncEquipo=[];
   _ncLlamadas=[];
   _ncEditIdx=null;
   var nav=NC_SECCIONES.map(function(s,i){
+    /* "Agendar llamada" no es una seccion: es el boton (Angie, 16/10/2026).
+       Crea el cliente y abre lo mismo que el + de su tarjeta en el Panel 360. */
+    if(s.k==='agenda') return '<div style="padding:8px 10px 2px">'
+      +'<button type="button" id="nc-nav-agenda" class="btn btn-primary" onclick="_ncCrearYAgendar()" '
+      +'title="Crea el cliente y abre la agenda, igual que el + del Panel 360" '
+      +'style="width:100%;font-size:12.5px;padding:7px 10px">+ Agendar llamada</button></div>';
     return '<div id="nc-nav-'+s.k+'" onclick="_ncSeccion(\''+s.k+'\')" '
       +'style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;'
       +'padding:8px 14px;border-left:2px solid '+(i?'transparent':'var(--green)')+';'
@@ -32452,9 +32501,11 @@ function openNewClientModal(){
 
             <div id="nc-sec-ghl" style="display:none">${_ncSubcuentaHtml()}</div>
 
+
           </div>
         </div>
         <div class="modal-footer">
+          <span id="nc-msg" role="alert" style="margin-right:auto;font-size:12.5px;color:var(--redx)"></span>
           <button class="btn" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-primary" id="nc-btn" onclick="createClient()">Crear cliente</button>
         </div>
@@ -32475,6 +32526,9 @@ function openNewClientModal(){
   _ncCobroCambio();
 }
 
+// "+ Agendar llamada" del alta: crea el cliente y abre el + del Panel 360.
+var _ncAgendarAlCrear=false;
+function _ncCrearYAgendar(){ _ncAgendarAlCrear=true; createClient(); }
 // Sin mail no hay a quien invitar, asi que el tilde no puede quedar prendido:
 // si se escribe un mail, se tilda, y despues se borra el mail, quedaria pidiendo
 // una invitacion sin destinatario.
@@ -32504,16 +32558,25 @@ async function createClient(){
   // despues (avatar, sidebar, subcuenta en GHL) sigue usando un solo `name`.
   const name=esEmpresa?empresa:contacto;
   if(!name){
+    /* El toast queda debajo de la ventana: tocando «+ Agendar llamada» con el
+       formulario vacio parecia que el boton no hacia nada (Angie, 16/10/2026).
+       Se lleva a Identidad, se marca el campo y se dice al lado del boton. */
+    try{ _ncSeccion('identidad'); }catch(e){}
     var _falta=document.getElementById(esEmpresa?'nc-name':'nc-contact');
-    if(_falta&&_falta.focus) _falta.focus();
-    toast(esEmpresa?'Falta el nombre de la empresa':'Falta el nombre del cliente');
+    if(_falta){ _falta.style.borderColor='var(--redx)'; if(_falta.focus) _falta.focus();
+      _falta.addEventListener('input', function(){ _falta.style.borderColor=''; var m=document.getElementById('nc-msg'); if(m) m.textContent=''; }, {once:true}); }
+    var _m=document.getElementById('nc-msg');
+    if(_m) _m.textContent=esEmpresa?'Falta el nombre de la empresa.':'Falta el nombre del cliente.';
+    else toast(esEmpresa?'Falta el nombre de la empresa':'Falta el nombre del cliente');
     return;
   }
   // El email es opcional, pero si esta mal escrito conviene frenar aca: es el
   // que se manda a GHL y despues corregirlo implica tocar las dos puntas.
   var _mail=document.getElementById('nc-email');
   if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    try{ _ncSeccion('identidad'); }catch(e){}
     if(_mail){ _mail.style.borderColor='var(--redx)'; _mail.focus(); }
+    var _m2=document.getElementById('nc-msg'); if(_m2) _m2.textContent='Revisá el email del cliente.';
     toast('Revisa el email del cliente');
     return;
   }
@@ -32521,6 +32584,7 @@ async function createClient(){
   // Se lee aca y no al final: closeModal() borra el formulario del DOM y para
   // entonces el checkbox ya no existe.
   var _quierePortal=!!(email && (document.getElementById('nc-portal')||{}).checked);
+  var _quiereAgendar=_ncAgendarAlCrear; _ncAgendarAlCrear=false;
   // Por si quedo texto escrito sin haber apretado Enter ni Agregar.
   var _pend=document.getElementById('nc-equipo-input');
   if(_pend&&_pend.value.trim()) _ncEquipoAdd();
@@ -32649,6 +32713,21 @@ async function createClient(){
     if(_listo) await portalInvitar(nuevoId, -1);
     else toast('El cliente quedo creado, pero todavia no subio a la nube: '
       +'invitalo al portal desde su ficha en un momento.','red');
+  }
+  /* El ultimo paso del alta: la ventana de agendar del Panel 360. Si se invito
+     al portal, la clave se muestra una sola vez en una ventana: se espera a que
+     la cierren para no taparla. */
+  if(_quiereAgendar){
+    // Lo mismo que el + de la tarjeta, sin parametros de mas.
+    var _abrirAgenda=function(){ try{ p360Agendar(nuevoId); }catch(e){ toast('No pude abrir la agenda: '+((e&&e.message)||''),'red'); } };
+    var _mr=document.getElementById('modal-root');
+    if(_mr && _mr.children.length){
+      var _t0=Date.now(), _iv=setInterval(function(){
+        var m=document.getElementById('modal-root');
+        if(!m || !m.children.length){ clearInterval(_iv); _abrirAgenda(); }
+        else if(Date.now()-_t0>600000) clearInterval(_iv);
+      }, 600);
+    } else _abrirAgenda();
   }
 }
 // save() sube a Supabase agrupando los cambios de los ultimos 2 segundos, y la
@@ -36809,6 +36888,8 @@ function p360Tildar(clientId, label){
     c.rutaHechas[label]=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)
       +'/'+d.getFullYear();
   }
+  // Tildada o destildada a mano deja de ser «dada por hecha al mover».
+  if(c.rutaMovida) delete c.rutaMovida[label];
   save();
   showTickets();
 }
@@ -36823,11 +36904,16 @@ function p360Mover(clientId, hasta){
   c.rutaHechas=c.rutaHechas||{};
   var hoy=new Date();
   var f=('0'+hoy.getDate()).slice(-2)+'/'+('0'+(hoy.getMonth()+1)).slice(-2)+'/'+hoy.getFullYear();
+  /* Lo que se da por hecho al arrastrar queda anotado en `c.rutaMovida`: la
+     etapa avanza igual, pero las tareas no lo toman como una llamada que se
+     hizo (el 29/10 eso tildó solas las de agendar de cuatro clientes). Si
+     después se tilda a mano o llega la grabación, deja de ser «movida». */
+  c.rutaMovida=(c.rutaMovida && typeof c.rutaMovida==='object')?c.rutaMovida:{};
   RD.forEach(function(e,j){
-    if(j<i){ if(!c.rutaHechas[e.l]) c.rutaHechas[e.l]=f; }
+    if(j<i){ if(!c.rutaHechas[e.l]){ c.rutaHechas[e.l]=f; c.rutaMovida[e.l]=true; } }
     // Las posteriores se destildan: si retrocedis a alguien es porque las de
     // adelante no pasaron. Solo se toca lo tildado a mano, nunca una llamada.
-    else { delete c.rutaHechas[e.l]; }
+    else { delete c.rutaHechas[e.l]; delete c.rutaMovida[e.l]; }
   });
   save();
   showTickets();
@@ -40324,7 +40410,9 @@ function _p360FichaHtml(c, conAgenda){
       /* Las tareas del CSM de la etapa (js/etapas-csm.js, 28/10/2026), arriba
          de las de la plantilla: son las que se tildan todos los dias. */
       +((typeof _csmEtapaHtml==='function')?_csmEtapaHtml(c):'')
-      +_petHtml(c)
+      /* La plantilla de etapas (_petHtml) ya no va acá (01/11/2026): sus tareas
+         pasaron a CSM_ETAPAS y dos listas parecidas que no se hablaban era lo
+         que hacía que nunca quedaran bien. Lo tildado sigue en datos.etapasTareas. */
       +_p360TicketsHtml(c)
       +'<details class="p3fi-ruta"><summary title="La etapa la marcan las llamadas '
         +'de Fathom. Las que no son llamada se tildan a mano. &quot;Mover aca&quot; da '
@@ -42886,6 +42974,35 @@ function dashCambiosHtml(enTarjeta){
   return DASH_CSS+'<div class="dsh" style="margin-bottom:20px"><div class="card">'
     +_h.replace('border-top:1px solid #1E222B;padding-top:20px;','')+'</div></div>';
 }
+/* ── Hechos (pedido 3, 26/10/2026) ─────────────────────────────────────────
+   Lo que la rutina verificó como hecho y lo que se hizo con Claude ya no
+   desaparece: se lista acá con la evidencia y la fecha (maquina.hechos,
+   migracion 051). Se ven los de los últimos 7 días; la base guarda 30. */
+function dashHechosHtml(){
+  var desde=new Date(); desde.setDate(desde.getDate()-7); var d0=rvISO(desde);
+  var L=[];
+  (DB.clients||[]).forEach(function(c){
+    if(!c || c.archived) return;
+    if(typeof soloCartera==='function' && soloCartera() && typeof esDeMiCartera==='function' && !esDeMiCartera(c)) return;
+    (((c.hechos||{}).items)||[]).forEach(function(h){ if(h && h.texto && String(h.fecha||'')>=d0) L.push({c:c,h:h}); });
+  });
+  if(!L.length) return '';
+  L.sort(function(a,b){ return String(b.h.fecha).localeCompare(String(a.h.fecha)); });
+  var max=S.dashHechosTodos?L.length:5;
+  return DASH_CSS+'<div class="dsh" style="margin-bottom:20px"><div class="card"><div style="display:flex;flex-direction:column;gap:10px">'
+    +'<div class="h">'+L.length+' hecho'+(L.length===1?'':'s')+' en los últimos 7 días</div>'
+    +L.slice(0,max).map(function(x){
+      var f=String(x.h.fecha).split('-'); var cuando=f.length===3?(f[2]+'/'+f[1]):'';
+      var quien=(x.h.origen==='claude')?'con Claude':'rutina';
+      return '<div class="row" style="align-items:flex-start;padding:8px 0">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:500;cursor:pointer" onclick="selectClient('+x.c.id+')">'+esc(x.c.name)
+          +' <span class="ks mono">· '+quien+(cuando?' · '+cuando:'')+(x.h.ticket?' · '+esc(x.h.ticket):'')+'</span></div>'
+          +'<div style="color:var(--text2);font-size:12.5px;line-height:1.5;margin-top:2px">'+esc(x.h.texto)+'</div>'
+          +(x.h.evidencia?'<div class="ks" style="margin-top:2px">'+esc(x.h.evidencia)+'</div>':'')+'</div></div>';
+    }).join('')
+    +(L.length>5?'<a href="javascript:void(0)" style="font-size:12px" onclick="S.dashHechosTodos=!S.dashHechosTodos;showTickets()">'+(S.dashHechosTodos?'Ver menos':'Ver los '+L.length)+'</a>':'')
+    +'</div></div></div>';
+}
 /* ── Mandar al agente (Angie, 14/10/2026) ─────────────────────────────────
    El pedido va a la tabla agente_pedidos (migracion 039). Una rutina lo
    PREPARA leyendo Meta y GHL, sin tocar nada, y deja el plan. Cuando una
@@ -44464,6 +44581,8 @@ function rutaTildar(clientId, label){
     var d=(et&&et.fecha&&et.fecha>new Date())?et.fecha:new Date();
     c.rutaHechas[label]=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
   }
+  // Tildada o destildada a mano deja de ser «dada por hecha al mover».
+  if(c.rutaMovida) delete c.rutaMovida[label];
   save();
   if(typeof renderClient==='function') renderClient();
   else if(typeof renderTab==='function') renderTab();

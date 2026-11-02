@@ -83,4 +83,11 @@ describe('hechos que tildan tareas del CSM', () => {
     expect(b.csmHechosAplicar()).toBe(0);
     expect(c2.csmTareas).toBeUndefined();
   });
+
+  it('un id que todavía no existe no se da por usado', () => {
+    const c = { id: 1, hechos: { items: [hecho({ id: 'h9', csmTarea: 'no-existe' })] } };
+    const a = app([c]);
+    a.csmHechosAplicar();
+    expect((c.csmHechosAplicados || {}).h9).toBeUndefined();
+  });
 });

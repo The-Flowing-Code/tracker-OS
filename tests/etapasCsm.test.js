@@ -37,14 +37,21 @@ describe('tareas del CSM por etapa', () => {
     expect(a.csmEtapaDeLabel('Sistemas y Montado del Embudo').k).toBe('sistemas');
     expect(a.csmEtapaDeLabel('Estrategia 2').k).toBe('estrategia');
     expect(a.csmEtapaDeLabel('Recurrente').k).toBe('recurrente');
-    expect(a.csmEtapaDeLabel('Proceso Comercial')).toBe(null);
+    expect(a.csmEtapaDeLabel('Proceso Comercial').k).toBe('estrategia');
+    // Las que estaban sin etapa o en la equivocada (01/11/2026)
+    expect(a.csmEtapaDeLabel('Alta Cliente').k).toBe('onboarding');
+    expect(a.csmEtapaDeLabel('Documento dataset').k).toBe('estrategia');
+    expect(a.csmEtapaDeLabel('Sprint de lanzamiento').k).toBe('sistemas');
+    expect(a.csmEtapaDeLabel('Lanzamiento').k).toBe('lanzamiento');
+    expect(a.csmEtapaDeLabel('Diagnostico')).toBe(null);
+    expect(a.csmEtapaDeLabel('Presentacion / venta')).toBe(null);
   });
 
   it('agendar se tilda sola con una cita de GHL o cargada a mano', () => {
-    const c = { id: 1, citas: { Onboarding: { inicio: enDias(2), estado: 'confirmed', como: 'calendario' } } };
-    const a = app([c], 'Onboarding');
-    const def = a.csmEtapaDef('onboarding');
-    const st = a.csmTareaEstado(c, def.tareas[0], def);
+    const c = { id: 1, citas: { Estrategia: { inicio: enDias(2), estado: 'confirmed', como: 'calendario' } } };
+    const a = app([c], 'Estrategia');
+    const def = a.csmEtapaDef('estrategia');
+    const st = a.csmTareaEstado(c, def.tareas.find((t) => t.agenda), def);
     expect(st.ok).toBe(true);
     expect(st.auto).toBe(true);
     expect(a.csmCita(c, def).estado).toBe('agendada');
@@ -97,12 +104,61 @@ describe('tareas del CSM por etapa', () => {
   });
 
   it('la ficha dibuja las tareas de la etapa de ahora con el 📅 en la de agendar', () => {
-    const c = { id: 1, citas: { Onboarding: { inicio: enDias(2), estado: 'confirmed', como: 'mano' } } };
-    const a = app([c], 'Onboarding');
+    const c = { id: 1, citas: { Estrategia: { inicio: enDias(2), estado: 'confirmed', como: 'mano' } } };
+    const a = app([c], 'Estrategia');
     const h = a._csmEtapaHtml(c);
-    expect(h.replace(/<[^>]+>/g, '')).toContain('Agendar la llamada de bienvenida');
+    expect(h.replace(/<[^>]+>/g, '')).toContain('Chequear que agendó la llamada de estrategia');
     expect(h).toContain('📅');
     expect(h).toContain('agendada para el');
     expect(h).toContain('Sin bloqueante');
+  });
+
+  it('el onboarding no tiene llamada: se manda el link de bienvenida', () => {
+    const a = app([], null);
+    const def = a.csmEtapaDef('onboarding');
+    expect(def.llamada).toBe('');
+    expect(def.tareas.some((t) => t.agenda)).toBe(false);
+    expect(def.tareas.map((t) => t.id)).toContain('onb-link');
+  });
+
+  it('los ids son únicos y cada tarea dice de quién depende', () => {
+    const a = app([], null);
+    const ids = a.CSM_ETAPAS.flatMap((e) => e.tareas.map((t) => t.id));
+    expect(new Set(ids).size).toBe(ids.length);
+    a.CSM_ETAPAS.forEach((e) => e.tareas.forEach((t) => expect(['csm', 'delivery', 'claude', 'cliente']).toContain(t.quien)));
+  });
+
+  it('arrastrar la tarjeta no cuenta como llamada hecha ni tilda agendar', () => {
+    const c = { id: 1, rutaMovida: { Estrategia: true } };
+    const ctx = app([c], 'Sistemas');
+    ctx._ruta = () => [{ l: 'Estrategia', estado: 'hecho', manual: false, aMano: true }];
+    const def = ctx.csmEtapaDef('estrategia');
+    expect(ctx.csmCita(c, def).estado).toBe('sin');
+    expect(ctx.csmTareaEstado(c, def.tareas.find((t) => t.agenda), def).ok).toBe(false);
+    // con la grabación de Fathom (no a mano) sí cuenta
+    ctx._ruta = () => [{ l: 'Estrategia', estado: 'hecho', manual: false, aMano: false }];
+    expect(ctx.csmCita(c, def).estado).toBe('hecha');
+  });
+
+  it('las mensuales valen por el mes', () => {
+    const c = { id: 1, csmTareas: { 'rec-creativos': { ok: true, at: new Date().toISOString() } } };
+    const a = app([c], 'Recurrente');
+    const def = a.csmEtapaDef('recurrente');
+    const t = def.tareas.find((x) => x.id === 'rec-creativos');
+    expect(a.csmTareaEstado(c, t, def).ok).toBe(true);
+    c.csmTareas['rec-creativos'].at = new Date(Date.now() - 40 * 86400000).toISOString();
+    expect(a.csmTareaEstado(c, t, def).ok).toBe(false);
+  });
+
+  it('el tilde va por el guardado que mezcla con la nube', () => {
+    const c = { id: 7 };
+    const a = app([c], 'Onboarding');
+    const nube = {};
+    a._cliEditarEnNube = (ap) => { ap['7'](nube); return Promise.resolve([]); };
+    a.csmTildar(7, 'onb-factura', true);
+    expect(c.csmTareas['onb-factura'].ok).toBe(true);
+    expect(nube.csmTareas['onb-factura'].por).toBe('santi@x.com');
+    a.csmTildar(7, 'onb-factura', false);
+    expect(nube.csmTareas['onb-factura']).toBeUndefined();
   });
 });

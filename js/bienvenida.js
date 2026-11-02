@@ -544,7 +544,9 @@ function _bv2MensHtml(noche){
   (DB.clients||[]).forEach(function(c){
     var M=(c && c.mensajesDia && typeof c.mensajesDia==='object') ? c.mensajesDia : null;
     if(!M) return;
-    ['leads','whatsapp'].forEach(function(f){
+    /* 'onboarding' (02/11/2026): el mensaje con el link de bienvenida que deja
+       Claude al armar la página, para que Santi lo copie. */
+    ['leads','whatsapp','onboarding'].forEach(function(f){
       if(!vale(M[f])) return;
       (M[f].mensajes||[]).forEach(function(x0){
         var x=x0.cliente ? x0 : Object.assign({}, x0, {cliente:c.name||''});

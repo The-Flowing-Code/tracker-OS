@@ -23,7 +23,14 @@ columnas de metricas y la sincronizacion de anuncios) y `js/bienvenida.js` (el
 parte del dia nuevo, 19/10/2026: es la bienvenida de todo el equipo; con la llave localStorage
 `evold-bienvenida-v2` = '0' vuelve la de antes; ahi mismo vive «Buenas noches», el cierre del dia: `buenasNochesMostrar()`, sale sola una vez al abrir la app despues de las 19:00 y con el boton de la luna del menu; la tarjeta «Lo que hiciste hoy» lee `maquina.eod`, que escribe la rutina de cierre con `rpc/set_eod`, migracion 043; el «buen dia» lee `maquina.carteraEstado` («Como van los clientes», la lectura de resultados del reporte de campañas, `rpc/set_cartera_estado`, migracion 044)). `js/avisos.js` pasa a ticket directo los cambios propuestos con `crear:'ticket'` (los que nacen de una llamada, a nombre de `responsable`) y a ticket del CSM (rolId 'csm') los cambios
 propuestos con `para:'csm'` (avisos y tareas del cliente), con `tambien` = las
-socias (personas con `socioId`). JS de navegador, sin build ni
+socias (personas con `socioId`). Desde el 26/10/2026 (pedidos 3, 4 y 6) también:
+un solo ticket «Seguimiento a <cliente>» por cliente con la lista de sus tareas
+pendientes (`seguimientoCliente:true`, `seguimientoDe` = lista de ids), el texto
+de un aviso con ticket abierto se actualiza si la rutina lo cambia, un aviso que
+sale de la lista se cierra con «ya no corresponde», y `hechosAplicar()` lee
+`maquina.hechos` (migracion 051): cierra el ticket que ya está hecho o crea uno
+cerrado si no había (lo aplicado queda en `datos.hechosAplicados`); el Dashboard
+lo lista en «Hechos» (`dashHechosHtml`, 7 días). JS de navegador, sin build ni
 framework: cada `js/*.js` es un `<script src>` clasico que se carga ANTES del
 principal, con funciones globales (los `onclick=""` las siguen encontrando).
 En `js/` solo van declaraciones: nada que al cargar use algo del principal
@@ -36,8 +43,10 @@ La app se publica SOLO si pasan los tests (`.github/workflows/tests.yml`
 publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
 `<script src>` se cambia por el commit.
 
-`js/etapas-csm.js` (28/10/2026): las tareas del CSM por etapa (`CSM_ETAPAS`:
-onboarding, estrategia, sistemas, lanzamiento, recurrente), arriba de las de la
+`js/etapas-csm.js` (28/10/2026; desde el 01/11 es el roadmap entero y la única lista,
+cada tarea con `quien` csm/delivery/claude/cliente —claude = la arranca Claude sola, 02/11—; la plantilla `_petHtml` ya no se ve en la ficha;
+arrastrar una tarjeta anota `datos.rutaMovida`): las tareas por etapa (`CSM_ETAPAS`:
+onboarding, estrategia, sistemas, lanzamiento, recurrente; desde el 02/11 el proceso comercial vive en estrategia), arriba de las de la
 plantilla en la ficha del Panel 360 (`_csmEtapaHtml`). Son del rol, valen para
 todos los clientes sin cargar nada; lo tildado va en `datos.csmTareas[id]`
 ({ok, at, por}) y el bloqueante de cada etapa en `datos.etapaTraba[k]`
@@ -87,6 +96,10 @@ una sola vez (`datos.csmHechosAplicados`) y nunca encima de una tildada a mano.
   que mandarles a los clientes ese día y los dejan en
   `maquina.mensajesDia.{leads,whatsapp}`; el buen día los muestra con un
   botón para copiar. La app no manda nada.
+- `agregar_hechos` (051): las rutinas de revisión y Claude suman lo hecho de un
+  cliente a `maquina.hechos` (id, texto, evidencia, fecha, taskId/ticket si es
+  un ticket, origen 'rutina'|'claude', por). Solo service_role; agrega sin pisar
+  y guarda 30 días. La app cierra o crea el ticket (js/avisos.js).
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.
