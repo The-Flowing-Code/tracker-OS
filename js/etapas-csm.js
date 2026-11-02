@@ -237,6 +237,16 @@ function csmTareaEstado(c, t, def, ahora){
     else if(t.cada==='semana') ok=(at>=_csmLunes(ahora));
     else if(t.cada==='mes') ok=(at.getFullYear()===ahora.getFullYear() && at.getMonth()===ahora.getMonth());
   }
+  /* Las de una etapa que el cliente ya pasó se dan por hechas (Angie,
+     02/11/2026), igual que «Mover acá» en la ruta da por hechas las
+     anteriores. Solo si nadie la tocó: destildada a mano queda {ok:false} y
+     manda eso. */
+  // La de agendar no: una llamada no se da por hecha porque movieron la tarjeta
+  // (CLAUDE.md, agendada ≠ hecha). Esa la tilda la agenda o una persona.
+  if(!m && def && !t.agenda && typeof csmEtapaActual==='function'){
+    var _act=csmEtapaActual(c), _ia=_act?CSM_ETAPAS.indexOf(_act):-1, _it=CSM_ETAPAS.indexOf(def);
+    if(_ia>0 && _it>=0 && _it<_ia) return {ok:true, auto:true, porEtapa:true, cita:null, at:'', por:''};
+  }
   if(!ok && t.agenda){
     var ci=csmCita(c, def);
     if(ci && (ci.estado==='agendada' || ci.estado==='hecha'))
@@ -269,11 +279,19 @@ function _csmEditar(clientId, fn){
   }else save();
   if(typeof p360Repintar==='function') p360Repintar();
 }
+function _csmEtapaPasada(c, tareaId){
+  var x=_csmTareaDeId(String(tareaId)), act=(typeof csmEtapaActual==='function')?csmEtapaActual(c):null;
+  return !!(x && act && CSM_ETAPAS.indexOf(x.def)<CSM_ETAPAS.indexOf(act));
+}
 function csmTildar(clientId, tareaId, val){
   var yo=_csmYo(), at=new Date().toISOString();
+  // Se calcula una vez sobre la tarjeta: la copia de la nube no trae la ruta.
+  var pasada=_csmEtapaPasada(_csmCliente(clientId), tareaId);
   _csmEditar(clientId, function(d){
     d.csmTareas=(d.csmTareas && typeof d.csmTareas==='object')?d.csmTareas:{};
     if(val) d.csmTareas[tareaId]={ok:true, at:at, por:yo};
+    // Una de una etapa pasada se daría por hecha sola: destildarla se guarda.
+    else if(pasada) d.csmTareas[tareaId]={ok:false, at:at, por:yo};
     else delete d.csmTareas[tareaId];
   });
 }
@@ -542,7 +560,9 @@ function _csmEtapaHtml(c){
     var meta=[];
     if(o.quien) meta.push('<span>'+esc(quienNom(t.quien))+'</span>');
     if(o.ayuda && t.ayuda) meta.push('<span>'+esc(t.ayuda)+'</span>');
-    if(st.auto){
+    if(st.porEtapa){
+      meta.push('<span>dada por hecha: el cliente ya pasó esta etapa</span>');
+    }else if(st.auto){
       meta.push('<span style="color:var(--accent)">'
         +(st.cita.estado==='hecha'?'ya se hizo':('agendada para el '+esc(_csmFecha(st.cita.cuando, true))))
         +' · la tildó la agenda</span>');
@@ -563,7 +583,7 @@ function _csmEtapaHtml(c){
       ? ' <span title="Agendada" style="display:inline-flex;align-items:center;justify-content:center;'
         +'width:20px;height:20px;border-radius:6px;background:rgba(200,255,71,.14);'
         +'vertical-align:-3px;font-size:12px">📅</span>' : '';
-    var click=st.auto
+    var click=(st.auto && !st.porEtapa)
       ? ' disabled title="La tilda la cita de la agenda. Si no corresponde, sacá la cita."'
       : (' title="'+(st.ok?'Destildar':'Marcar como hecha')+'" '
         +'onclick="csmTildar('+c.id+',\''+t.id+'\','+(st.ok?'false':'true')+')"');

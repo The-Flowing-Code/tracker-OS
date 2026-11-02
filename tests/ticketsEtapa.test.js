@@ -74,3 +74,17 @@ describe('tickets que repiten una tarea de etapa', () => {
     expect(c.tasks.filter((t) => t.seguimientoCliente).length).toBe(0);
   });
 });
+
+describe('tareas de etapas ya pasadas', () => {
+  it('se dan por hechas, salvo la de agendar y lo destildado a mano', () => {
+    const c = { id: 1, csmTareas: {} };
+    const ctx = app([c], 'Lanzamiento');
+    const est = ctx.csmEtapaDef('estrategia'), lan = ctx.csmEtapaDef('lanzamiento');
+    const ds = est.tareas.find((t) => t.id === 'est-dataset-armado');
+    expect(ctx.csmTareaEstado(c, ds, est)).toMatchObject({ ok: true, porEtapa: true });
+    expect(ctx.csmTareaEstado(c, est.tareas.find((t) => t.agenda), est).ok).toBe(false);
+    expect(ctx.csmTareaEstado(c, lan.tareas[0], lan).ok).toBe(false);
+    c.csmTareas[ds.id] = { ok: false };
+    expect(ctx.csmTareaEstado(c, ds, est).ok).toBe(false);
+  });
+});
