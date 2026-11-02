@@ -60,6 +60,16 @@ function avisosACsm(){
       // Cinturón: si ya hay un ticket que salió de este cambio, no se crea otro
       // (dos navegadores abiertos a la vez pueden llegar antes que la decisión).
       if((c.tasks||[]).some(function(t){ return t && t.desdeCambio===it.id; })) return;
+      /* Si es una tarea de etapa (`csmTarea`, 02/11/2026), no hay ticket: las
+         tareas son las mismas para todos y lo particular se anota en la tarea.
+         Ticket solo para lo que ninguna tarea estándar cubre. */
+      if(it.csmTarea && typeof _csmTareaDeId==='function' && _csmTareaDeId(String(it.csmTarea))){
+        csmNotaSumar(c, String(it.csmTarea), {t:String(it.texto), at:rvISO(ahora), de:(_llam?'llamada':'rutina'), cambio:it.id});
+        c.cambiosDecisiones=c.cambiosDecisiones||{};
+        c.cambiosDecisiones[it.id]={estado:'nota', at:ahora.toISOString(), por:'automático · tarea de etapa', csmTarea:String(it.csmTarea)};
+        dec=c.cambiosDecisiones; act++;
+        return;
+      }
       var aviso=(it.tipo!=='cliente');
       var venc=new Date(ahora.getTime()); venc.setDate(venc.getDate()+(aviso?2:7));
       var t;
@@ -138,12 +148,17 @@ function seguimientosCsm(){
     c.tasks=c.tasks||[];
     var ts=c.tasks;
     var pend=ts.filter(function(t){ return t && t.ownerCliente && !t.done && !t.deleted && !t.archivada; });
+    /* Antes de Recurrente lo que debe el cliente ya está en la ficha, en
+       «Esperando al partner» (02/11/2026): no se arma un ticket aparte. */
+    var _et=(typeof csmEtapaActual==='function')?csmEtapaActual(c):null;
+    var _antes=!!(_et && _et.k!=='recurrente');
     // El agrupado: se busca antes de crear para que dos pestañas no armen dos.
     var g=ts.filter(function(f){ return f && f.seguimientoCliente && !f.done && !f.deleted; })[0];
     var viejos=ts.filter(function(f){ return f && f.seguimientoDe!=null && !f.seguimientoCliente && !f.done && !f.deleted; });
-    if(!pend.length){
-      if(g){ g.done=true; g.doneAt=ahora.toISOString(); g.cierre='el cliente cumplió todo'; cambios++; }
-      viejos.forEach(function(f){ f.done=true; f.doneAt=ahora.toISOString(); f.cierre='el cliente cumplió todo'; cambios++; });
+    if(!pend.length || _antes){
+      var _por=_antes?'ya no corresponde: lo del cliente está en la ficha, en «Esperando al partner»':'el cliente cumplió todo';
+      if(g){ g.done=true; g.doneAt=ahora.toISOString(); g.cierre=_por; cambios++; }
+      viejos.forEach(function(f){ f.done=true; f.doneAt=ahora.toISOString(); f.cierre=_por; cambios++; });
       return;
     }
     var ids=pend.map(function(t){ return t.id; });
@@ -245,6 +260,18 @@ function hechosAplicar(){
       var origen=(h.origen==='claude')?'claude':'rutina';
       var cierre=(origen==='claude')?'hecho con Claude':'hecho y verificado (rutina)';
       if(dec[h.id] && dec[h.id].estado==='descartado'){ c.hechosAplicados[h.id]=ahora.toISOString(); return; }
+      if(h.soloNota){
+        /* Ticket que repetía una tarea de etapa (02/11/2026): se cierra como «ya
+           no corresponde» y su detalle pasa como nota a la tarea (lo hace
+           csmHechosCliente). No es «hecho»: nadie lo hizo. Sin ticket, nada. */
+        if(t && !t.done){
+          var _x=(typeof _csmTareaDeId==='function')?_csmTareaDeId(String(h.csmTarea||'')):null;
+          t.done=true; t.doneAt=ahora.toISOString(); t.cerradoPorHecho=h.id; cerrados++;
+          t.cierre='ya no corresponde: es la tarea de la etapa'+(_x?(' «'+_x.t.t+'»'):'')+', con su detalle como nota';
+        }
+        c.hechosAplicados[h.id]=ahora.toISOString();
+        return;
+      }
       if(t){
         if(!t.done){
           t.done=true; t.doneAt=ahora.toISOString(); t.cierre=cierre;

@@ -45,7 +45,7 @@ publica Pages despues de `npm test`). Al publicar, `?v=DEV` de los
 
 `js/etapas-csm.js` (28/10/2026; desde el 01/11 es el roadmap entero y la única lista,
 cada tarea con `quien` csm/delivery/claude/cliente —claude = la arranca Claude sola, 02/11—; la plantilla `_petHtml` ya no se ve en la ficha;
-arrastrar una tarjeta anota `datos.rutaMovida`; desde el 02/11 la ficha muestra una línea de resumen, la etapa en pestañas de texto y cuatro secciones con contador —Tuyo, Resto del equipo, Esperando al partner, Hechas—, solo «Tuyo» abierta, en un popup a pantalla completa con dos columnas en pantallas anchas): las tareas por etapa (`CSM_ETAPAS`:
+arrastrar una tarjeta anota `datos.rutaMovida`; desde el 02/11 la ficha muestra una línea de resumen, la etapa en pestañas de texto y cuatro secciones con contador —Tuyo, Resto del equipo, Esperando al partner, Hechas—, solo «Tuyo» abierta, en un popup a pantalla completa con dos columnas en pantallas anchas; desde el 02/11 lo particular de cada cliente va como nota de la tarea en `datos.csmNotas[id]`, no como ticket: una propuesta con `csmTarea` se anota y no crea ticket, un hecho con `soloNota` cierra el ticket repetido como «ya no corresponde» sin tildar, y el seguimiento agrupado al cliente solo se arma en Recurrente): las tareas por etapa (`CSM_ETAPAS`:
 onboarding, estrategia, sistemas, lanzamiento, recurrente; desde el 02/11 el proceso comercial vive en estrategia), arriba de las de la
 plantilla en la ficha del Panel 360 (`_csmEtapaHtml`). Son del rol, valen para
 todos los clientes sin cargar nada; lo tildado va en `datos.csmTareas[id]`

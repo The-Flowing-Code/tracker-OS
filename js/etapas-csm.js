@@ -300,6 +300,27 @@ function _csmTareaDeId(id){
   }
   return null;
 }
+/* Notas de una tarea de etapa (Angie, 02/11/2026): las tareas son las mismas
+   para todos los clientes y lo particular de cada uno («nicho seguridad
+   privada», «la línea nueva puede tardar») va como nota en la tarea, no como
+   un ticket aparte. Viven en datos.csmNotas[id] = [{t, at, de, hecho|cambio}]. */
+function csmNotaSumar(c, id, n){
+  if(!c || !id || !n || !String(n.t||'').trim()) return false;
+  c.csmNotas=(c.csmNotas && typeof c.csmNotas==='object')?c.csmNotas:{};
+  var L=Array.isArray(c.csmNotas[id])?c.csmNotas[id]:[];
+  var clave=n.hecho||n.cambio;
+  if(clave && L.some(function(x){ return x && (x.hecho===clave || x.cambio===clave); })) return false;
+  L.push({t:String(n.t).replace(/\s+/g,' ').trim().slice(0,300), at:n.at||new Date().toISOString().slice(0,10),
+    de:n.de||'', hecho:n.hecho||undefined, cambio:n.cambio||undefined});
+  c.csmNotas[id]=L.slice(-8);
+  return true;
+}
+function _csmNotasHtml(c, id){
+  var L=((c && c.csmNotas)||{})[id];
+  if(!Array.isArray(L) || !L.length) return '';
+  return '<div class="csm-notas">'+L.slice(-3).map(function(n){
+    return '<div>'+esc(n.t)+'</div>'; }).join('')+'</div>';
+}
 function csmHechosCliente(c, ahora){
   var r={tildadas:0, vistos:0};
   if(!c) return r;
@@ -316,6 +337,13 @@ function csmHechosCliente(c, ahora){
     var x=_csmTareaDeId(String(h.csmTarea));
     if(!x) return;
     c.csmHechosAplicados[h.id]=ahora.toISOString(); r.vistos++;
+    /* `soloNota` (02/11/2026): el ticket repetía una tarea de la etapa. Su
+       detalle pasa como nota a esa tarea y la tarea NO se tilda: que exista el
+       ticket no quiere decir que la tarea esté hecha. */
+    if(h.soloNota || h.nota){
+      csmNotaSumar(c, x.t.id, {t:String(h.nota||h.texto||''), at:String(h.fecha||''), de:String(h.ticket||''), hecho:String(h.id)});
+      if(h.soloNota) return;
+    }
     // Con csmTareaEstado y no con «hay entrada»: un «mensaje diario» de ayer
     // ya no cuenta como tildado hoy. La agenda no cuenta como mano (auto).
     var st=csmTareaEstado(c, x.t, x.def, ahora);
@@ -545,6 +573,7 @@ function _csmEtapaHtml(c){
              +esc((t.t.match(/\S+$/)||[''])[0])+cal+'</span>')
           : esc(t.t))+'</div>'
         +(meta.length?('<div class="pet-meta">'+meta.join('<span class="pt">·</span>')+'</div>'):'')
+        +_csmNotasHtml(c, t.id)
       +'</div>'
       +(function(){
         if(!t.msg || typeof _cmMensaje!=='function') return '';
