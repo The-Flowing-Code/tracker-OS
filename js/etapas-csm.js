@@ -506,13 +506,10 @@ function _csmEstadoHtml(c, def){
         +'</span>'
         +(vencido?' <span style="color:var(--redx)">· vencido</span>':'')
       +'</span></div>';
-  }else{
-    out+='<div style="display:flex;flex-wrap:nowrap;gap:7px;align-items:center;font-size:12.5px;color:var(--text3);margin-top:6px">'
-      +lock+'<span>Sin bloqueante · <a href="javascript:void(0)" '
-      +'onclick="csmTrabaEditar('+c.id+',\''+def.k+'\')" style="color:var(--text2);text-decoration:none;'
-      +'border-bottom:1px dotted var(--border2)">cargar uno</a></span></div>';
   }
-  return '<div class="csm-est">'+out+'</div>';
+  /* «Sin bloqueante · cargar uno» ya no ocupa un renglón (02/11/2026): va
+     chico a la derecha de las pestañas (_csmEtapaHtml). */
+  return out?('<div class="csm-est">'+out+'</div>'):'';
 }
 
 /* El bloque de la ficha (diseño elegido por Angie el 02/11/2026, «secciones con
@@ -644,11 +641,17 @@ function _csmEtapaHtml(c){
      de los demás a la derecha. Antes la derecha quedaba vacía sin tickets. */
   var cuerpo='<div class="csm-grid"><div class="csm-col">'+bloques[0]+'</div>'
     +'<div class="csm-col">'+bloques.slice(1).join('')+'</div></div>';
+  /* Sin la línea «Sistemas y montado del embudo · 1 de 16»: el nombre ya está
+     en el encabezado de la ficha y en la pestaña marcada (Angie, 02/11/2026).
+     El conteo y el bloqueante van chicos a la derecha de las pestañas. */
+  var tr=((c.etapaTraba||{})[def.k])||null;
+  var lado='<div class="csm-lado"><span>'+hechas+' de '+def.tareas.length+'</span>'
+    +((tr&&tr.t)?'':('<button onclick="csmTrabaEditar('+c.id+',\''+def.k+'\')" title="Cargar qué la bloquea">'
+      +((typeof _petLockSvg==='function')?_petLockSvg():'')+'Sin bloqueante</button>'))
+    +'</div>';
   return '<div class="csm-blq">'
-    +'<div class="csm-res"><b>'+esc(def.n)+'</b> · '+hechas+' de '+def.tareas.length
-      +((act && act.k!==def.k)?' · <a href="javascript:void(0)" onclick="csmVerEtapa('+c.id+',\''+act.k+'\')">volver a la de ahora</a>':'')
-    +'</div>'
     +_csmEstadoHtml(c, def)
-    +tabs+cuerpo
+    +'<div class="csm-fila">'+tabs+lado+'</div>'
+    +cuerpo
   +'</div>';
 }
