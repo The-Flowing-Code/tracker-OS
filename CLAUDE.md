@@ -79,7 +79,11 @@ los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
   equipo; desde el 03/11/2026 v1.2.0 suma `sop_comercial`, que lee el SOP de
   `CAP_SOP_DEFAULT` de la app publicada, y `leer_conversaciones`, los chats de
   GHL de los leads con el token del cliente del lado del servidor, solo con
-  `alcance.conversaciones='leer'`). Una clave se apaga con `activa=false`; la clave en sí vive en el
+  `alcance.conversaciones='leer'`; v1.3.0 suma, con `alcance.mensajes='escribir'`,
+  `guardar_mensajes_dia`, `guardar_parte` y `leer_mensajes_estado` —esta lee
+  `mensajesEstado` con `rpc/get_mensajes_estado` (053), porque service_role no
+  lee `config`— y, con `alcance.campanas='leer'`, `estado_anuncios`, Meta con
+  el token del cliente del lado del servidor). Una clave se apaga con `activa=false`; la clave en sí vive en el
   Llavero (`evolve-mcp-<persona>`), en la tabla solo su sha256. Y
   `tokens_clientes` (041): los tokens de Meta y GHL de cada cliente. Por
   ahora es una COPIA que mantiene un disparador desde `clientes.datos`; los

@@ -14,6 +14,12 @@
 //  (los chats de WhatsApp/SMS de los leads del embudo de un cliente, leidos de
 //  su GHL con su token DEL LADO DEL SERVIDOR; solo con alcance.conversaciones='leer').
 //
+//  03/11/2026 (v1.3.0): las rutinas de mensajes pasan a la Mac de Santi y
+//  corren con su conector, sin la clave maestra. Con alcance.mensajes='escribir':
+//  guardar_mensajes_dia, guardar_parte (borradores; nada se le manda a nadie) y
+//  leer_mensajes_estado. Con alcance.campanas='leer': estado_anuncios (Meta con
+//  el token del cliente DEL LADO DEL SERVIDOR, como leer_conversaciones).
+//
 //  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
 //  existe con que. La UNICA escritura es `pedir_cambio_app` (17/10/2026): deja
@@ -505,6 +511,39 @@ const HERRAMIENTAS = [
       cantidad: { type: "number", description: "Cuántos leads con chat traer (1 a 25, 10 por defecto)" },
       mensajes_por_lead: { type: "number", description: "Últimos N mensajes de cada lead (5 a 60, 30 por defecto)" },
       desde: { type: "string", description: "Solo leads con movimiento desde AAAA-MM-DD (opcional)" } } } },
+  { name: "guardar_mensajes_dia",
+    description: "Deja los borradores de los mensajes del día de UN cliente en «Mensajes para mandar hoy» del tracker. No manda nada: los manda Santi a mano desde su WhatsApp. Pisa los de la corrida anterior de ese cliente y esa fuente. Solo para quien tiene permiso de mensajes. Tope diario compartido con guardar_parte.",
+    inputSchema: { type: "object", required: ["cliente", "fuente", "fecha", "mensajes"], properties: {
+      cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
+      fuente: { type: "string", description: "whatsapp (parte de WhatsApp) o leads (leads sin mensaje 1)" },
+      fecha: { type: "string", description: "AAAA-MM-DD: el día en que se mandan" },
+      mensajes: { type: "array", description: "Hasta 50", items: { type: "object", required: ["cliente", "texto"], properties: {
+        cliente: { type: "string", description: "Hasta 80" }, donde: { type: "string", description: "Grupo o chat, hasta 120" },
+        quien: { type: "string", description: "Quién lo manda, hasta 40" }, motivo: { type: "string", description: "Por qué, hasta 250" },
+        texto: { type: "string", description: "El mensaje, hasta 1500" } } } } } } },
+  { name: "guardar_parte",
+    description: "Deja el parte del día (lo que vigila la rutina) en el «buen día» o el «buenas noches» del tracker. Pisa el de la corrida anterior de esa fuente. Solo para quien tiene permiso de mensajes. Tope diario compartido con guardar_mensajes_dia.",
+    inputSchema: { type: "object", required: ["fuente", "fecha", "momento"], properties: {
+      fuente: { type: "string", description: "whatsapp o leads" },
+      fecha: { type: "string", description: "AAAA-MM-DD" },
+      momento: { type: "string", description: "manana o noche" },
+      resumen: { type: "string", description: "Hasta 400" },
+      items: { type: "array", description: "Hasta 30", items: { type: "object", required: ["texto", "tipo"], properties: {
+        cliente: { type: "string", description: "Hasta 80" }, texto: { type: "string", description: "Hasta 300" },
+        tipo: { type: "string", description: "sin_mensaje, fallo, tarde, espera, no_agendo, sin_seguimiento, prometido, riesgo u otro" } } } },
+      recurrentes: { type: "array", description: "Hasta 10", items: { type: "object", required: ["problema"], properties: {
+        problema: { type: "string", description: "Hasta 200" }, clientes: { type: "string", description: "Hasta 200" } } } } } } },
+  { name: "leer_mensajes_estado",
+    description: "Qué mensajes del día se marcaron como mandados («listo», con la hora) y cuáles editó quien los mandó (el texto final), de los clientes de tu alcance. Para el cierre del día. Solo para quien tiene permiso de mensajes.",
+    inputSchema: { type: "object", properties: {
+      fecha: { type: "string", description: "AAAA-MM-DD (hoy por defecto)" },
+      cliente: { type: "string", description: "Solo este cliente (opcional)" } } } },
+  { name: "estado_anuncios",
+    description: "Por cliente, cada anuncio de su cuenta de Meta con su estado real (effective_status: ACTIVE, PAUSED, CAMPAIGN_PAUSED, DISAPPROVED…), su campaña y conjunto, y el gasto, impresiones y clics de los últimos días. Para no decir «están aprendiendo» de algo apagado. Solo para quien tiene permiso de campañas.",
+    inputSchema: { type: "object", required: ["cliente"], properties: {
+      cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
+      dias: { type: "number", description: "Gasto de los últimos N días (1 a 30, 7 por defecto)" },
+      solo_activos: { type: "boolean", description: "Solo los que están ACTIVE (por defecto, todos los que no están archivados ni borrados)" } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -601,7 +640,165 @@ async function cambiarEstadoTarea(c: Clave, a: any) {
            nota: "Quedó anotado. La app lo aplica la próxima vez que alguien la abre. Se puede revertir desde el ticket." };
 }
 
+/* ── Mensajes y parte del día: las rutinas de Santi (03/11/2026) ────────────
+   Solo con alcance.mensajes = 'escribir'. Mismo patrón que las tareas: el
+   cliente sale de buscarClienteIds (lo que no está en el alcance de la clave
+   no existe), tope por día y todo queda en mcp_registro. Son BORRADORES: la
+   app los muestra con un botón para copiar y Santi los manda a mano. Las
+   validaciones repiten las de set_mensajes_dia (049/052) y set_vigilancia
+   (048) para que el error le llegue claro a su Claude y no como un 400. */
+const TOPE_MENSAJES_DIA = 60; // ~30 clientes, uno por cliente y por corrida
+const INTERNO = 1787605845151; // el cliente de la agencia: ahí vive el parte
+const hoyAR = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+async function puedeEscribirMensajes(c: Clave) {
+  if ((c.alcance || {}).mensajes !== "escribir") return "Tu clave no tiene permiso para los mensajes del día. Pedile a Angie que te lo active.";
+  const hoy = new Date(); hoy.setUTCHours(0, 0, 0, 0);
+  const hechos = await sb("mcp_registro?select=id&clave_id=eq." + c.id + "&herramienta=in.(guardar_mensajes_dia,guardar_parte)&at=gte." + hoy.toISOString());
+  if (Array.isArray(hechos) && hechos.length >= TOPE_MENSAJES_DIA)
+    return "Ya se guardaron " + TOPE_MENSAJES_DIA + " mensajes o partes hoy desde este conector. Seguí mañana.";
+  return "";
+}
+const corto = (s: unknown, n: number) => String(s ?? "").trim().length <= n;
+async function guardarMensajesDia(c: Clave, a: any) {
+  const veto = await puedeEscribirMensajes(c); if (veto) return { error: veto };
+  const fuente = String(a?.fuente || "");
+  if (fuente !== "whatsapp" && fuente !== "leads") return { error: "fuente tiene que ser whatsapp o leads." };
+  const dia = fecha(a?.fecha); if (!dia) return { error: "Falta fecha AAAA-MM-DD (el día en que se mandan)." };
+  const ms = Array.isArray(a?.mensajes) ? a.mensajes : null;
+  if (!ms || ms.length > 50) return { error: "mensajes es una lista de hasta 50." };
+  const cl = await buscarClienteIds(c, a?.cliente);
+  if (!cl.length) return { error: "No encontré ese cliente (o no está en tu alcance)." };
+  const exacto = cl.find((x) => norm(x.nombre) === norm(a?.cliente) || x.id === limpio(a?.cliente));
+  if (cl.length > 1 && !exacto) return { error: "Hay más de un cliente que coincide: " + cl.slice(0, 6).map((x: any) => x.nombre).join(", ") + ". Decime cuál." };
+  const cli = exacto || cl[0];
+  const mensajes: any[] = [];
+  for (const m of ms) {
+    const texto = String(m?.texto || "").trim();
+    if (!texto || !corto(texto, 1500) || !corto(m?.donde, 120) || !corto(m?.motivo, 250) || !corto(m?.quien, 40))
+      return { error: "Cada mensaje necesita texto (hasta 1500); donde hasta 120, motivo hasta 250, quien hasta 40." };
+    // El cliente de cada mensaje es el de la fila: así no se cuela uno ajeno.
+    const x: any = { cliente: String(cli.nombre).slice(0, 80), texto };
+    for (const k of ["donde", "quien", "motivo"]) if (String(m?.[k] || "").trim()) x[k] = String(m[k]).trim();
+    mensajes.push(x);
+  }
+  await rpc("set_mensajes_dia", { p_id: Number(cli.id), p_parte: { fuente, fecha: dia, mensajes } });
+  return { ok: true, cliente: cli.nombre, fuente, fecha: dia, mensajes: mensajes.length,
+           nota: "Quedaron como borradores en «Mensajes para mandar hoy» de la app. No se mandó nada: los manda Santi desde su WhatsApp." };
+}
+const TIPOS_PARTE = new Set(["sin_mensaje", "fallo", "tarde", "espera", "no_agendo", "sin_seguimiento", "prometido", "riesgo", "otro"]);
+async function guardarParte(c: Clave, a: any) {
+  const veto = await puedeEscribirMensajes(c); if (veto) return { error: veto };
+  const fuente = String(a?.fuente || "");
+  if (fuente !== "whatsapp" && fuente !== "leads") return { error: "fuente tiene que ser whatsapp o leads." };
+  const dia = fecha(a?.fecha); if (!dia) return { error: "Falta fecha AAAA-MM-DD." };
+  const momento = String(a?.momento || "");
+  if (momento !== "manana" && momento !== "noche") return { error: "momento tiene que ser manana o noche." };
+  const resumen = String(a?.resumen || "").trim();
+  if (!corto(resumen, 400)) return { error: "El resumen es de hasta 400 caracteres." };
+  const items = Array.isArray(a?.items) ? a.items : [];
+  const recurrentes = Array.isArray(a?.recurrentes) ? a.recurrentes : [];
+  if (items.length > 30 || recurrentes.length > 10) return { error: "items hasta 30 y recurrentes hasta 10." };
+  for (const x of items)
+    if (!String(x?.texto || "").trim() || !corto(x?.texto, 300) || !corto(x?.cliente, 80) || !TIPOS_PARTE.has(String(x?.tipo || "")))
+      return { error: "Cada item necesita texto (hasta 300), cliente (hasta 80) y un tipo: " + Array.from(TIPOS_PARTE).join(", ") + "." };
+  for (const x of recurrentes)
+    if (!String(x?.problema || "").trim() || !corto(x?.problema, 200) || !corto(x?.clientes, 200))
+      return { error: "Cada recurrente necesita problema (hasta 200) y clientes (hasta 200)." };
+  const limpios = items.map((x: any) => ({ cliente: String(x.cliente || "").trim(), tipo: x.tipo, texto: String(x.texto).trim() }));
+  const recs = recurrentes.map((x: any) => ({ problema: String(x.problema).trim(), clientes: String(x.clientes || "").trim() }));
+  await rpc("set_vigilancia", { p_id: INTERNO, p_parte: { fuente, fecha: dia, momento, resumen, items: limpios, recurrentes: recs } });
+  return { ok: true, fuente, fecha: dia, momento, items: limpios.length, recurrentes: recs.length,
+           nota: "Quedó en el " + (momento === "manana" ? "«buen día»" : "«buenas noches»") + " de la app." };
+}
+async function leerMensajesEstado(c: Clave, a: any) {
+  if ((c.alcance || {}).mensajes !== "escribir") return { error: "Tu clave no tiene permiso para los mensajes del día. Pedile a Angie que te lo active." };
+  const dia = fecha(a?.fecha) || hoyAR();
+  let ids: Set<string> | null = null;
+  if (a?.cliente) {
+    const cl = await buscarClienteIds(c, a.cliente);
+    if (!cl.length) return { error: "No encontré ese cliente (o no está en tu alcance)." };
+    ids = new Set(cl.map((x) => x.id));
+  } else if ((c.alcance || {}).clientes === "cartera") ids = (await idsCartera(c)) || new Set();
+  const filas = await filasClientes("n:datos->>name,md:maquina->mensajesDia");
+  const nombres = new Set<string>();
+  const L: any[] = [];
+  const estado = (await rpc("get_mensajes_estado", {})) || {};
+  for (const f of filas) {
+    if (ids && !ids.has(String(f.id))) continue;
+    if (f.n) nombres.add(String(f.n));
+    const M = f.md && typeof f.md === "object" ? f.md : {};
+    // Mismas claves que la app (_bv2MensHtml): día|fuente|cliente|n, contando por cliente.
+    for (const fu of ["leads", "whatsapp", "onboarding"]) {
+      const p = M[fu]; if (!p || p.fecha !== dia) continue;
+      const cuenta: Record<string, number> = {};
+      for (const x of (p.mensajes || [])) {
+        const cl = String(x.cliente || f.n || ""); const n = cuenta[cl] = (cuenta[cl] || 0) + 1;
+        const e = estado[dia + "|" + fu + "|" + cl + "|" + n] || {};
+        L.push({ cliente: cl, fuente: fu, donde: tapar(String(x.donde || "")), borrador: tapar(String(x.texto || "")),
+          ...(e.t != null ? { texto_mandado: tapar(String(e.t)), editado: true } : {}),
+          mandado: !!e.listo, ...(e.listo ? { marcado_listo: String(e.listo) } : {}) });
+      }
+    }
+  }
+  return { fecha: dia, mensajes: L, mandados: L.filter((x) => x.mandado).length, sin_mandar: L.filter((x) => !x.mandado).length,
+    nota: "«mandado» = alguien lo marcó Listo en la app. Si se mandó sin marcarlo, acá figura como sin mandar." };
+}
+
+/* ── Estado de los anuncios en Meta (03/11/2026) ──────────────────────────
+   ⚠️  EL TOKEN DE META DEL CLIENTE NUNCA SALE DE ACA, como el de GHL en
+   leer_conversaciones: se lee de tokens_clientes (o de la ficha, de respaldo)
+   y solo vuelven nombres, estados y números. Solo con alcance.campanas='leer'. */
+const META = "https://graph.facebook.com/v25.0";
+const ESTADOS_VIVOS = ["ACTIVE", "PAUSED", "CAMPAIGN_PAUSED", "ADSET_PAUSED", "PENDING_REVIEW", "DISAPPROVED",
+  "PREAPPROVED", "PENDING_BILLING_INFO", "WITH_ISSUES", "IN_PROCESS"];
+async function estadoAnuncios(c: Clave, a: any) {
+  if ((c.alcance || {}).campanas !== "leer") return { error: "Tu clave no tiene permiso para ver campañas. Pedile a Angie que te lo active." };
+  const cl = await buscarClienteIds(c, a?.cliente);
+  if (!cl.length) return { error: "No encontré ese cliente (o no está en tu alcance)." };
+  const exacto = cl.find((x) => norm(x.nombre) === norm(a?.cliente) || x.id === limpio(a?.cliente));
+  if (cl.length > 1 && !exacto) return { varios: cl.slice(0, 15).map((x) => ({ id: x.id, nombre: x.nombre })), nota: "Hay varios: pedí uno por su nombre completo o su id." };
+  const cli = exacto || cl[0];
+  const f = await sb("clientes?select=acc:datos->>metaAccountId,tf:datos->>metaToken&id=eq." + cli.id);
+  const tk = await sb("tokens_clientes?select=meta_token&cliente_id=eq." + cli.id);
+  const token = String((tk && tk[0] && tk[0].meta_token) || (f && f[0] && f[0].tf) || "");
+  const cuenta = String((f && f[0] && f[0].acc) || "").replace(/^act_/, "").replace(/[^0-9]/g, "");
+  if (!token || !cuenta) return { cliente: cli.nombre, error: "Este cliente no tiene Meta conectado en el tracker." };
+  const dias = Math.max(1, Math.min(30, parseInt(a?.dias, 10) || 7));
+  const hasta = hoyAR();
+  const desde = new Date(Date.parse(hasta + "T12:00:00Z") - (dias - 1) * 864e5).toISOString().slice(0, 10);
+  const estados = a?.solo_activos ? ["ACTIVE"] : ESTADOS_VIVOS;
+  const campos = "id,name,effective_status,campaign{name},adset{name},insights.time_range({'since':'" + desde + "','until':'" + hasta + "'}){spend,impressions,clicks,account_currency}";
+  let url: string | null = META + "/act_" + cuenta + "/ads?fields=" + encodeURIComponent(campos) + "&limit=200"
+    + "&filtering=" + encodeURIComponent(JSON.stringify([{ field: "effective_status", operator: "IN", value: estados }]))
+    + "&access_token=" + encodeURIComponent(token);
+  const ads: any[] = [];
+  for (let pag = 0; url && pag < 5; pag++) {
+    const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    const d = await r.json().catch(() => ({}));
+    // Solo el mensaje de Meta, nunca la URL (lleva el token).
+    if (!r.ok || d.error) return { cliente: cli.nombre, error: "Meta contestó: " + String(d?.error?.message || r.status).replace(/access_token=[^&\s]+/g, "access_token=…").slice(0, 200) };
+    ads.push(...(d.data || []));
+    url = d.paging && d.paging.next ? String(d.paging.next) : null;
+  }
+  let moneda = "";
+  const anuncios = ads.map((x: any) => {
+    const i = (x.insights && x.insights.data && x.insights.data[0]) || {};
+    if (i.account_currency) moneda = i.account_currency;
+    return { anuncio: x.name || "", estado: x.effective_status || "", campana: (x.campaign && x.campaign.name) || "",
+      conjunto: (x.adset && x.adset.name) || "", gasto: Number(i.spend || 0), impresiones: Number(i.impressions || 0), clics: Number(i.clicks || 0) };
+  }).sort((p, q) => q.gasto - p.gasto || p.anuncio.localeCompare(q.anuncio));
+  const porEstado: Record<string, number> = {};
+  anuncios.forEach((x) => { porEstado[x.estado] = (porEstado[x.estado] || 0) + 1; });
+  return { cliente: cli.nombre, desde, hasta, moneda, por_estado: porEstado,
+    gasto_total: Math.round(anuncios.reduce((s, x) => s + x.gasto, 0) * 100) / 100, anuncios,
+    nota: "Solo ACTIVE está entregando. CAMPAIGN_PAUSED / ADSET_PAUSED = apagado más arriba; DISAPPROVED = rechazado. Leído de Meta ahora." };
+}
+
 async function correr(c: Clave, nombre: string, a: any) {
+  if (nombre === "guardar_mensajes_dia") return await guardarMensajesDia(c, a);
+  if (nombre === "guardar_parte") return await guardarParte(c, a);
+  if (nombre === "leer_mensajes_estado") return await leerMensajesEstado(c, a);
+  if (nombre === "estado_anuncios") return await estadoAnuncios(c, a);
   if (nombre === "pedir_cambio_app") return await pedirCambio(c, a);
   if (nombre === "crear_tarea") return await crearTarea(c, a);
   if (nombre === "cambiar_estado_tarea") return await cambiarEstadoTarea(c, a);
@@ -648,8 +845,8 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.2.0" },
-      instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Lo único que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
+      serverInfo: { name: "evolve-os-consulta", version: "1.3.0" },
+      instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Para las rutinas de mensajes: estado_anuncios antes de hablar de campañas, guardar_mensajes_dia (uno por cliente) y guardar_parte; al cierre, leer_mensajes_estado. Los mensajes son borradores: nada se le manda a nadie desde acá. Lo demás que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
   if (m.method === "ping") return ok({});
