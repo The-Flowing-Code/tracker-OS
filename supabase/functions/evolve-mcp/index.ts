@@ -9,6 +9,11 @@
 //  (Santi, el CSM): crear_tarea y cambiar_estado_tarea. Suman a una lista; no
 //  borran ni pisan nada (migracion 045).
 //
+//  03/11/2026 (v1.2.0): dos lecturas para el feedback comercial con el SOP
+//  «Anti-Fugazi B2B»: sop_comercial (el texto vigente) y leer_conversaciones
+//  (los chats de WhatsApp/SMS de los leads del embudo de un cliente, leidos de
+//  su GHL con su token DEL LADO DEL SERVIDOR; solo con alcance.conversaciones='leer').
+//
 //  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
 //  existe con que. La UNICA escritura es `pedir_cambio_app` (17/10/2026): deja
@@ -279,6 +284,177 @@ async function leerLlamada(c: Clave, a: any) {
   };
 }
 
+/* ── SOP comercial «Anti-Fugazi B2B» (03/11/2026) ─────────────────────────
+   UNA SOLA FUENTE: el texto de los 7 criterios y el formato es CAP_SOP_DEFAULT
+   de la app publicada (index.html en GitHub Pages), el mismo que corre
+   «Analizar seleccionados» en Capacitacion. La skill criterios-oferta-casa §47
+   ya obliga a cambiar la app cuando cambia el SOP (commit + push = publicado),
+   asi que el conector lo toma solo, sin redesplegar. La copia de abajo es solo
+   el respaldo por si Pages no contesta; si cambia el SOP, conviene refrescarla.
+   Las reglas de chats y de auditoria de datasets NO estan en la app (alla solo
+   se analizan llamadas): viven aca y se cambian junto con §47 y §31 de la skill. */
+const APP_URL = "https://the-flowing-code.github.io/tracker-OS/";
+const SOP_RESPALDO = `Sos un analista de procesos comerciales B2B. Analiza la(s) llamada(s) de venta a partir de la transcripcion, segun el framework "Anti-Fugazi B2B" de Martin Marquez. Criterios:
+1. Diagnosticar para resolver, no para presentar (entender el problema de raiz; evitar el "modo catalogo").
+2. Dividir bien el problema en capas/partes, no tratarlo como una sola cosa.
+3. No dar precio antes de tiempo (recien con el diagnostico cerrado o si el prospecto lo pide, con transparencia).
+4. Presentar SIEMPRE en vivo; nunca mandar la cotizacion suelta por mail/WhatsApp.
+5. Cerrar el next step confirmado EN EL MOMENTO (pedir aceptar la invitacion ahi mismo, no solo prometer el link).
+6. Ofrecer un paso de bajo riesgo (LRS) ante friccion de precio o liquidez (recorte de alcance, diagnostico pago, demo acotado).
+7. Manejar confianza -> compromiso -> precio con criterio; buscar el bien comun, no el cierre a cualquier costo.
+
+FORMATO DE SALIDA (respetalo):
+- Breve linea de contexto (Estado y Rubro del prospecto si se puede inferir).
+- "Que funciono bien": vinetas que arrancan con "✔ ", citando momentos puntuales de la llamada.
+- "Que ajustar": vinetas que arrancan con "⚠ ", cada una atada a un criterio del framework y a un momento concreto.
+- "Sugerencia concreta": 1 parrafo accionable al cierre.
+- Si hay varias llamadas (R1, R2, R3, R4), desglosalo por cada una.
+
+Tono: constructivo, especifico y honesto. No inventes datos que no esten en la transcripcion. Escribi en español rioplatense.`;
+const SOP_EXTRA = {
+  largo_y_varios_leads: "Conciso: 350 a 550 palabras por lead, 5 o 6 viñetas como máximo. Con varios leads, un bloque por lead y al final una «Síntesis transversal»: los patrones que se repiten, fortalezas y desvíos comunes, y 2 o 3 recomendaciones globales.",
+  chats_de_whatsapp: "Cuando lo que hay son chats de WhatsApp/SMS y no llamadas: se aplican los criterios que corresponden (1, 3, 5, 6 y 7) y además el marco de mensajes de la casa. Mismo formato ✔ / ⚠, con el criterio (por número) o la regla de mensajes citada en cada ⚠. Reglas de mensajes: " +
+    "(a) Mensaje 1 en los primeros 5 minutos: saludo, quién es, la promesa en su versión corta y cierra con «¿Es así?» (una pregunta que se contesta con un sí). " +
+    "(b) Primero agendar, después calificar: nada de preguntas de filtrado antes de la llamada; se califica en el diagnóstico. " +
+    "(c) Mensaje 2, si no agendó: corto, sin volver a presentarse; la llamada con su nombre, para qué sirve y dos horarios concretos. El estándar es un audio de 40 segundos como máximo con una línea escrita con los horarios. " +
+    "(d) Los recordatorios no ofrecen mover la llamada; al agendar se avisa que llegan recordatorios; el del día lleva solo la hora y el link. " +
+    "(e) Al que no contesta: 4 o 5 seguimientos cambiando el formato o el canal (audio corto con su nombre, llamada), no el mismo texto; el último retoma la promesa y le da permiso para decir que no («¿Seguís interesado en …? Si ya no es de tu interés, no hay problema»). Nunca se le pide un dato que todavía no dio. " +
+    "(f) No prometer un entregable sin definir (si se promete algo por tomar la llamada, tiene nombre y contenido). " +
+    "(g) No mandar el precio ni la cotización suelta por chat (criterio 4): se presenta en vivo.",
+  auditar_dataset: "Para auditar el proceso comercial de un dataset: se leen el guion de la llamada 1 y 2, los mensajes y el paso de bajo riesgo como si fueran una llamada, y cada criterio que el proceso no garantiza es un ⚠ con la corrección: ¿la llamada 1 diagnostica antes de mostrar (1, 2)?, ¿el precio aparece recién con el diagnóstico cerrado (3)?, ¿la propuesta se presenta en vivo en la llamada 2 (4)?, ¿cada llamada cierra la siguiente agendada en el momento (5)?, ¿hay paso de bajo riesgo para el que frena por plata (6)?",
+  no_inventar: "Cada ✔ y cada ⚠ se apoya en algo que está en la transcripción o en el chat (fecha y quién lo dijo). No se inventan citas ni momentos; si falta información para un criterio, se dice que no se puede evaluar.",
+  devolucion_al_cliente: "Al cliente se le devuelve en mensajes cortos (uno por idea), sin nombrar a otros clientes, y si faltan llamadas grabadas se le pide que las grabe o las suba para el próximo feedback.",
+};
+let sopCache: { t: number; texto: string; fuente: string } | null = null;
+async function sopComercial() {
+  if (!sopCache || Date.now() - sopCache.t > 10 * 60 * 1000) {
+    let texto = "", fuente = "";
+    try {
+      const r = await fetch(APP_URL + "?v=" + Date.now(), { signal: AbortSignal.timeout(8000) });
+      const h = r.ok ? await r.text() : "";
+      const m = h.match(/const CAP_SOP_DEFAULT=`([\s\S]*?)`;/);
+      if (m && m[1].length > 300 && /Anti-Fugazi/.test(m[1])) { texto = m[1]; fuente = "app publicada (Capacitación)"; }
+    } catch { /* se usa el respaldo */ }
+    if (!texto) { texto = SOP_RESPALDO; fuente = "copia de respaldo del conector (la app no contestó)"; }
+    sopCache = { t: Date.now(), texto, fuente };
+  }
+  return {
+    nombre: "SOP de evaluación comercial «Anti-Fugazi B2B»",
+    sop: sopCache.texto, fuente: sopCache.fuente,
+    ...SOP_EXTRA,
+    como_usar: "Para llamadas: buscar_llamadas + leer_llamada del cliente y analizar cada lead con este SOP. Para chats: leer_conversaciones del cliente y aplicar los criterios 1, 3, 5, 6 y 7 más las reglas de chats_de_whatsapp. Siempre el formato del SOP.",
+  };
+}
+
+/* ── Conversaciones de GHL de un cliente (03/11/2026) ───────────────────────
+   ⚠️  EL TOKEN DE GHL DEL CLIENTE NUNCA SALE DE ACA. Se lee de tokens_clientes
+   (o de la ficha, de respaldo) y solo vuelven nombre + inicial, etapa y los
+   mensajes. Sin telefonos ni mails: tampoco los que el lead escribio adentro
+   de un mensaje (se tapan). Los leads son los de la sincronizacion del embudo
+   (datos.ghl.opportunities, la que ya usa la app), asi no se pega al pipeline
+   entero y se respeta la misma lista que ve el equipo. */
+const GHL = "https://services.leadconnectorhq.com";
+// Sin User-Agent de navegador, Cloudflare (delante de GHL) contesta 403 y
+// parece un problema de permisos del token (ver la funcion whatsapp).
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0 Safari/537.36";
+async function ghl(token: string, camino: string) {
+  const r = await fetch(GHL + camino, { headers: { Authorization: "Bearer " + token, Version: "2021-04-15",
+    Accept: "application/json", "User-Agent": UA }, signal: AbortSignal.timeout(15000) });
+  const t = await r.text();
+  if (!r.ok) throw new Error(/cloudflare/i.test(t) ? "GHL " + r.status + " (Cloudflare)" : "GHL " + r.status);
+  return JSON.parse(t);
+}
+// Las pruebas del equipo no son leads: fuera de todo feedback.
+const esPrueba = (s: unknown) => /\b(prueba|test|tests|testing)\b|santiago capori|claude/.test(norm(s));
+const tapar = (s: string) => s
+  .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[mail]")
+  .replace(/\+?\d[\d\s().-]{7,}\d/g, "[teléfono]");
+const nombreCorto = (s: unknown) => {
+  const p = String(s || "").trim().split(/\s+/).filter(Boolean);
+  return p.length ? p[0] + (p[1] ? " " + p[1][0].toUpperCase() + "." : "") : "(sin nombre)";
+};
+const TIPOS_CHAT = new Set(["TYPE_WHATSAPP", "TYPE_SMS"]);
+const TOPE_MENSAJES_TOTAL = 400;
+
+async function leerConversaciones(c: Clave, a: any) {
+  if ((c.alcance || {}).conversaciones !== "leer")
+    return { error: "Tu clave no tiene permiso para leer conversaciones de los clientes. Pedile a Angie que te lo active." };
+  const cl = await buscarClienteIds(c, a?.cliente);
+  if (!cl.length) return { error: "No encontré ese cliente (o no está en tu alcance)." };
+  const exacto = cl.find((x) => norm(x.nombre) === norm(a?.cliente));
+  if (cl.length > 1 && !exacto) return { varios: cl.slice(0, 15).map((x) => ({ id: x.id, nombre: x.nombre })), nota: "Hay varios: pedí uno por su nombre completo o su id." };
+  const cli = exacto || cl[0];
+  const f = await sb("clientes?select=loc:datos->ghl->>locationId,tf:datos->ghl->>token,op:datos->ghl->opportunities,ls:datos->ghl->>lastSync&id=eq." + cli.id);
+  const fila = f && f[0];
+  const tk = await sb("tokens_clientes?select=ghl_token&cliente_id=eq." + cli.id);
+  const token = String((tk && tk[0] && tk[0].ghl_token) || (fila && fila.tf) || "");
+  const loc = String((fila && fila.loc) || "");
+  if (!token || !loc) return { cliente: cli.nombre, error: "Este cliente no tiene GHL conectado en el tracker." };
+
+  const cantidad = Math.max(1, Math.min(25, parseInt(a?.cantidad, 10) || 10));
+  const porLead = Math.max(5, Math.min(60, parseInt(a?.mensajes_por_lead, 10) || 30));
+  const etapa = norm(limpio(a?.etapa));
+  const d0 = fecha(a?.desde);
+  let ops: any[] = (Array.isArray(fila.op) ? fila.op : []).filter((o: any) => o && o.contactId
+    && !esPrueba(o.contactName) && !esPrueba(o.name));
+  const etapas: Record<string, number> = {};
+  ops.forEach((o: any) => { const e = String(o.pipelineStage || "(sin etapa)"); etapas[e] = (etapas[e] || 0) + 1; });
+  if (etapa) ops = ops.filter((o: any) => norm(o.pipelineStage).includes(etapa));
+  if (d0) ops = ops.filter((o: any) => String(o.updatedAt || o.createdAt || "") >= d0);
+  ops.sort((x: any, y: any) => String(y.updatedAt || y.createdAt || "").localeCompare(String(x.updatedAt || x.createdAt || "")));
+
+  const leads: any[] = [];
+  let total = 0, revisados = 0, sinChat = 0, errores = 0;
+  // Se revisan de a 5 y se corta al juntar `cantidad` leads con chat: los que
+  // nunca hablaron no le sirven al feedback y no se gastan pedidos en ellos.
+  const candidatos = ops.slice(0, cantidad * 3);
+  for (let i = 0; i < candidatos.length && leads.length < cantidad && total < TOPE_MENSAJES_TOTAL; i += 5) {
+    const lote = candidatos.slice(i, i + 5);
+    const res = await Promise.all(lote.map(async (o: any) => {
+      try {
+        const cs = await ghl(token, "/conversations/search?locationId=" + encodeURIComponent(loc) + "&contactId=" + encodeURIComponent(o.contactId) + "&limit=5");
+        const msgs: any[] = [];
+        for (const cv of (cs.conversations || []).slice(0, 2)) {
+          const d = await ghl(token, "/conversations/" + encodeURIComponent(cv.id) + "/messages?limit=100");
+          const ms = (d.messages && d.messages.messages) || d.messages || [];
+          for (const m of ms) {
+            if (!m || !TIPOS_CHAT.has(String(m.messageType || ""))) continue;
+            let texto = String(m.body || "").trim();
+            if (!texto && Array.isArray(m.attachments) && m.attachments.length) texto = "[adjunto: audio, imagen o archivo]";
+            if (!texto) continue;
+            msgs.push({ fecha: m.dateAdded || "", de: m.direction === "inbound" ? "lead" : "vendedor",
+              canal: m.messageType === "TYPE_SMS" ? "SMS" : "WhatsApp",
+              ...(m.source === "workflow" || m.source === "bulk_actions" ? { automatico: true } : {}),
+              ...(m.status === "failed" || m.status === "undelivered" ? { no_llego: true } : {}),
+              texto: tapar(texto).slice(0, 1200) });
+          }
+        }
+        msgs.sort((x, y) => String(x.fecha).localeCompare(String(y.fecha)));
+        return { o, msgs };
+      } catch { return { o, msgs: null }; }
+    }));
+    for (const { o, msgs } of res) {
+      revisados++;
+      if (msgs === null) { errores++; continue; }
+      if (!msgs.length) { sinChat++; continue; }
+      if (leads.length >= cantidad || total >= TOPE_MENSAJES_TOTAL) break;
+      const ult = msgs.slice(-Math.min(porLead, TOPE_MENSAJES_TOTAL - total));
+      total += ult.length;
+      leads.push({ lead: nombreCorto(o.contactName || o.name), etapa: o.pipelineStage || "", estado: o.status || "",
+        alta: String(o.createdAt || "").slice(0, 10), mensajes_en_total: msgs.length,
+        ...(ult.length < msgs.length ? { recortado: "Van los últimos " + ult.length + " de " + msgs.length } : {}),
+        mensajes: ult });
+    }
+  }
+  return {
+    cliente: cli.nombre, leads_del_embudo_sincronizados: (fila.op || []).length, sincronizado: fila.ls || "",
+    etapas_disponibles: etapas, filtro_etapa: etapa ? a.etapa : "", revisados, sin_chat: sinChat, con_error: errores,
+    leads,
+    nota: (leads.length ? "Mensajes de WhatsApp y SMS, del más viejo al más nuevo. «vendedor» = lo que mandó el cliente o un automatismo (automatico: true). Pruebas del equipo excluidas; teléfonos y mails tapados." : "No encontré chats para esos leads.")
+      + " Para el feedback, pedí sop_comercial y aplicá sus reglas de chats.",
+  };
+}
+
 /* ── MCP ──────────────────────────────────────────────────────────────── */
 const HERRAMIENTAS = [
   { name: "buscar_llamadas",
@@ -318,6 +494,17 @@ const HERRAMIENTAS = [
       ticket: { type: "string", description: "Número del ticket, con o sin #" },
       estado: { type: "string", description: "hecha o abierta" },
       nota: { type: "string", description: "Por qué (opcional, hasta 200 caracteres)" } } } },
+  { name: "sop_comercial",
+    description: "Devuelve el SOP vigente de evaluación comercial de flowing code, «Anti-Fugazi B2B»: los 7 criterios, el formato de salida (✔ qué funcionó / ⚠ qué ajustar / sugerencia concreta / síntesis transversal), las reglas para evaluar chats de WhatsApp y para auditar el proceso comercial de un dataset. Usalo SIEMPRE antes de dar feedback comercial a un cliente o a su vendedor.",
+    inputSchema: { type: "object", properties: {} } },
+  { name: "leer_conversaciones",
+    description: "Trae del GHL de un cliente las conversaciones de WhatsApp y SMS con los leads de su embudo: nombre del lead (nombre e inicial), etapa de la oportunidad y los mensajes con fecha, quién escribió (lead o vendedor) y texto. Sin teléfonos ni mails, sin pruebas del equipo. Por defecto los 10 leads con chat más recientes. Para el feedback comercial con sop_comercial. Solo para quien tiene permiso de leer conversaciones.",
+    inputSchema: { type: "object", required: ["cliente"], properties: {
+      cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
+      etapa: { type: "string", description: "Etapa del pipeline (o parte del nombre), por ejemplo «llamada propuesta» (opcional)" },
+      cantidad: { type: "number", description: "Cuántos leads con chat traer (1 a 25, 10 por defecto)" },
+      mensajes_por_lead: { type: "number", description: "Últimos N mensajes de cada lead (5 a 60, 30 por defecto)" },
+      desde: { type: "string", description: "Solo leads con movimiento desde AAAA-MM-DD (opcional)" } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -422,6 +609,8 @@ async function correr(c: Clave, nombre: string, a: any) {
   if (nombre === "leer_llamada") return await leerLlamada(c, a);
   if (nombre === "listar_clientes") return await listarClientes(c, a);
   if (nombre === "ver_cliente") return await verCliente(c, a);
+  if (nombre === "sop_comercial") return await sopComercial();
+  if (nombre === "leer_conversaciones") return await leerConversaciones(c, a);
   throw new Error("No existe la herramienta " + nombre);
 }
 
@@ -459,8 +648,8 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.1.0" },
-      instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Lo único que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
+      serverInfo: { name: "evolve-os-consulta", version: "1.2.0" },
+      instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Lo único que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
   if (m.method === "ping") return ok({});

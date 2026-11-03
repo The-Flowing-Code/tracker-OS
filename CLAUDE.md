@@ -68,7 +68,10 @@ una sola vez (`datos.csmHechosAplicados`) y nunca encima de una tildada a mano.
   guardan credenciales. No les agregues policies. Lo mismo `mcp_claves` y
   `mcp_registro` (040): las claves del conector «Evolve OS · consulta»
   (función `evolve-mcp`, solo lectura, para el Claude de cada persona del
-  equipo). Una clave se apaga con `activa=false`; la clave en sí vive en el
+  equipo; desde el 03/11/2026 v1.2.0 suma `sop_comercial`, que lee el SOP de
+  `CAP_SOP_DEFAULT` de la app publicada, y `leer_conversaciones`, los chats de
+  GHL de los leads con el token del cliente del lado del servidor, solo con
+  `alcance.conversaciones='leer'`). Una clave se apaga con `activa=false`; la clave en sí vive en el
   Llavero (`evolve-mcp-<persona>`), en la tabla solo su sha256. Y
   `tokens_clientes` (041): los tokens de Meta y GHL de cada cliente. Por
   ahora es una COPIA que mantiene un disparador desde `clientes.datos`; los
