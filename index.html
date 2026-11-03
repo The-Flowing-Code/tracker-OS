@@ -66633,10 +66633,11 @@ FORMATO DE SALIDA (respetalo):
 - Si hay varias llamadas (R1, R2, R3, R4), desglosalo por cada una.
 
 Tono: constructivo, especifico y honesto. No inventes datos que no esten en la transcripcion. Escribi en español rioplatense.`;
-function _capSop(){ return localStorage.getItem('evold-cap-sop')||CAP_SOP_DEFAULT; }
+// El SOP es uno solo para todos (Angie, 03/11/2026): el mismo texto vive en la
+// skill criterios-oferta-casa (§47) y se cambia en los dos lados a la vez. Antes
+// cada navegador podia guardar el suyo y el analisis salia distinto segun quien lo corria.
+function _capSop(){ try{ localStorage.removeItem('evold-cap-sop'); }catch(e){} return CAP_SOP_DEFAULT; }
 function _capKey(o){ return String(o.contactId||o.id||''); }
-function capSaveSop(){ var t=(document.getElementById('cap-sop')||{}).value||''; localStorage.setItem('evold-cap-sop', t); if(typeof toast==='function') toast('SOP guardado'); }
-function capResetSop(){ localStorage.removeItem('evold-cap-sop'); if(typeof toast==='function') toast('SOP restaurado al de fabrica'); renderTab(); }
 function _capFmt(txt){
   var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   return esc(txt||'')
@@ -66712,13 +66713,11 @@ function _capListHtml(c){
   var open=S._capSopOpen;
   var sopHtml='<div style="border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden">'
     +'<div onclick="S._capSopOpen=!S._capSopOpen;renderTab()" style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;cursor:pointer;background:var(--bg2)">'
-    +'<div style="font-size:12.5px;font-weight:500;color:var(--strong)">SOP de evaluacion <span style="color:var(--text3);font-weight:400">(global, se aplica a todos)</span></div>'
-    +'<span style="color:var(--text3);font-size:12px">'+(open?'ocultar &#9652;':'editar &#9662;')+'</span></div>'
+    +'<div style="font-size:12.5px;font-weight:500;color:var(--strong)">SOP de evaluacion: Anti-Fugazi B2B <span style="color:var(--text3);font-weight:400">(fijo, se aplica a todos)</span></div>'
+    +'<span style="color:var(--text3);font-size:12px">'+(open?'ocultar &#9652;':'ver &#9662;')+'</span></div>'
     +(open?('<div style="padding:14px 15px">'
-      +'<textarea id="cap-sop" style="width:100%;min-height:200px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;padding:12px;line-height:1.6;resize:vertical;font-family:var(--font)">'+esc(_capSop())+'</textarea>'
-      +'<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">'
-      +'<button class="btn btn-sm" onclick="capResetSop()">Restaurar de fabrica</button>'
-      +'<button class="btn btn-sm btn-primary" onclick="capSaveSop()">Guardar SOP</button></div></div>'):'')
+      +'<div style="white-space:pre-wrap;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;padding:12px;line-height:1.6">'+esc(_capSop())+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:8px">Es el mismo para todos los clientes y para las auditor&iacute;as del proceso comercial. Se cambia en la skill de criterios de la casa, no ac&aacute;.</div></div>'):'')
     +'</div>';
   var unknown=opps.filter(function(o){return !(_capKey(o) in DB.capCalls);}).length;
   DB.capBatches=DB.capBatches||[]; S._capSel=S._capSel||{};
