@@ -83,7 +83,9 @@ los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
   `guardar_mensajes_dia`, `guardar_parte` y `leer_mensajes_estado` —esta lee
   `mensajesEstado` con `rpc/get_mensajes_estado` (053), porque service_role no
   lee `config`— y, con `alcance.campanas='leer'`, `estado_anuncios`, Meta con
-  el token del cliente del lado del servidor). Una clave se apaga con `activa=false`; la clave en sí vive en el
+  el token del cliente del lado del servidor; v1.3.1: `leer_conversaciones` con
+  `leads_nuevos` lista todos los leads desde una fecha con su mensaje 1, y cuenta
+  `TYPE_CUSTOM_SMS`). Una clave se apaga con `activa=false`; la clave en sí vive en el
   Llavero (`evolve-mcp-<persona>`), en la tabla solo su sha256. Y
   `tokens_clientes` (041): los tokens de Meta y GHL de cada cliente. Por
   ahora es una COPIA que mantiene un disparador desde `clientes.datos`; los

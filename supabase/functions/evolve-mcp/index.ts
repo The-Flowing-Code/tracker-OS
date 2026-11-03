@@ -379,8 +379,89 @@ const nombreCorto = (s: unknown) => {
   const p = String(s || "").trim().split(/\s+/).filter(Boolean);
   return p.length ? p[0] + (p[1] ? " " + p[1][0].toUpperCase() + "." : "") : "(sin nombre)";
 };
-const TIPOS_CHAT = new Set(["TYPE_WHATSAPP", "TYPE_SMS"]);
+// TYPE_CUSTOM_SMS: los que mandan por un proveedor de SMS propio (Sygemat).
+// Sin él, sus leads parecían sin mensaje 1 aunque el SMS salía al segundo.
+const TIPOS_CHAT = new Set(["TYPE_WHATSAPP", "TYPE_SMS", "TYPE_CUSTOM_SMS", "TYPE_CUSTOM_PROVIDER_SMS"]);
 const TOPE_MENSAJES_TOTAL = 400;
+// Por caracteres enteros: con .slice un emoji puede quedar partido al medio.
+const cortar = (s: string, n: number) => Array.from(s).slice(0, n).join("");
+
+// Los WhatsApp/SMS de un contacto, del más viejo al más nuevo.
+async function chatsDe(token: string, loc: string, contactId: string) {
+  const cs = await ghl(token, "/conversations/search?locationId=" + encodeURIComponent(loc) + "&contactId=" + encodeURIComponent(contactId) + "&limit=5");
+  const msgs: any[] = [];
+  for (const cv of (cs.conversations || []).slice(0, 2)) {
+    const d = await ghl(token, "/conversations/" + encodeURIComponent(cv.id) + "/messages?limit=100");
+    const ms = (d.messages && d.messages.messages) || d.messages || [];
+    for (const m of ms) {
+      if (!m || !TIPOS_CHAT.has(String(m.messageType || ""))) continue;
+      let texto = String(m.body || "").trim();
+      if (!texto && Array.isArray(m.attachments) && m.attachments.length) texto = "[adjunto: audio, imagen o archivo]";
+      if (!texto) continue;
+      msgs.push({ fecha: m.dateAdded || "", de: m.direction === "inbound" ? "lead" : "vendedor",
+        canal: m.messageType === "TYPE_WHATSAPP" ? "WhatsApp" : "SMS",
+        ...(m.source === "workflow" || m.source === "bulk_actions" ? { automatico: true } : {}),
+        ...(m.status === "failed" || m.status === "undelivered" ? { no_llego: true } : {}),
+        texto: cortar(tapar(texto), 1200) });
+    }
+  }
+  msgs.sort((x, y) => String(x.fecha).localeCompare(String(y.fecha)));
+  return msgs;
+}
+
+/* Leads nuevos y su mensaje 1 (03/11/2026). Para la rutina leads-sin-mensaje-1
+   en la Mac de Santi: el modo normal descarta a los que nunca hablaron, y esos
+   son justo los que hay que nombrar. Acá van TODOS los que entraron desde
+   `desde` (por fecha de alta), hayan recibido algo o no, con cuánto tardó el
+   primer mensaje nuestro y si llegó. Los leads salen de la sincronización del
+   embudo: si es vieja, un lead recién entrado no está, y se avisa. */
+async function leadsNuevos(nombre: string, token: string, loc: string, fila: any, a: any) {
+  const d0 = fecha(a?.desde) || new Date(Date.now() - 27 * 3600 * 1000).toISOString().slice(0, 10);
+  const ops: any[] = (Array.isArray(fila.op) ? fila.op : []).filter((o: any) => o && o.contactId
+    && !esPrueba(o.contactName) && !esPrueba(o.name) && String(o.createdAt || "") >= d0)
+    .sort((x: any, y: any) => String(y.createdAt || "").localeCompare(String(x.createdAt || "")));
+  const TOPE = 40;
+  // Varias oportunidades con la misma hora de alta (al minuto) no son gente
+  // que se registró: es una carga o un pase de pipeline. Su «tarde» no es una
+  // falla del mensaje 1 (Sygemat, 30/10: 8 juntas a las 12:43).
+  const porMinuto: Record<string, number> = {};
+  ops.forEach((o: any) => { const k = String(o.createdAt || "").slice(0, 16); porMinuto[k] = (porMinuto[k] || 0) + 1; });
+  const leads: any[] = [];
+  let errores = 0;
+  for (let i = 0; i < Math.min(ops.length, TOPE); i += 5) {
+    const res = await Promise.all(ops.slice(i, i + 5).map(async (o: any) => {
+      try { return { o, msgs: await chatsDe(token, loc, o.contactId) }; } catch { return { o, msgs: null }; }
+    }));
+    for (const { o, msgs } of res) {
+      if (msgs === null) { errores++; leads.push({ lead: nombreCorto(o.contactName || o.name), alta: o.createdAt || "", error: "GHL no contestó para este lead" }); continue; }
+      // Un contacto que ya existía trae charla de antes: el mensaje 1 de ESTE
+      // registro es el primero nuestro desde el alta (un minuto de margen).
+      const alta = Date.parse(o.createdAt);
+      const despues = msgs.filter((m) => Date.parse(m.fecha) >= alta - 60000);
+      const nuestros = despues.filter((m) => m.de === "vendedor");
+      const m1 = nuestros[0] || null;
+      const llegados = nuestros.filter((m) => !m.no_llego);
+      const min = m1 ? Math.round((Date.parse(m1.fecha) - alta) / 60000) : null;
+      const lote = porMinuto[String(o.createdAt || "").slice(0, 16)] || 1;
+      leads.push({ lead: nombreCorto(o.contactName || o.name), etapa: o.pipelineStage || "", alta: o.createdAt || "",
+        ...(lote >= 3 ? { alta_en_lote: lote } : {}), ...(despues.length < msgs.length ? { ya_era_contacto: true } : {}),
+        mensaje_1: m1 ? { fecha: m1.fecha, canal: m1.canal, ...(m1.automatico ? { automatico: true } : {}),
+          minutos_desde_alta: min, ...(m1.no_llego ? { no_llego: true } : {}), texto: cortar(m1.texto, 300) } : null,
+        estado: !m1 ? "sin_mensaje" : (!llegados.length ? "fallo" : ((min ?? 0) > 5 ? "tarde" : "ok")),
+        mensajes_nuestros: nuestros.length, mensajes_del_lead: despues.length - nuestros.length,
+        ultimo: msgs.length ? { fecha: msgs[msgs.length - 1].fecha, de: msgs[msgs.length - 1].de } : null });
+    }
+  }
+  const ls = String(fila.ls || "");
+  const horas = ls ? Math.round((Date.now() - Date.parse(ls)) / 3600000) : null;
+  const cuenta: Record<string, number> = {};
+  const enLote = leads.filter((x) => x.alta_en_lote).length;
+  leads.forEach((x) => { if (x.alta_en_lote) return; const e = x.estado || "error"; cuenta[e] = (cuenta[e] || 0) + 1; });
+  return { cliente: nombre, desde: d0, sincronizado: ls, leads_nuevos: ops.length, ...(ops.length > TOPE ? { recortado: "Van los " + TOPE + " más nuevos" } : {}),
+    por_estado: cuenta, ...(enLote ? { en_lote: enLote } : {}), con_error: errores, leads,
+    nota: "estado: sin_mensaje = no le escribimos nada; fallo = se mandó y no llegó; tarde = el mensaje 1 salió después de 5 minutos; ok. por_estado no cuenta los de alta_en_lote (3 o más con la misma hora de alta: una carga o un pase de pipeline, no un registro). ya_era_contacto = tenía charla de antes; el mensaje 1 se cuenta desde este alta. Pruebas del equipo excluidas; teléfonos y mails tapados."
+      + (horas === null || horas > 6 ? " ⚠️ La sincronización del embudo es de hace " + (horas ?? "?") + " h: puede faltar algún lead recién entrado." : "") };
+}
 
 async function leerConversaciones(c: Clave, a: any) {
   if ((c.alcance || {}).conversaciones !== "leer")
@@ -409,6 +490,8 @@ async function leerConversaciones(c: Clave, a: any) {
   if (d0) ops = ops.filter((o: any) => String(o.updatedAt || o.createdAt || "") >= d0);
   ops.sort((x: any, y: any) => String(y.updatedAt || y.createdAt || "").localeCompare(String(x.updatedAt || x.createdAt || "")));
 
+  if (a?.leads_nuevos) return await leadsNuevos(cli.nombre, token, loc, fila, a);
+
   const leads: any[] = [];
   let total = 0, revisados = 0, sinChat = 0, errores = 0;
   // Se revisan de a 5 y se corta al juntar `cantidad` leads con chat: los que
@@ -417,27 +500,8 @@ async function leerConversaciones(c: Clave, a: any) {
   for (let i = 0; i < candidatos.length && leads.length < cantidad && total < TOPE_MENSAJES_TOTAL; i += 5) {
     const lote = candidatos.slice(i, i + 5);
     const res = await Promise.all(lote.map(async (o: any) => {
-      try {
-        const cs = await ghl(token, "/conversations/search?locationId=" + encodeURIComponent(loc) + "&contactId=" + encodeURIComponent(o.contactId) + "&limit=5");
-        const msgs: any[] = [];
-        for (const cv of (cs.conversations || []).slice(0, 2)) {
-          const d = await ghl(token, "/conversations/" + encodeURIComponent(cv.id) + "/messages?limit=100");
-          const ms = (d.messages && d.messages.messages) || d.messages || [];
-          for (const m of ms) {
-            if (!m || !TIPOS_CHAT.has(String(m.messageType || ""))) continue;
-            let texto = String(m.body || "").trim();
-            if (!texto && Array.isArray(m.attachments) && m.attachments.length) texto = "[adjunto: audio, imagen o archivo]";
-            if (!texto) continue;
-            msgs.push({ fecha: m.dateAdded || "", de: m.direction === "inbound" ? "lead" : "vendedor",
-              canal: m.messageType === "TYPE_SMS" ? "SMS" : "WhatsApp",
-              ...(m.source === "workflow" || m.source === "bulk_actions" ? { automatico: true } : {}),
-              ...(m.status === "failed" || m.status === "undelivered" ? { no_llego: true } : {}),
-              texto: tapar(texto).slice(0, 1200) });
-          }
-        }
-        msgs.sort((x, y) => String(x.fecha).localeCompare(String(y.fecha)));
-        return { o, msgs };
-      } catch { return { o, msgs: null }; }
+      try { return { o, msgs: await chatsDe(token, loc, o.contactId) }; }
+      catch { return { o, msgs: null }; }
     }));
     for (const { o, msgs } of res) {
       revisados++;
@@ -510,7 +574,8 @@ const HERRAMIENTAS = [
       etapa: { type: "string", description: "Etapa del pipeline (o parte del nombre), por ejemplo «llamada propuesta» (opcional)" },
       cantidad: { type: "number", description: "Cuántos leads con chat traer (1 a 25, 10 por defecto)" },
       mensajes_por_lead: { type: "number", description: "Últimos N mensajes de cada lead (5 a 60, 30 por defecto)" },
-      desde: { type: "string", description: "Solo leads con movimiento desde AAAA-MM-DD (opcional)" } } } },
+      desde: { type: "string", description: "Solo leads con movimiento desde AAAA-MM-DD (opcional). Con leads_nuevos: dados de alta desde ese día (por defecto, ayer)" },
+      leads_nuevos: { type: "boolean", description: "Para el control del mensaje 1: TODOS los leads que entraron desde «desde», también los que nunca recibieron nada, con su mensaje 1 (cuánto tardó, si llegó) y un estado: sin_mensaje, fallo, tarde u ok. Hasta 40" } } } },
   { name: "guardar_mensajes_dia",
     description: "Deja los borradores de los mensajes del día de UN cliente en «Mensajes para mandar hoy» del tracker. No manda nada: los manda Santi a mano desde su WhatsApp. Pisa los de la corrida anterior de ese cliente y esa fuente. Solo para quien tiene permiso de mensajes. Tope diario compartido con guardar_parte.",
     inputSchema: { type: "object", required: ["cliente", "fuente", "fecha", "mensajes"], properties: {
@@ -845,7 +910,7 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.3.0" },
+      serverInfo: { name: "evolve-os-consulta", version: "1.3.1" },
       instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Para las rutinas de mensajes: estado_anuncios antes de hablar de campañas, guardar_mensajes_dia (uno por cliente) y guardar_parte; al cierre, leer_mensajes_estado. Los mensajes son borradores: nada se le manda a nadie desde acá. Lo demás que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
