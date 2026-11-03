@@ -1125,6 +1125,30 @@ body.light .fx-fecha{color-scheme:light}
 .p3tk2 .p3kcat{display:inline-block;border:1px solid;border-radius:5px;
   padding:0 4px;margin-right:5px;font-size:9.5px;font-weight:700;line-height:14px;
   vertical-align:1px;letter-spacing:.02em}
+/* La etiqueta de atencion (Angie, 03/11/2026). Urgente lleva fondo y monitoreo
+   solo borde: las dos tienen que distinguirse de la categoria, que es borde
+   finito, y entre ellas a un vistazo, sin leer la palabra. */
+.atn{display:inline-flex;align-items:center;gap:4px;border:1px solid;border-radius:999px;
+  padding:0 7px;font-size:9.5px;font-weight:700;line-height:15px;letter-spacing:.03em;
+  text-transform:uppercase;vertical-align:1px;margin-right:5px;cursor:pointer;white-space:nowrap;
+  font-family:var(--font)}
+.atn.urgente{color:var(--redx);border-color:var(--redx);background:color-mix(in srgb,var(--redx) 16%,transparent)}
+.atn.monitoreo{color:var(--amberx);border-color:color-mix(in srgb,var(--amberx) 60%,transparent);background:transparent}
+.atn.sin{color:var(--text3);border-style:dashed;border-color:var(--border2);background:transparent;
+  text-transform:none;letter-spacing:0;font-weight:500}
+.atn:hover{filter:brightness(1.15)}
+.atn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* En la ficha va al lado del nombre de 19px: mas grande, si no parece una nota. */
+.p3fi-tit .atn{font-size:11px;line-height:20px;padding:0 10px;margin:0 0 0 10px;vertical-align:3px}
+.cpop.atnmenu{width:230px;padding:10px 6px 6px}
+.atnmenu .cp-lbl{padding:0 10px 4px}
+.atnmenu .atn-op{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 10px;
+  border:0;border-radius:9px;background:transparent;color:var(--text);font:500 13px var(--font);cursor:pointer}
+.atnmenu .atn-op:hover,.atnmenu .atn-op:focus-visible{background:color-mix(in srgb,var(--text) 6%,transparent);outline:0}
+.atnmenu .atn-op.on{font-weight:700}
+.atnmenu .atn-pt{width:9px;height:9px;border-radius:50%;border:1px solid var(--border2);flex:none}
+.atnmenu .atn-pt.urgente{background:var(--redx);border-color:var(--redx)}
+.atnmenu .atn-pt.monitoreo{border-color:var(--amberx);box-shadow:inset 0 0 0 2px var(--amberx)}
 .p3tk2:hover{background:var(--bg4)}
 /* El nombre abre la ficha del cliente y el resto de la tarjeta abre el detalle
    de abajo: son dos destinos distintos en el mismo lugar, asi que el nombre
@@ -40461,7 +40485,8 @@ function _p360FichaHtml(c, conAgenda){
         +((typeof _alCampanaHtml==='function')?_alCampanaHtml(c):'')
         +'<button class="p3fi-x" onclick="p360FichaCerrar()" title="Cerrar (Esc)" aria-label="Cerrar">\u2715</button>'
       +'</div>'
-      +'<div class="p3fi-tit">'+esc(c.name||'')+'</div>'
+      +'<div class="p3fi-tit">'+esc(c.name||'')
+        +((typeof _atnChip==='function')?_atnChip(c, true):'')+'</div>'
       +cab
     +'</div>'
     +'<div class="p3fi-cuerpo">'
@@ -42177,6 +42202,105 @@ function _catChip(c){
   return '<span class="p3kcat" title="'+esc(CAT_AYUDA[k]||'')+'" '
     +'style="color:'+col+';border-color:'+col+(k==='AAA+'?';background:rgba(200,255,71,.14)':'')+'">'+esc(k)+'</span>';
 }
+/* ── Etiqueta de atencion: Urgente / Monitoreo (Angie, 03/11/2026) ────────
+   «que le quede una etiqueta en la ficha del cliente al que es urgente o
+   monitoreo». Es una marca que pone una persona y nada la calcula: si la
+   dedujeramos de las alarmas diria lo mismo que el renglon de la tarjeta.
+   Vive en datos (`atencion`, `atencionAt`, `atencionPor`) y se guarda con el
+   save() de siempre. La puede cambiar cualquiera que vea al cliente, tambien
+   el CSM: es el que mas la usa. */
+var ATENCION={
+  urgente:{l:'Urgente', ayuda:'Hay que ocuparse ya de este cliente.'},
+  monitoreo:{l:'Monitoreo', ayuda:'Anda, pero hay que mirarlo de cerca.'}
+};
+function atencionDe(c){
+  var k=String((c&&c.atencion)||'');
+  return ATENCION[k]?k:'';
+}
+function atencionSet(clientId, k){
+  var c=(DB.clients||[]).find(function(x){ return x.id===+clientId; });
+  if(!c) return;
+  k=String(k||'');
+  if(k && !ATENCION[k]) return;
+  if(typeof atnMenuCerrar==='function') atnMenuCerrar();
+  // Tocar la misma no estampa fecha nueva: la fecha dice desde cuando esta asi.
+  if(k===atencionDe(c)) return;
+  if(k){
+    c.atencion=k;
+    c.atencionAt=new Date().toISOString();
+    c.atencionPor=(typeof SB!=='undefined' && SB && SB.email)||'';
+  }else{
+    delete c.atencion; delete c.atencionAt; delete c.atencionPor;
+  }
+  save();
+  if(typeof p360Repintar==='function') p360Repintar();
+}
+// Urgentes primero, despues monitoreo, despues el resto, sin mover a nadie
+// dentro de cada grupo (sort estable): el orden de siempre sigue mandando.
+function _atnOrdenar(lista){
+  var r=function(d){ var k=atencionDe(d&&d.c?d.c:d); return k==='urgente'?0:(k==='monitoreo'?1:2); };
+  return lista.map(function(d,i){ return {d:d,i:i}; })
+    .sort(function(a,b){ return (r(a.d)-r(b.d))||(a.i-b.i); })
+    .map(function(x){ return x.d; });
+}
+/* El chip. En la tarjeta solo aparece si hay etiqueta: una pastilla vacia en
+   treinta tarjetas es ruido. En la ficha, sin etiqueta, queda un control
+   punteado para ponerla. Es un span y no un button porque la tarjeta entera
+   ya es un <button>, y un boton adentro de otro no es HTML valido. */
+function _atnChip(c, enFicha){
+  var k=atencionDe(c);
+  if(!k && !enFicha) return '';
+  var tit=k
+    ? (ATENCION[k].ayuda+(c.atencionAt?(' Desde el '+String(c.atencionAt).slice(8,10)+'/'
+        +String(c.atencionAt).slice(5,7)):'')
+       +(c.atencionPor?(' · '+String(c.atencionPor).split('@')[0]):'')+'. Tocala para cambiarla.')
+    : 'Marcar como urgente o en monitoreo';
+  var abrir='event.stopPropagation();atnMenu(this,'+c.id+')';
+  return '<span class="atn '+(k||'sin')+'" role="button" tabindex="0" aria-haspopup="menu" '
+    +'title="'+esc(tit)+'" onclick="'+abrir+'" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();'+abrir+';}">'
+    +(k?esc(ATENCION[k].l):'+ etiqueta')+'</span>';
+}
+function atnMenuCerrar(){
+  var p=document.getElementById('atn-menu');
+  if(p) p.remove();
+  document.removeEventListener('mousedown', _atnMenuFuera, true);
+  document.removeEventListener('keydown', _atnMenuTecla, true);
+}
+function _atnMenuFuera(e){
+  var p=document.getElementById('atn-menu');
+  if(p && !p.contains(e.target)) atnMenuCerrar();
+}
+// Esc cierra el menu y nada mas: sin el stopPropagation tambien cerraba la ficha.
+function _atnMenuTecla(e){ if(e.key==='Escape'){ e.stopPropagation(); atnMenuCerrar(); } }
+function atnMenu(ancla, clientId){
+  var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });
+  if(!c) return;
+  var abierto=document.getElementById('atn-menu');
+  atnMenuCerrar();
+  if(abierto && abierto.dataset.cli===String(clientId)) return;
+  var act=atencionDe(c);
+  var op=function(k, l){
+    return '<button class="atn-op'+(act===k?' on':'')+'" role="menuitem" '
+      +'onclick="atencionSet('+clientId+',\''+k+'\')">'
+      +'<span class="atn-pt '+(k||'sin')+'"></span>'+esc(l)+'</button>';
+  };
+  var p=document.createElement('div');
+  p.id='atn-menu'; p.className='cpop atnmenu'; p.dataset.cli=String(clientId);
+  p.setAttribute('role','menu');
+  p.addEventListener('click', function(e){ e.stopPropagation(); });
+  p.innerHTML='<div class="cp-lbl">Etiqueta</div>'
+    +op('urgente','Urgente')+op('monitoreo','Monitoreo')+op('','Sin etiqueta');
+  document.body.appendChild(p);
+  // Arriba del popup de la ficha (z-index 1000): .cpop ya va en 9000.
+  var r=ancla.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
+  var x=Math.min(Math.max(12, r.left), window.innerWidth-w-12), y=r.bottom+6;
+  if(y+h>window.innerHeight-12 && r.top-h-6>12) y=r.top-h-6;
+  p.style.left=Math.round(x)+'px'; p.style.top=Math.round(Math.max(12,y))+'px';
+  document.addEventListener('mousedown', _atnMenuFuera, true);
+  document.addEventListener('keydown', _atnMenuTecla, true);
+  var b=p.querySelector('.atn-op.on')||p.querySelector('button'); if(b) b.focus();
+}
 function _saludHtml(c){
   var s=_saludDe(c);
   if(!s) return '';
@@ -43579,6 +43703,10 @@ function p360Html(){
     if(i<0){ sinRuta.push(d); return; }
     cols[i].cards.push(d);
   });
+  /* Urgentes arriba de cada columna, despues los de monitoreo (03/11/2026).
+     Se puede porque arrastrar una tarjeta solo la cambia de etapa: adentro de
+     la columna no hay orden a mano que romper. El resto queda como venia. */
+  cols.forEach(function(x){ x.cards=_atnOrdenar(x.cards); });
 
   /* ── "Recurrente" vuelve a ser una columna (06/10) ──────────────────
 
@@ -44043,6 +44171,7 @@ function p360Html(){
         +circulo
         +'<div style="min-width:0;flex:1">'
           +'<div class="p3knom'+(_nb?(' b'+Math.min(_nb,7)):'')+'">'
+            +_atnChip(d.c, false)
             +_catChip(d.c)
             +'<span class="p3knomlk" role="link" tabindex="0" '
             +'title="'+esc('Abrir el Success tracker de '+(d.c.name||''))+'" '

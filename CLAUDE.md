@@ -57,6 +57,14 @@ Claude tildan una tarea mandando un hecho a `maquina.hechos` (agregar_hechos,
 lo pasa a `csmTareas[id]` con `por:'claude'`, `evidencia` y la fecha del hecho,
 una sola vez (`datos.csmHechosAplicados`) y nunca encima de una tildada a mano.
 
+Etiqueta de atención (03/11/2026): `datos.atencion` = 'urgente' | 'monitoreo'
+(sin la clave = sin etiqueta), con `atencionAt` (ISO) y `atencionPor` (mail de
+quien la puso). Chip al lado del nombre en la ficha (`_atnChip`, con «+ etiqueta»
+punteado si no tiene) y en la tarjeta del Panel 360 solo si tiene; tocarlo abre
+`atnMenu` y lo cambia `atencionSet()` con el save() de siempre (cualquiera con
+acceso, también el CSM). En cada columna del tablero suben los urgentes y después
+los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
+
 ## Base de datos
 - Leer: `sbq`, libre.
 - Escribir: `sbw` / `sbsql`, **solo avisándome antes**.
