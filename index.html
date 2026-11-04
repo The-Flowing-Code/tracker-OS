@@ -3015,6 +3015,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/bienvenida.js?v=DEV"></script>
 <script src="js/avisos.js?v=DEV"></script>
 <script src="js/etapas-csm.js?v=DEV"></script>
+<script src="js/mensual.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -43596,7 +43597,8 @@ function dashboardHtml(){
       +'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">'+filtros
         +'<div style="display:flex;background:#12151C;border-radius:999px;padding:4px">'+seg(0,'Hoy')+seg(7,'7 días')+seg(30,'30 días')+'</div></div>'
     +'</div>'
-    +kpis+actividad
+    // Mes contra mes del servicio completo (Angie, 04/11/2026): reemplaza las tarjetas y la actividad.
+    +(typeof dashMensualHtml==='function'?dashMensualHtml(cls):kpis+actividad)
     +'<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">'+alarmas+pulso+'</div>'
     +rutina
     +'<div style="height:40px"></div></div></div>';
