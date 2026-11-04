@@ -116,6 +116,13 @@ function mensCalcular(M, todos, activos){
   R.nuevos=nuevos.length;
   var tk=nuevos.map(function(c){ return Number(c.contractValue); }).filter(function(v){ return v>0; });
   R.ticket=_mensProm(tk); R.ticketN=tk.length;
+  // Lo cobrado: los pagos con `pagadoAt` en el mes, y el LTV cobrado de los que
+  // entraron ese mes (todo lo que pagaron hasta hoy). Las cuotas mensuales y las
+  // renovaciones suman solo si se cargan como pagos (Angie, 04/11/2026).
+  var pagado=function(c){ return (c.pagos||[]).filter(function(p){ return p && p.pagadoAt; }); };
+  R.cobrado=todos.reduce(function(s,c){ return s+pagado(c).filter(function(p){ return _mensEn(_mensFecha(p.pagadoAt), M); })
+    .reduce(function(t,p){ return t+(Number(p.monto)||0); },0); },0);
+  R.ltv=_mensProm(nuevos.map(function(c){ return pagado(c).reduce(function(t,p){ return t+(Number(p.monto)||0); },0); }));
   var bajas=todos.filter(function(c){ return c.archived && _mensEn(_mensFecha(c.archivedAt), M); });
   var alInicio=todos.filter(function(c){
     var a=_mensFecha(c.altaAt), b=c.archived?_mensFecha(c.archivedAt):null;
@@ -144,7 +151,7 @@ function mensCalcular(M, todos, activos){
   R.lanzados=lanz.length; R.diasLanz=_mensProm(lanz);
   // Embudo de campañas, por cliente.
   var F={reg:[],agenda:[],vivo:[],pres:[],compro:[]}, tot={reg:0,agenda:0,vivo:0,pres:0,compro:0};
-  var gastoTot=0, pendiente=0, sinTasa=[], conPres=0;
+  var gastoTot=0, pendiente=0, sinTasa=[], conPres=0, conCamp=0;
   activos.forEach(function(c){
     var ops=((c.ghl&&c.ghl.opportunities)||[]).filter(function(o){ return _mensEn(new Date(o.createdAt||o.dateAdded||0).getTime(), M) && !_mensEsPrueba(o); });
     var rg=_mensReglas(c); if(rg.pres.length) conPres++;
@@ -157,13 +164,16 @@ function mensCalcular(M, todos, activos){
       else usd=(typeof aUsd==='function')?Number(aUsd(c,g.spend)):g.spend;
     } else if(!g) pendiente++;
     if(usd) gastoTot+=usd;
-    Object.keys(F).forEach(function(k){ tot[k]+=n[k]; if(n[k]>0) F[k].push({c:c, n:n[k], usd:usd}); });
+    // Con campaña activa = gastó en Meta ese mes, tenga o no tasa cargada.
+    var act=!!(g && g.spend>0); if(act) conCamp++;
+    Object.keys(F).forEach(function(k){ tot[k]+=n[k]; if(n[k]>0) F[k].push({c:c, n:n[k], usd:usd, act:act}); });
   });
-  R.gasto=gastoTot; R.pendiente=pendiente; R.sinTasa=sinTasa; R.conPres=conPres;
+  R.gasto=gastoTot; R.pendiente=pendiente; R.sinTasa=sinTasa; R.conPres=conPres; R.conCamp=conCamp;
   R.f={};
   Object.keys(F).forEach(function(k){
     var cl=F[k], costos=cl.filter(function(x){ return x.usd; }).map(function(x){ return x.usd/x.n; });
-    R.f[k]={clientes:cl.length, total:tot[k], costo:_mensProm(costos)};
+    var deAct=cl.filter(function(x){ return x.act; }).length;
+    R.f[k]={clientes:cl.length, total:tot[k], costo:_mensProm(costos), pct:conCamp?deAct/conCamp:null, deAct:deAct};
   });
   var conCierre=F.compro.filter(function(x){ return x.usd; });
   R.cac=conCierre.length?conCierre.reduce(function(s,x){return s+x.usd;},0)/conCierre.reduce(function(s,x){return s+x.n;},0):null;
@@ -206,16 +216,21 @@ function dashMensualHtml(activos){
     return '<tr><td>'+nombre+(nota?'<div class="ks">'+nota+'</div>':'')+'</td><td class="v">'+va+'</td><td class="v">'+vb+'</td><td class="v">'+(cambio||'')+'</td><td class="v cur">'+(vc==null?'—':vc)+'</td></tr>';
   };
   var sec=function(t){ return '<tr class="sec"><td colspan="5">'+t+'</td></tr>'; };
+  // El porcentaje es sobre los clientes con campaña activa ese mes (Angie, 04/11/2026).
+  var pctTxt=function(f,R){ return f.pct==null?String(f.clientes):'<span title="'+f.deAct+' de '+R.conCamp+' con campaña activa">'+_mensPct(f.pct)+'</span>'; };
   var cnt=function(k, nombre, costoNombre){
     var a=A.f[k], b=B.f[k];
     var c=C.f[k];
-    return fila('Clientes con '+nombre, a.clientes, b.clientes, _mensCambio(a.clientes,b.clientes), a.total+' y '+b.total+' en total', c.clientes)
+    return fila('Clientes con '+nombre, pctTxt(a,A), pctTxt(b,B), _mensCambio(a.pct,b.pct),
+        'de los clientes con campaña activa: '+a.deAct+' de '+A.conCamp+' y '+b.deAct+' de '+B.conCamp+' · '+a.total+' y '+b.total+' en total', pctTxt(c,C))
       +fila(costoNombre, _mensUsd(a.costo), _mensUsd(b.costo), _mensCambio(a.costo,b.costo,true), 'promedio de lo que le cuesta a cada cliente', _mensUsd(c.costo));
   };
   var bajasTxt=function(R){ return R.bajas.length?esc(R.bajas.map(function(c){ return c.name; }).join(', ')):''; };
   var rows=sec('Clientes')
     +fila('Clientes nuevos', A.nuevos, B.nuevos, _mensCambio(A.nuevos,B.nuevos), '', C.nuevos)
     +fila('Ticket promedio', _mensUsd(A.ticket), _mensUsd(B.ticket), _mensCambio(A.ticket,B.ticket), 'lo que le vendimos, de los que tienen el contrato cargado ('+A.ticketN+' y '+B.ticketN+')', _mensUsd(C.ticket))
+    +fila('LTV cobrado', _mensUsd(A.ltv), _mensUsd(B.ltv), _mensCambio(A.ltv,B.ltv), 'lo que pagó hasta hoy cada cliente que entró ese mes', _mensUsd(C.ltv))
+    +fila('Cobrado en el mes', _mensUsd(A.cobrado), _mensUsd(B.cobrado), _mensCambio(A.cobrado,B.cobrado), 'pagos cargados como cobrados ese mes; las cuotas y renovaciones suman si se cargan como pagos', _mensUsd(C.cobrado))
     +fila('Clientes que abandonaron', A.bajas.length, B.bajas.length, '', [bajasTxt(A),bajasTxt(B),bajasTxt(C)].filter(Boolean).join(' · '), C.bajas.length)
     +fila('Tasa de abandono', _mensPct(A.tasaBaja), _mensPct(B.tasaBaja), _mensCambio(A.tasaBaja,B.tasaBaja,true), 'sobre los activos al empezar el mes ('+A.alInicio+' y '+B.alInicio+')', _mensPct(C.tasaBaja))
     +fila('Días hasta abandonar', _mensDiasTxt(A.diasBaja), _mensDiasTxt(B.diasBaja), '', 'del alta al archivo', _mensDiasTxt(C.diasBaja))
@@ -228,14 +243,15 @@ function dashMensualHtml(activos){
     +fila('Inversión en pauta', _mensUsd(A.gasto), _mensUsd(B.gasto), _mensCambio(A.gasto,B.gasto),
         'toda la cuenta de Meta de cada cliente'+((A.pendiente||B.pendiente||C.pendiente)?' · <span style="color:#FF8A4C">trayendo de Meta…</span>':'')
         +((A.sinTasa.length||B.sinTasa.length)?' · <span style="color:#FF8A4C">'+esc(A.sinTasa.concat(B.sinTasa,C.sinTasa).filter(function(x,i,l){ return l.indexOf(x)===i; }).join(', '))+': sin tasa cargada, no suman</span>':''), _mensUsd(C.gasto))
+    +fila('Clientes con campaña activa', A.conCamp, B.conCamp, _mensCambio(A.conCamp,B.conCamp), 'gastaron en Meta ese mes', C.conCamp)
     +fila('Registros', A.f.reg.total, B.f.reg.total, _mensCambio(A.f.reg.total,B.f.reg.total), '', C.f.reg.total)
     +cnt('reg','registros','Costo por registro')
     +cnt('agenda','agendas','Costo por agenda')
     +cnt('vivo','llamadas en vivo','Costo por llamada en vivo')
     +(A.conPres||B.conPres||C.conPres ? cnt('pres','presentaciones','Costo por presentación')
         : fila('Clientes con presentaciones','—','—','','ningún cliente tiene la etapa de presentación marcada en sus reglas de GHL'))
-    +fila('Clientes con cierre', A.f.compro.clientes, B.f.compro.clientes, _mensCambio(A.f.compro.clientes,B.f.compro.clientes),
-        [A,B,C].map(function(R){ return R.cierres.length?R.M.nombre+': '+esc(R.cierres.join(', ')):''; }).filter(Boolean).join(' · '), C.f.compro.clientes)
+    +fila('Clientes con cierre', pctTxt(A.f.compro,A), pctTxt(B.f.compro,B), _mensCambio(A.f.compro.pct,B.f.compro.pct),
+        [A,B,C].map(function(R){ return R.cierres.length?R.M.nombre+': '+esc(R.cierres.join(', ')):''; }).filter(Boolean).join(' · '), pctTxt(C.f.compro,C))
     +fila('CAC', _mensUsd(A.cac), _mensUsd(B.cac), _mensCambio(A.cac,B.cac,true), 'inversión de los clientes con cierre dividida por sus cierres', _mensUsd(C.cac));
   return '<div class="card mens" style="display:flex;flex-direction:column;gap:16px;padding:24px 28px">'
     +'<style>.mens table{width:100%;border-collapse:collapse}.mens td{padding:10px 12px;border-top:1px solid #1E222B;vertical-align:top}'

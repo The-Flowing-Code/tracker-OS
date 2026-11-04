@@ -1102,7 +1102,7 @@ body.light .fx-fecha{color-scheme:light}
    del nombre pasa de 120px, y en una tarjeta de 300px el nombre quedaba con
    lo que sobraba. La clase la pone la tarjeta segun cuantas lleva; el ancho lo
    mide el CSS. Ninguno de los dos solo alcanza para decidir. */
-@container (max-width:340px){
+@container (max-width:260px){
   .p3tk2.muchas .p3kins{position:static;flex-wrap:wrap;justify-content:flex-start;
     margin:-2px -2px 7px 0}
   .p3tk2.muchas .p3knom::before{display:none}
@@ -1174,6 +1174,11 @@ body.light .fx-fecha{color-scheme:light}
   max-height:2.5em;overflow:hidden;overflow-wrap:anywhere}
 .p3tk2 .p3kper{font-size:11px;color:var(--text3);margin-top:1px;line-height:1.3;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Todas las tarjetas del tamaño de la mas chica (Angie, 04/11/2026): nombre, el
+   bloqueante o el contacto, y UN renglon. El segundo renglon y el de cuando se
+   movio el embudo no se muestran; lo de mas sigue en la ficha. */
+.p3tk2 .p3ktraba{color:var(--amberx)}
+.p3tk2 .p3klin ~ .p3klin{display:none}
 .p3tk2 .p3kest{font-size:11px;color:var(--text2);margin-top:2px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-variant-numeric:tabular-nums}
@@ -44113,6 +44118,7 @@ function p360Html(){
     })();
     if(lineaOferta) lineas=lineaOferta+lineas;
     if(extra) lineas=extra+lineas;
+    var _emb=_embMovidoHtml(d.c);
     // Cuantas insignias hay arriba a la derecha, para reservarles el lugar.
     var _nAntes=((calBtn||masBtn)?1:0)+(esProspecto(d.c)?1:0);
     // El birrete de la capacitacion se saco de la tarjeta (27/10/2026): no se
@@ -44181,20 +44187,22 @@ function p360Html(){
             +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){'
               +'event.preventDefault();event.stopPropagation();p360AbrirSuccess('+d.c.id+');}">'
             +esc(d.c.name||'')+'</span></div>'
-          +_p3kPersona(d.c)
+          // Abajo del nombre, el bloqueante; si no hay, el contacto (Angie, 04/11/2026).
+          +((typeof csmBloqueanteHtml==='function' && csmBloqueanteHtml(d.c)) || _p3kPersona(d.c))
           // Sin texto no se dibuja el renglon: un div vacio deja un hueco que
           // hace que las tarjetas no midan lo mismo, que es lo que esa linea
           // estaba cuidando.
-          +(mt?('<div class="p3kest"'+((d.c.p360IA&&d.c.p360IA.senal)
+          +((mt && !_emb && !lineas)?('<div class="p3kest"'+((d.c.p360IA&&d.c.p360IA.senal)
             ?(' title="'+esc(d.c.p360IA.senal)
               +(d.c.p360IA.porque?(' \u2014 '+esc(d.c.p360IA.porque)):'')+'"')
             :'')+'>'+mt+'</div>'):'')
         +'</div>'
       +'</div>'
-      +lineas
       // La barra de tres tramos se cambio por cuando se movio el embudo. Sigue
       // viva en `_saludHtml` y se vuelve a poner cambiando esta linea.
-      +_embMovidoHtml(d.c)
+      // Va primero: con un solo renglon visible, lo que se movio en el embudo le
+      // gana a «51 d prendidas» (Angie, 04/11/2026).
+      +_emb+lineas
         +'</button>';
   };
   var vacias=cols.filter(function(x){ return !x.cards.length; }).length;

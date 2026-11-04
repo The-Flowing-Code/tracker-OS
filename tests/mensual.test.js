@@ -39,7 +39,8 @@ describe('mes contra mes', () => {
   };
   const clienteB = { id: 2, name: 'Cliente B', altaAt: '2026-08-14', archived: true, archivedAt: '2026-10-27T17:00:00Z', contractValue: 1000,
     rutaHechas: { Onboarding: '18/09/2026', Estrategia: '18/09/2026' } };
-  const nuevo = { id: 3, name: 'Nuevo', altaAt: '2026-10-20T10:00:00Z', contractValue: 3000 };
+  const nuevo = { id: 3, name: 'Nuevo', altaAt: '2026-10-20T10:00:00Z', contractValue: 3000,
+    pagos: [{ monto: '1500', pagadoAt: '2026-10-20' }, { monto: 1500, pagadoAt: '' }] };
 
   it('arma octubre contra noviembre', () => {
     const a = app([clienteA, clienteB, nuevo]);
@@ -56,6 +57,9 @@ describe('mes contra mes', () => {
     expect(R.f.compro.total).toBe(1);   // «Compró» abierto cuenta aunque no este marcada como ganada
     expect(R.nuevos).toBe(1);
     expect(R.ticket).toBe(3000);
+    // Solo lo pagado: el pago sin fecha de cobro no suma.
+    expect(R.ltv).toBe(1500);
+    expect(R.cobrado).toBe(1500);
     expect(R.bajas.map((c) => c.name)).toEqual(['Cliente B']);
     expect(R.alInicio).toBe(2);
     expect(R.tasaBaja).toBe(0.5);

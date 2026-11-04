@@ -655,3 +655,34 @@ function _csmEtapaHtml(c){
     +cuerpo
   +'</div>';
 }
+
+/* El bloqueante en la tarjeta del Panel 360 (Angie, 04/11/2026): abajo del
+   nombre, en lugar del contacto, va lo que frena al cliente hoy. Primero el
+   bloqueante cargado en la etapa en que está (`etapaTraba`); si no hay, el
+   ticket «Bloqueante: …» que dejó la revisión de la semana
+   (`cambiosPropuestos`, ids «bloqueante-…»), mientras siga abierto. */
+function csmBloqueante(c){
+  if(!c) return null;
+  var def=(typeof csmEtapaActual==='function')?csmEtapaActual(c):null;
+  var tr=def?((c.etapaTraba||{})[def.k]):null;
+  if(tr && tr.t) return {t:String(tr.t), quien:tr.quien||'', para:tr.para||''};
+  var dec=c.cambiosDecisiones||{}, ts=c.tasks||[];
+  var it=(((c.cambiosPropuestos||{}).items)||[]).filter(function(x){
+    if(!x || !/^bloqueante-/.test(String(x.id||''))) return false;
+    var d=dec[x.id]||{};
+    if(d.estado==='descartado') return false;
+    if(d.taskId){
+      var t=ts.filter(function(y){ return y && String(y.id)===String(d.taskId); })[0];
+      if(t && (t.done || t.deleted)) return false;
+    }
+    return true;
+  })[0];
+  if(!it) return null;
+  return {t:String(it.texto||'').replace(/^Bloqueante:\s*/i,''), quien:'', para:''};
+}
+function csmBloqueanteHtml(c){
+  var b=csmBloqueante(c);
+  if(!b || !b.t) return '';
+  var tit='Bloqueante: '+b.t+(b.quien?(' · lo destraba '+b.quien):'')+(b.para?(' · para el '+b.para):'');
+  return '<div class="p3kper p3ktraba" title="'+esc(tit)+'">'+esc(b.t)+'</div>';
+}
