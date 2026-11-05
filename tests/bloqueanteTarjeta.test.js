@@ -5,8 +5,11 @@
 import { describe, it, expect } from 'vitest';
 import { cargar } from './cargar.js';
 
-const FUNCS = ['esc', 'csmBloqueante', 'csmBloqueanteHtml'];
-const app = (etapa) => cargar(FUNCS, { csmEtapaActual: () => (etapa ? { k: etapa } : null) });
+const FUNCS = ['esc', 'CSM_QUIEN', 'csmBloqueante', 'csmBloqueanteHtml'];
+const app = (etapa, tareas, hechas = []) => cargar(FUNCS, {
+  csmEtapaActual: () => (etapa ? { k: etapa, tareas } : null),
+  csmTareaEstado: (c, t) => ({ ok: hechas.includes(t.id) }),
+});
 
 describe('bloqueante en la tarjeta', () => {
   const item = { id: 'bloqueante-0411-01', texto: 'Bloqueante: Conseguir el acceso a Meta' };
@@ -16,6 +19,13 @@ describe('bloqueante en la tarjeta', () => {
     const c = { cambiosPropuestos: { items: [item] }, cambiosDecisiones: { [item.id]: { estado: 'tarea', taskId: 9 } }, tasks: [{ id: 9 }] };
     expect(a.csmBloqueante(c).t).toBe('Conseguir el acceso a Meta');
     expect(a.csmBloqueanteHtml(c)).toContain('p3ktraba');
+  });
+
+  it('la primera tarea sin hacer de la etapa, con quien la tiene', () => {
+    const tareas = [{ id: 'a', t: 'Dar los accesos de Meta', quien: 'cliente' }, { id: 'b', t: 'Montar el embudo', quien: 'delivery' }];
+    const a = app('sistemas', tareas, ['a']);
+    expect(a.csmBloqueante({}).t).toBe('Montar el embudo');
+    expect(a.csmBloqueanteHtml({})).toContain('Delivery · Montar el embudo');
   });
 
   it('el de la etapa le gana al ticket', () => {

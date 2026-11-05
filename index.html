@@ -4731,8 +4731,25 @@ async function refreshLiveLine(clientId){
   }
 }
 
+/* La fecha de inicio de una linea sale de Meta si nadie la cargo (Angie,
+   04/11/2026): es el arranque de la campana incluida mas vieja (start_time o,
+   si no hay, created_time). Queda guardada en la linea con `dateStartAuto`, asi
+   todo lo que lee `dateStart` la ve, y una cargada a mano manda siempre. */
+function _lineaInicioMeta(l){
+  if(!l || !(l.metaCampaigns||[]).length) return '';
+  var fuera=l.excludedCampaigns||[], min=null;
+  l.metaCampaigns.forEach(function(cp){
+    if(!cp || fuera.indexOf(cp.id)!==-1) return;
+    var t=new Date(cp.startTime||cp.createdTime||'').getTime();
+    if(isFinite(t) && t<=Date.now() && (min===null||t<min)) min=t;
+  });
+  return min===null?'':isoDate(new Date(min));
+}
 function getActiveLine(lines){
   if(!lines || !lines.length) return null;
+  lines.forEach(function(l){
+    if(l && !String(l.dateStart||'').trim()){ var d=_lineaInicioMeta(l); if(d){ l.dateStart=d; l.dateStartAuto=true; } }
+  });
   const today=new Date(); today.setHours(0,0,0,0);
   const withStart=lines.filter(function(l){return !!l.dateStart;});
   const current=withStart.filter(function(l){
@@ -44116,6 +44133,20 @@ function p360Html(){
       lineaOferta='<span class="p3klin" style="color:'+col+'" title="'+esc(tit)+'">'
         +esc(o.texto)+'</span>';
     })();
+    /* En Sistemas la tarjeta dice a donde va el embudo y con que creativos
+       (Angie, 05/11/2026): es lo que se esta montando. Sale del texto de la
+       oferta («WhatsApp · estáticos»); si todavia dice en que parte del dataset
+       quedo, se avisa que falta definirlo. */
+    (function(){
+      var et=(typeof csmEtapaActual==='function')?csmEtapaActual(d.c):null;
+      if(!et || et.k!=='sistemas') return;
+      var tx=String((d.c.oferta&&d.c.oferta.texto)||'');
+      if(/^(whatsapp|landing|calendario|quiz|formulario|agenda)/i.test(tx)) return;
+      lineaOferta='<span class="p3klin" style="color:var(--amberx)" title="'
+        +esc('Para montar el embudo hace falta saber a donde va (WhatsApp, landing, calendario, quiz o formulario de Meta) '
+          +'y con que creativos (estaticos, videos o ambos). Se carga con el texto de la oferta.')+'">'
+        +'falta: a donde va y que creativos</span>';
+    })();
     if(lineaOferta) lineas=lineaOferta+lineas;
     if(extra) lineas=extra+lineas;
     var _emb=_embMovidoHtml(d.c);
@@ -66245,18 +66276,44 @@ function ghlFunnelForRange(c,dateStart,dateEnd){
   };
 }
 
+/* Las reglas de etapas salen solas del nombre de cada etapa si nadie las
+   cargo (Angie, 04/11/2026), con el mismo criterio que el reporte de campañas
+   (armar_datos.py): «programada» es agenda, «asistió» o «tomando decisión» es
+   llamada en vivo, «compró» es venta. Lo cargado a mano manda siempre, lista
+   por lista. Se miran las etapas que aparecen en sus oportunidades. */
+var GHL_AUTO={
+  agendas:/programad[ao]|asisti[oó]|tomando decisi|compr[oó]|filtro realizado|llamada tenida/i,
+  llamadaEnVivo:/asisti[oó]|tomando decisi|compr[oó]|filtro realizado|llamada tenida|\b(2da|3ra|4ta)\s+llamada programada/i,
+  noShows:/no asisti|no asisit/i,
+  presentaciones:/presentaci|propuesta enviada|cotizaci|oferta enviada/i,
+  ganado:/compr[oó]/i
+};
+function _ghlReglasAuto(c){
+  var ops=(c&&c.ghl&&c.ghl.opportunities)||[], vistas={}, out={};
+  ops.forEach(function(o){ var st=String((o&&o.pipelineStage)||'').trim(); if(st) vistas[st]=1; });
+  var nombres=Object.keys(vistas);
+  Object.keys(GHL_AUTO).forEach(function(k){
+    out[k]=nombres.filter(function(st){
+      if(!GHL_AUTO[k].test(st)) return false;
+      if(/no\s+(asisti|asisit|compr)/i.test(st)) return k==='noShows';
+      return true;
+    }).map(function(st){ return (typeof _n==='function')?_n(st):st.toLowerCase(); });
+  });
+  return out;
+}
 function getGhlRules(c){
   const r=(c&&c.ghlRules)||{};
+  var A=null, auto=function(k){ var v=r[k]||[]; if(v.length) return v; A=A||_ghlReglasAuto(c); return A[k]||[]; };
   return {
-    ganado:r.ganado||[],
+    ganado:auto('ganado'),
     abandonado:r.abandonado||[],
     abandonadoDias:r.abandonadoDias!=null?r.abandonadoDias:7,
     sql:r.sql||[],
-    llamadaEnVivo:r.llamadaEnVivo||[],
-    agendas:r.agendas||[],
+    llamadaEnVivo:auto('llamadaEnVivo'),
+    agendas:auto('agendas'),
     asistencias:r.asistencias||[],
-    noShows:r.noShows||[],
-    presentaciones:r.presentaciones||[]
+    noShows:auto('noShows'),
+    presentaciones:auto('presentaciones')
   };
 }
 function deriveEstado(o){
@@ -72740,8 +72797,45 @@ function mbSel(el){
 // realmente te cuesta la pauta, y no hay una fuente confiable y estable del blue
 // que se pueda consumir desde el navegador. Ademas, para cerrar un mes conviene
 // fijar la tasa del periodo y que no cambie sola cada vez que abris la app.
+/* La tasa del dia, sola (Angie, 04/11/2026): si nadie le cargo una tasa al
+   cliente, su moneda se pasa a dolares con la cotizacion del dia. Pesos
+   argentinos con el dolar tarjeta (dolarapi.com: es lo que cuesta de verdad
+   una cuenta de Meta en pesos); las demas monedas, con open.er-api.com. Se
+   pide una vez por dia y se guarda en el navegador; nunca se escribe en el
+   cliente, asi la tasa cargada a mano sigue mandando. */
+var FX_AUTO=null, _fxPidiendo=false;
+function _fxHoy(){ return new Date().toISOString().slice(0,10); }
+function fxAutoCargar(){
+  if(FX_AUTO && FX_AUTO.fecha===_fxHoy()) return;
+  try{
+    var g=JSON.parse(localStorage.getItem('fx-auto-v1')||'null');
+    if(g && g.fecha===_fxHoy() && g.tasas){ FX_AUTO=g; return; }
+  }catch(e){}
+  if(_fxPidiendo || typeof fetch!=='function') return;
+  _fxPidiendo=true;
+  Promise.all([
+    fetch('https://dolarapi.com/v1/dolares/tarjeta').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch('https://open.er-api.com/v6/latest/USD').then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(res){
+    var tasas={}, ars=res[0], otras=res[1];
+    if(otras && otras.rates) Object.keys(otras.rates).forEach(function(k){ tasas[k]=Number(otras.rates[k]); });
+    if(ars && Number(ars.venta)>0) tasas.ARS=Number(ars.venta);
+    if(Object.keys(tasas).length){
+      FX_AUTO={fecha:_fxHoy(), tasas:tasas, arsCasa:(ars&&Number(ars.venta)>0)?'tarjeta':'oficial'};
+      try{ localStorage.setItem('fx-auto-v1', JSON.stringify(FX_AUTO)); }catch(e){}
+      if(document.querySelector('.dsh') && typeof showTickets==='function') showTickets();
+    }
+  }).finally(function(){ _fxPidiendo=false; });
+}
 function getFx(c){
   c.fx=c.fx||{rate:null,updatedAt:null,label:''};
+  if(c.fx.rate && Number(c.fx.rate)>0) return c.fx;
+  var mon=c.metaCurrency||'';
+  if(!mon || mon==='USD') return c.fx;
+  fxAutoCargar();
+  var t=FX_AUTO && FX_AUTO.tasas && FX_AUTO.tasas[mon];
+  if(t>0) return {rate:t, updatedAt:FX_AUTO.fecha, auto:true,
+    label:(mon==='ARS'?('dólar '+(FX_AUTO.arsCasa||'tarjeta')):mon)+' del '+FX_AUTO.fecha};
   return c.fx;
 }
 function fxActiva(c){
@@ -72762,7 +72856,10 @@ function monedaLabel(c){
 }
 function openFxModal(clientId){
   const c=DB.clients.find(function(x){return x.id===clientId;}); if(!c) return;
-  const f=getFx(c);
+  // El formulario edita la tasa cargada a mano, no la del dia: si no hay, el
+  // campo queda vacio y la del dia se ve como ejemplo.
+  const _fa=getFx(c);
+  const f=c.fx||{rate:null};
   const m=c.metaCurrency||'';
   const inp='padding:8px 11px;font-size:12.5px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg3);color:var(--text);font-family:var(--font);outline:none';
   document.getElementById('modal-root').innerHTML=''
@@ -72776,7 +72873,7 @@ function openFxModal(clientId){
     +(m==='USD'?'<div style="font-size:12px;color:var(--accent);margin-bottom:14px">Esta cuenta ya factura en dolares: no hace falta convertir.</div>':'')
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
     +'<div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">1 USD = ? '+esc(m||'moneda local')+'</div>'
-    +'<input id="fx-rate" type="number" step="0.01" value="'+esc(f.rate!=null?String(f.rate):'')+'" placeholder="1350" style="'+inp+';width:100%;box-sizing:border-box"></div>'
+    +'<input id="fx-rate" type="number" step="0.01" value="'+esc(f.rate!=null?String(f.rate):'')+'" placeholder="'+esc(_fa.auto?String(_fa.rate)+' (hoy, '+_fa.label+')':'1350')+'" style="'+inp+';width:100%;box-sizing:border-box"></div>'
     +'<div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Referencia (opcional)</div>'
     +'<input id="fx-label" value="'+esc(f.label||'')+'" placeholder="blue 23/07" style="'+inp+';width:100%;box-sizing:border-box"></div>'
     +'</div>'

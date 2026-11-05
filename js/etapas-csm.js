@@ -658,7 +658,8 @@ function _csmEtapaHtml(c){
 
 /* El bloqueante en la tarjeta del Panel 360 (Angie, 04/11/2026): abajo del
    nombre, en lugar del contacto, va lo que frena al cliente hoy. Primero el
-   bloqueante cargado en la etapa en que está (`etapaTraba`); si no hay, el
+   bloqueante cargado en la etapa en que está (`etapaTraba`); si no hay, la
+   primera tarea sin hacer de esa etapa; y si están todas, el
    ticket «Bloqueante: …» que dejó la revisión de la semana
    (`cambiosPropuestos`, ids «bloqueante-…»), mientras siga abierto. */
 function csmBloqueante(c){
@@ -666,6 +667,15 @@ function csmBloqueante(c){
   var def=(typeof csmEtapaActual==='function')?csmEtapaActual(c):null;
   var tr=def?((c.etapaTraba||{})[def.k]):null;
   if(tr && tr.t) return {t:String(tr.t), quien:tr.quien||'', para:tr.para||''};
+  /* La tarea de la etapa en la que está parado (Angie, 04/11/2026): la primera
+     de su etapa, en el orden del roadmap, que no está hecha. Es lo que frena la
+     operación hoy. */
+  if(def && def.tareas){
+    var ahora=new Date();
+    // Las que se repiten (mensaje diario, reporte semanal) no frenan nada.
+    var pend=def.tareas.filter(function(t){ return !t.cada && !csmTareaEstado(c, t, def, ahora).ok; })[0];
+    if(pend) return {t:String(pend.t), quien:(CSM_QUIEN[pend.quien]||''), para:''};
+  }
   var dec=c.cambiosDecisiones||{}, ts=c.tasks||[];
   var it=(((c.cambiosPropuestos||{}).items)||[]).filter(function(x){
     if(!x || !/^bloqueante-/.test(String(x.id||''))) return false;
@@ -684,5 +694,5 @@ function csmBloqueanteHtml(c){
   var b=csmBloqueante(c);
   if(!b || !b.t) return '';
   var tit='Bloqueante: '+b.t+(b.quien?(' · lo destraba '+b.quien):'')+(b.para?(' · para el '+b.para):'');
-  return '<div class="p3kper p3ktraba" title="'+esc(tit)+'">'+esc(b.t)+'</div>';
+  return '<div class="p3kper p3ktraba" title="'+esc(tit)+'">'+(b.quien?(esc(b.quien)+' · '):'')+esc(b.t)+'</div>';
 }
