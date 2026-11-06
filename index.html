@@ -26591,11 +26591,11 @@ function computeAlarmMetrics(c){
   // --- Conversion de ventas (todo el historico de GHL, reglas de stages) ---
   const ops=(c.ghl&&c.ghl.opportunities)||[];
   if(ops.length){
-    const rules=getGhlRules(c);
+    const rules=getGhlRules(c), acum=ghlReglasAcum(rules);
     const SQLS=(rules.sql&&rules.sql.length)?rules.sql:['tomando decision','nda','segunda llamada'];
     const isSql=function(o){return o._sql||SQLS.indexOf(_n(o.pipelineStage))>=0;};
     const cnt=function(arr){return (arr&&arr.length)?ops.filter(function(o){return arr.indexOf(_n(o.pipelineStage))>=0;}).length:null;};
-    const agendas=cnt(rules.agendas), asis=cnt(rules.asistencias), noSh=cnt(rules.noShows), vivo=cnt(rules.llamadaEnVivo);
+    const agendas=cnt(acum.agendas), asis=cnt(acum.asistencias), noSh=cnt(rules.noShows), vivo=cnt(acum.llamadaEnVivo);
     const sqlN=ops.filter(isSql).length;
     const ganadosArr=ops.filter(function(o){return deriveEstado(o).label==='Ganado';});
     out.vtaAgendas=agendas;
@@ -66341,7 +66341,7 @@ function r0name(c){
 function ghlFunnelForRange(c,dateStart,dateEnd){
   const opps=(c.ghl&&c.ghl.opportunities)||[];
   if(!opps.length||!dateStart) return null;
-  const rules=getGhlRules(c);
+  const rules=getGhlRules(c), acum=ghlReglasAcum(rules);
   const s=new Date(dateStart);
   const e=dateEnd?new Date(dateEnd):new Date();
   e.setHours(23,59,59,999);
@@ -66375,9 +66375,9 @@ function ghlFunnelForRange(c,dateStart,dateEnd){
   return {
     registros: ops.length,
     sql: ops.filter(isSql).length,
-    agendas: cnt(rules.agendas),
-    enVivo: cnt(rules.llamadaEnVivo),
-    calif: (rules.llamadaEnVivo&&rules.llamadaEnVivo.length)? ops.filter(function(o){return rules.llamadaEnVivo.indexOf(_n(o.pipelineStage))>=0 && isSql(o);}).length : null,
+    agendas: cnt(acum.agendas),
+    enVivo: cnt(acum.llamadaEnVivo),
+    calif: (acum.llamadaEnVivo&&acum.llamadaEnVivo.length)? ops.filter(function(o){return acum.llamadaEnVivo.indexOf(_n(o.pipelineStage))>=0 && isSql(o);}).length : null,
     ganados: ganadosEnRango.length,
     revenueGanados: revenueGanados,
     ganadosListado: ganadosEnRango.map(function(o){return {contacto:o.contactName||o.name||'Lead', valor:Number(o.monetaryValue)||0};})
@@ -66426,6 +66426,34 @@ function getGhlRules(c){
     noShows:auto('noShows'),
     presentaciones:auto('presentaciones')
   };
+}
+/* Para CONTAR el embudo, cada etapa suma a las oportunidades que ya pasaron a
+   una posterior: quien asistio o compro tambien agendo (Angie, 06/11/2026,
+   Segundo Lavenas: 9 agendas y 12 llamadas en vivo, y la llamada salia mas
+   barata que la agenda, porque se miraba solo la etapa de hoy).
+   Orden: agenda < asistencia / en vivo < presentacion < venta. Un no show
+   tambien tuvo agenda. Una etapa sin reglas queda vacia: no se adivinan
+   agendas que nadie dijo que existen (ver _sinRegla). No se usa para
+   deriveEstado: ahi importa la etapa de hoy, no lo que quedo atras. */
+var GHL_POSTERIORES={
+  agendas:['noShows','asistencias','llamadaEnVivo','presentaciones','ganado'],
+  asistencias:['presentaciones','ganado'],
+  llamadaEnVivo:['presentaciones','ganado'],
+  presentaciones:['ganado']
+};
+function ghlReglasAcum(rules){
+  var out={};
+  Object.keys(rules||{}).forEach(function(k){ out[k]=rules[k]; });
+  Object.keys(GHL_POSTERIORES).forEach(function(k){
+    var base=(rules&&rules[k])||[];
+    if(!base.length){ out[k]=base; return; }
+    var l=base.slice();
+    GHL_POSTERIORES[k].forEach(function(p){
+      ((rules&&rules[p])||[]).forEach(function(st){ if(l.indexOf(st)<0) l.push(st); });
+    });
+    out[k]=l;
+  });
+  return out;
 }
 function deriveEstado(o){
   const c=DB.clients.find(function(x){return x.id===S.clientId;});
@@ -71058,6 +71086,8 @@ function renderVentasTab(c, el){
 
   // --- Reglas de negocio derivadas del Stage (configurables desde "Reglas") ---
   const _rules=getGhlRules(c);
+  // Para contar el embudo: cada etapa incluye a las que ya pasaron (ghlReglasAcum).
+  const _acum=ghlReglasAcum(_rules);
   const SQL_STAGES=_rules.sql.length?_rules.sql:['tomando decision','nda','segunda llamada'];
   let _autoSqlChanged=false;
   ops.forEach(function(o){
@@ -71181,11 +71211,11 @@ function renderVentasTab(c, el){
       +' \u00b7 clic para configurarlo">configurar</span>';
   };
   const filaStage=function(n, arr){ return n!=null ? n : (_sinRegla(arr, opsSeg) || n); };
-  const m_agendas=cntStages(opsSeg,_rules.agendas);
-  const m_asis=cntStages(opsSeg,_rules.asistencias);
-  const m_noshow=cntStages(opsSeg,_rules.noShows);
-  const m_pres=cntStages(opsSeg,_rules.presentaciones);
-  const m_viva=cntStages(opsSeg,_rules.llamadaEnVivo);
+  const m_agendas=cntStages(opsSeg,_acum.agendas);
+  const m_asis=cntStages(opsSeg,_acum.asistencias);
+  const m_noshow=cntStages(opsSeg,_acum.noShows);
+  const m_pres=cntStages(opsSeg,_acum.presentaciones);
+  const m_viva=cntStages(opsSeg,_acum.llamadaEnVivo);
   const m_sql=opsSeg.filter(function(o){return o._sql;}).length;
   const m_ganadosArr=opsSeg.filter(function(o){return deriveEstado(o).label==='Ganado';});
   const m_ganados=m_ganadosArr.length;
@@ -71273,10 +71303,10 @@ function renderVentasTab(c, el){
   // si no, contactos del periodo completo (coherente con la inversion total).
   const _segSpendOk=((_needByCamp||_needByPais||_needCross||_needByAd)&&accSpentLive!=null);
   const opsCost=_segSpendOk?opsSeg:opsP;
-  const cAg=cntStages(opsCost,_rules.agendas);
-  const cViva=cntStages(opsCost,_rules.llamadaEnVivo);
-  const cPres=cntStages(opsCost,_rules.presentaciones);
-  const cCalif=_rules.llamadaEnVivo.length?opsCost.filter(function(o){return _rules.llamadaEnVivo.indexOf(_n(o.pipelineStage))>=0&&o._sql;}).length:null;
+  const cAg=cntStages(opsCost,_acum.agendas);
+  const cViva=cntStages(opsCost,_acum.llamadaEnVivo);
+  const cPres=cntStages(opsCost,_acum.presentaciones);
+  const cCalif=_acum.llamadaEnVivo.length?opsCost.filter(function(o){return _acum.llamadaEnVivo.indexOf(_n(o.pipelineStage))>=0&&o._sql;}).length:null;
   const cWon=opsCost.filter(function(o){return deriveEstado(o).label==='Ganado';}).length;
   const costo=function(n){return (n&&accSpentAll!=null)?money(accSpentAll/n):null;};
   // valor numerico puro por metrica (para records); null si no calculable
@@ -71468,7 +71498,7 @@ function renderVentasTab(c, el){
     +'</div>';
   // Capturar records de eficiencia (solo cuando NO hay segmento activo: el record es del cliente completo)
   if(!segCampId&&!segPais&&period!=='custom'){
-    var _asistN=cntStages(opsCost,_rules.asistencias);
+    var _asistN=cntStages(opsCost,_acum.asistencias);
     var _vals={
       cac:costoNum(cWon), reg:costoNum(opsCost.length), sql:costoNum(cCalif),
       agenda:costoNum(cAg), asist:costoNum(_asistN), viva:costoNum(cViva),
@@ -71598,7 +71628,7 @@ function renderVentasTab(c, el){
   if(_ghlVistaActual()==='pipeline'){
     html+=ghlPipelineHtml(c, filteredOps);
     var _opsMensP = seg ? ops.filter(function(o){ return (keyOf(o)||'(sin dato)')===seg; }) : ops;
-    html+=mensualMatrizHtml(_opsMensP, _rules, money, c);
+    html+=mensualMatrizHtml(_opsMensP, _acum, money, c);
     el.innerHTML=html;
     return;
   }
@@ -71680,7 +71710,7 @@ function renderVentasTab(c, el){
   if(view==='embudo'&&seg&&S.ventasPais){
     _opsMens=_opsMens.filter(function(o){ return _n(paisOf(o))===_n(S.ventasPais); });
   }
-  html+=mensualMatrizHtml(_opsMens, _rules, money, c);
+  html+=mensualMatrizHtml(_opsMens, _acum, money, c);
 
   el.innerHTML=html;
 }
