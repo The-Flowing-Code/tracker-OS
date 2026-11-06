@@ -268,6 +268,10 @@ body.light .client-state.live{text-shadow:none}
   padding:0 2px 6px;display:flex;justify-content:flex-start;gap:6px;white-space:nowrap}
 .p3subcab span{overflow:hidden;text-overflow:ellipsis}
 .p3subcab b{color:var(--text2);font-weight:500;flex:none}
+.p3mas{margin-left:auto;margin-right:8px;width:20px;height:20px;border-radius:6px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:15px;line-height:1;color:var(--text2);border:1px solid var(--border2);cursor:pointer;
+  text-transform:none;letter-spacing:0}
+.p3mas:hover{color:var(--accent);border-color:var(--accent)}
 .p3cab{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
   padding:0 2px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .p3cab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1140,6 +1144,10 @@ body.light .fx-fecha{color-scheme:light}
 .atn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* En la ficha va al lado del nombre de 19px: mas grande, si no parece una nota. */
 .p3fi-tit .atn{font-size:11px;line-height:20px;padding:0 10px;margin:0 0 0 10px;vertical-align:3px}
+/* En la tarjeta, minima: un punto y la palabra, sin caja, flotando a la derecha. */
+.p3knom .atn{float:right;margin:0 0 0 8px;padding:0;border:0;background:transparent;text-transform:none;
+  letter-spacing:0;font-weight:500;font-size:10.5px;line-height:inherit;gap:5px;vertical-align:baseline}
+.p3knom .atn::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
 .cpop.atnmenu{width:230px;padding:10px 6px 6px}
 .atnmenu .cp-lbl{padding:0 10px 4px}
 .atnmenu .atn-op{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 10px;
@@ -7200,7 +7208,7 @@ function toggleRecurrente(clientId){
   renderSidebar();
 }
 
-function selectClient(id){if(typeof stopActPoll==='function')stopActPoll();var _ts=document.getElementById('torre-sub');if(_ts)_ts.classList.remove('on');if(typeof mpStopPoll==='function')mpStopPoll();S.clientId=id;S.view='client';S.clientView='ficha';S.tab='embudo';renderSidebar();renderClient();collapseSidebar();}
+function selectClient(id){if(typeof stopActPoll==='function')stopActPoll();var _ts=document.getElementById('torre-sub');if(_ts)_ts.classList.remove('on');if(typeof mpStopPoll==='function')mpStopPoll();S.clientId=id;S.view='client';S.clientView='ficha';S.tab='success';renderSidebar();renderClient();collapseSidebar();}
 function openClientTab(tabKey){S.tab=tabKey;S.clientView='full';renderClient();}
 function backToFicha(){S.clientView='ficha';renderClient();}
 function setMetricsView(v){S.metricsView=v;renderClient();}
@@ -7259,7 +7267,12 @@ function renderClientFicha(c){
 
 function renderClient(){
   const c=DB.clients.find(x=>x.id===S.clientId);if(!c)return;
-  if(S.clientView!=='full'){ renderClientFicha(c); return; }
+  // La portada con el nombre salio (Angie, 06/11/2026): se entra directo a la
+  // ficha y las pestañas van arriba. Queda solo para un archivado, que avisa.
+  if(S.clientView!=='full'){
+    if(c.archived){ renderClientFicha(c); return; }
+    S.clientView='full'; if(!S.tab) S.tab='success';
+  }
   const al=getActiveLine(c.conversionLines);
   const m=al?.metrics||{};
   const daysActive=days(al?.dateStart,al?.dateEnd);
@@ -7350,12 +7363,13 @@ function renderClient(){
       `}
       <div class="fic-cab" style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:16px">
         <span style="display:flex;align-items:center;gap:9px">
-          <button onclick="backToFicha()" title="Volver a ${esc(c.name)}" aria-label="Volver a ${esc(c.name)}"
+          <button onclick="${c.archived?'backToFicha()':'showOverview()'}" title="Volver al inicio" aria-label="Volver al inicio"
             style="background:none;border:none;padding:0;cursor:pointer;color:var(--strong);display:flex;align-items:center;transition:opacity .15s"
             onmouseover="this.style.opacity='.6'" onmouseout="this.style.opacity=''">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></svg>
           </button>
-          <span class="fic-cab-t" style="font-size:15px;font-weight:500;color:var(--text)">${esc((CLIENT_TABS.find(function(t){return t.k===S.tab;})||{}).l||'')}</span>
+          <span class="fic-cab-t" style="font-size:15px;font-weight:500;color:var(--text)">${esc(c.name)}</span>
+          <span class="fic-dock-in" style="margin-left:6px">${CLIENT_TABS.map(function(t){ return '<button class="fic-nav'+(t.k===S.tab?' fic-nav-fuerte':'')+'" onclick="openClientTab(\''+t.k+'\')">'+esc(t.l)+'</button>'; }).join('')}</span>
         </span>
         ${S.tab==='success'?('<span style="display:flex;gap:2px;align-items:center">'
           +_genteBoton(c.id)+_herrBoton(c.id)+'</span>'):''}
@@ -42303,7 +42317,7 @@ function _catChip(c){
    save() de siempre. La puede cambiar cualquiera que vea al cliente, tambien
    el CSM: es el que mas la usa. */
 var ATENCION={
-  urgente:{l:'Urgente', ayuda:'Hay que ocuparse ya de este cliente.'},
+  urgente:{l:'Prioritaria', ayuda:'Hay que ocuparse ya de este cliente.'},
   monitoreo:{l:'Monitoreo', ayuda:'Anda, pero hay que mirarlo de cerca.'}
 };
 function atencionDe(c){
@@ -42383,7 +42397,7 @@ function atnMenu(ancla, clientId){
   p.setAttribute('role','menu');
   p.addEventListener('click', function(e){ e.stopPropagation(); });
   p.innerHTML='<div class="cp-lbl">Etiqueta</div>'
-    +op('urgente','Urgente')+op('monitoreo','Monitoreo')+op('','Sin etiqueta');
+    +op('urgente','Prioritaria')+op('monitoreo','Monitoreo')+op('','Sin etiqueta');
   document.body.appendChild(p);
   // Arriba del popup de la ficha (z-index 1000): .cpop ya va en 9000.
   var r=ancla.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
@@ -44231,8 +44245,9 @@ function p360Html(){
     /* El embudo vivia en la tira de Prendidos, que se saco. Se muda aca para
        no perder el camino al reporte: solo cuando hay reporte, asi no suma una
        insignia apagada a media cartera. */
-    var _embIco=(typeof _embFunnelBtn==='function')
-      ? _embFunnelBtn(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)) : '';
+    // El icono del reporte salio de la tarjeta (Angie, 06/11/2026): el reporte
+    // se abre desde la ficha. `_embFunnelBtn` queda por si se quiere volver.
+    var _embIco='';
     // La llave de "falta configurar" va a la izquierda de todas, y como es una
     // pastilla con numero reserva el lugar de dos iconos en la linea del nombre.
     var _incIco=incIconoHtml(d.c, _nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0));
@@ -44280,6 +44295,8 @@ function p360Html(){
         +circulo
         +'<div style="min-width:0;flex:1">'
           +'<div class="p3knom'+(_nb?(' b'+Math.min(_nb,7)):'')+'">'
+            // Prioritaria o monitoreo, discreta y a la derecha (Angie, 06/11/2026):
+            // va antes en el codigo porque flota a la derecha, al lado de los iconos.
             +_atnChip(d.c, false)
             +_catChip(d.c)
             +'<span class="p3knomlk" role="link" tabindex="0" '
@@ -44364,7 +44381,12 @@ function p360Html(){
           +'title="Ver por donde va cada uno dentro de '+esc(col.l)+'">'
           +'<span>'+esc(col.l)
             +(conSubs?'<em class="p3volver">\u2190 ver todas las columnas</em>':'')
-          +'</span><b>'+(col.cards.length||'')+'</b></div>'
+          +'</span>'
+          // En Onboarding, el + para dar de alta un cliente nuevo (Angie, 06/11/2026).
+          +(/onboarding/i.test(col.l)?('<span role="button" tabindex="0" class="p3mas" title="Nuevo cliente" aria-label="Nuevo cliente" '
+            +'onclick="event.stopPropagation();openNewClientModal()" '
+            +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();openNewClientModal();}">+</span>'):'')
+          +'<b>'+(col.cards.length||'')+'</b></div>'
         // Todas las tarjetas, adentro de un cuerpo con alto fijo que scrollea:
         // antes se cortaba a las seis con un "ver N mas" al pie (Angie, 23/10).
         +(conSubs ? _p360SubsHtml(col.cards, tarjeta) : '')

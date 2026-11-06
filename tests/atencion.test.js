@@ -59,7 +59,7 @@ describe('etiqueta de atencion', () => {
     expect(a._atnChip({ id: 1 }, true)).toContain('atn sin');
     const u = a._atnChip({ id: 1, atencion: 'urgente', atencionAt: '2026-11-02', atencionPor: 'angie' }, false);
     expect(u).toContain('class="atn urgente"');
-    expect(u).toContain('>Urgente</span>');
+    expect(u).toContain('>Prioritaria</span>');
     expect(u).toContain('Desde el 02/11');
     expect(u).toContain('event.stopPropagation();atnMenu(this,1)');
     expect(a._atnChip({ id: 2, atencion: 'monitoreo' }, true)).toContain('>Monitoreo</span>');
@@ -95,7 +95,7 @@ describe('etiqueta de atencion', () => {
     const html = fs.readFileSync(rutaHtml(), 'utf8');
     const ini = html.indexOf('function p360Html(){');
     const cuerpo = html.slice(ini, html.indexOf('\nfunction ', ini + 10));
-    expect(cuerpo).toMatch(/<div class="p3knom'[\s\S]{0,80}\+_atnChip\(d\.c, false\)/);
+    expect(cuerpo).toMatch(/<div class="p3knom'[\s\S]{0,300}\+_atnChip\(d\.c, false\)/);
     expect(cuerpo).toContain('x.cards=_atnOrdenar(x.cards)');
   });
 });
