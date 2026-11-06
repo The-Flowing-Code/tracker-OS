@@ -445,12 +445,15 @@ function saveMetaConfig(clientId){
   var token=document.getElementById('meta-token-input').value.trim();
   var accountId=document.getElementById('meta-account-input').value.trim().replace('act_','');
   if(!token||!accountId){toast('Completa los dos campos','red');return;}
-  c.metaToken=token;
-  c.metaAccountId=accountId;
-  save();
+  // Directo a la nube (_cliCamposEnNube): por el guardado general el token
+  // podía quedar solo en esta compu y perderse (Mi Stock, 10 días).
+  var p=_cliCamposEnNube(clientId, {metaToken:token, metaAccountId:accountId});
   closeModal();
   renderTab();
-  syncMetaAds(clientId);
+  p.then(function(ok){
+    if(!ok) toast('El token quedó en esta compu pero no llegó a la nube. Recargá y cargalo de nuevo.','red');
+    syncMetaAds(clientId);
+  });
 }
 
 // Mismo modal que usa Conversion de ventas, pero aplicado al rango de Meta en Ads & Guiones.

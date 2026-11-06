@@ -14799,6 +14799,42 @@ async function _cliEditarEnNube(aplicar){
   if(mal.length) toast('No llegó a la nube en '+mal.join(', ')+'. Recargá y volvé a intentarlo.','amber');
   return mal;
 }
+/* ⚠️  LAS CREDENCIALES VAN DIRECTO A LA NUBE (06/11/2026). Mi Stock perdió el
+   token de Meta durante 10 días: se cargaba, quedaba solo en esta compu
+   porque la subida chocaba (la sincronización de GHL mueve la ficha de cada
+   cliente cada ~10 min) y el aviso sale una sola vez; después, tocar un ticket
+   o una tarea de ese cliente reemplazaba la copia local por la de la nube
+   (_cliEditarEnNube) y el token desaparecía sin aviso. Ahora el token y la
+   cuenta se escriben sobre la copia de la nube en el momento, como un ticket,
+   y se ponen también en la local sin reemplazarla: lo demás que esta pestaña
+   tenga sin subir sigue por el guardado de siempre. */
+async function _cliCamposEnNube(cid, campos){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(cid); });
+  if(!c) return false;
+  Object.keys(campos).forEach(function(k){ c[k]=campos[k]; });
+  var ok=false;
+  try{
+    if(!SB.listo) throw new Error('sin nube');
+    var r=await sbFetch('clientes?select=datos&id=eq.'+encodeURIComponent(c.id));
+    if(!r||!r[0]||!r[0].datos) throw new Error('no esta en la nube');
+    var d=r[0].datos;
+    Object.keys(campos).forEach(function(k){ d[k]=campos[k]; });
+    await sbFetch('clientes', {method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify([{id:c.id, nombre:c.name||'', datos:d, actualizado_por:SB.email}])});
+    var r2=await sbFetch('clientes?select=datos,datos_at&id=eq.'+encodeURIComponent(c.id));
+    var f=r2&&r2[0];
+    ok=!!f && Object.keys(campos).every(function(k){ return f.datos && f.datos[k]===campos[k]; });
+    // Si esta copia quedó igual a la de la nube, se la da por subida; si no,
+    // lo otro que tenga pendiente lo sube (o lo frena) el guardado normal.
+    if(ok && _huella(_partirCliente(c).datos)===_huella(f.datos)){
+      _sbHuellas[c.id]=_huella(f.datos);
+      _sbVisto[String(c.id)]=String(f.datos_at||'');
+    }
+  }catch(e){ ok=false; }
+  save();
+  return ok;
+}
 function ticketEliminar(cid,tid){
   var c=DB.clients.find(function(x){return x.id===cid;});
   var t=c&&c.tasks.find(function(x){return x.id===tid;}); if(!t) return;
@@ -63104,10 +63140,13 @@ function sopCampoGuardar(id, bi, pi, i){
   var v=String((e||{}).value||'').trim();
   if(!v){ decir('Pega el valor primero.','var(--amberx)'); return; }
   if(campo.limpia) v=campo.limpia(v);
-  r.c[campo.k]=v;
-  save();
-  decir(_sopCampoListo(r.c, campo.k),'var(--accent)');
-  _sopPintar(id);
+  // Credenciales: directo a la nube, como en Conectar Meta (_cliCamposEnNube).
+  var o={}; o[campo.k]=v;
+  _cliCamposEnNube(r.c.id, o).then(function(ok){
+    if(ok) decir(_sopCampoListo(r.c, campo.k),'var(--accent)');
+    else decir('Quedó en esta compu pero no llegó a la nube. Recargá y pegalo de nuevo.','var(--redx)');
+    _sopPintar(id);
+  });
 }
 function sopDatoPersona(id, bi, pi){
   var l=personas().filter(function(x){ return x.fbMail||x.socioId; });
