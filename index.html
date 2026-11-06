@@ -31714,6 +31714,16 @@ function cliMenu(ancla, clientId){
     +ir('cliMenuIr('+clientId+',\'bottom\')', _svg('<path d="M12 2v20M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),'Bottom of Funnel','Agendas, cierres, revenue y CAC')
     +(hayRep?ir('cliMenuCerrar();embReporte('+clientId+')', _svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/>'),'Reporte de campaña',
         'El de la mañana'+(r.at?(' · '+String(r.at).slice(8,10)+'/'+String(r.at).slice(5,7)):'')):'')
+    /* Integraciones (Angie, 06/11/2026): conectar Meta o GHL desde acá, sin
+       entrar a la ficha y buscar la pestaña. La bajada dice qué falta. */
+    +ir('cliMenuCerrar();selectClient('+clientId+');openClientTab(\'integraciones\')',
+        _svg('<path d="M9 7V2m6 5V2M7 7h10v4a5 5 0 01-10 0V7zm5 9v6"/>'),'Integraciones',
+        (function(){
+          var faltan=[];
+          if(!(c.metaToken && c.metaAccountId)) faltan.push('Meta');
+          if(!(c.ghl && c.ghl.token && c.ghl.locationId)) faltan.push('GHL');
+          return faltan.length ? ('Falta conectar '+faltan.join(' y ')) : 'Meta y GHL conectados';
+        })())
     +'</div>';
   document.body.appendChild(p);
   var base=(ancla.closest && ancla.closest('.p3tk2')) || ancla;
