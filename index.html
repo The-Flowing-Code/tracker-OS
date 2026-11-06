@@ -70890,6 +70890,18 @@ function _waCruce(c, ops){
 function _waCelda(c, cual, ops){
   var w=_wa(c);
   var esPct=(cual==='pct');
+  /* Se lee solo (Angie, 06/11/2026: «que siempre lea las respuestas»). Si no
+     hay medicion, es vieja, de antes del cruce por lead, o vencio, se pide una
+     vez por cliente en cada apertura del tracker, sin el clic en «medir». */
+  if(!esPct && !c._waPidiendo && c.ghl && c.ghl.locationId){
+    S._waAuto=S._waAuto||{};
+    var _t=w&&w.at?new Date(w.at).getTime():0;
+    var _hace=(!w || !_t || (Date.now()-_t)>3*60*60*1000 || !!((_waCruce(c, ops)||{}).viejo));
+    if(_hace && !S._waAuto[c.id]){
+      S._waAuto[c.id]=1;
+      setTimeout(function(){ waLeer(c.id, true); }, 0);
+    }
+  }
   var guion='<span class="zero">-</span>';
 
   if(c._waPidiendo){
@@ -71352,6 +71364,8 @@ function renderVentasTab(c, el){
   html+='<div class="vh-cols">'
     +vhCol('Top of funnel',[
       vhRow('Registros',String(opsSeg.length)),
+      // Angie, 06/11/2026: el costo por registro, al lado de los registros.
+      vhRow('Costo por registro', costo(opsCost.length)||'<span class="zero">-</span>'),
       vhRow('Opt-in landing',(function(){
         if(spendSource!=='live'||!metaConfigured) return '<span class="zero" title="Activa la fuente Tiempo real para calcular el opt-in con vistas de Meta">-</span>';
         let vv=null;
@@ -71452,7 +71466,8 @@ function renderVentasTab(c, el){
   }
   // Las barras se miden contra el costo mas alto, que es siempre el ultimo con
   // datos: asi la altura dice cuanto se encarece cada etapa respecto del cierre.
-  var _emb=[{l:'Agenda',n:cAg,u:'agendas'},
+  var _emb=[{l:'Registro',n:opsCost.length,u:'registros'},
+            {l:'Agenda',n:cAg,u:'agendas'},
             {l:'En vivo',n:cViva,u:'llamadas'},
             {l:'Calificada',n:cCalif,u:'calificadas'},
             {l:'Presentacion',n:cPres,u:'presentaciones'},
@@ -71736,7 +71751,9 @@ function _ghlSetFiltro(cual, valor, clientId){
   renderTab();
 }
 
-var _ghlCols = ['Contacto','Stage','En el portal','Estado','Valor','Fecha'];
+// «En el portal» sale de la lista de entrada (Angie, 06/11/2026); se puede
+// volver a sumar desde el selector de columnas.
+var _ghlCols = ['Contacto','Stage','Estado','Valor','Fecha'];
 
 function openColSelector(){
   // Cols marked with * require contact enrichment (loaded when clicking Ver notas)
