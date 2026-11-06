@@ -247,7 +247,7 @@ header.chico h1{font-size:19px;margin-top:10px}
   var CAL='https://www.evolvegrind.com/widget/booking/cc9jBNWELLNGljfXPofB';
   function calendarioHtml(){
     var f=el('iframe',{title:'Calendario de la llamada de estrategia',scrolling:'no',
-      style:'width:100%;min-height:600px;border:0;display:block;border-radius:14px;background:#fff'});
+      style:'width:100%;min-height:600px;border:0;display:block;background:transparent'});
     // El script de GHL ajusta el alto solo si el id es «<id del calendario>_<numero>».
     f.id=(CAL.split('/').pop()||'cal')+'_'+Date.now(); f.src=CAL;
     if(!document.getElementById('ghl-embed')){
@@ -256,7 +256,7 @@ header.chico h1{font-size:19px;margin-top:10px}
     }
     return el('div',{class:'ins'},[el('h3',{text:'Agendá la llamada de estrategia'}),
       el('p',{text:'Es la llamada donde te presentamos la estrategia que armamos con tus respuestas. Elegí el horario que te quede mejor.'}),
-      f, el('p',{},[el('a',{href:CAL,target:'_blank',rel:'noopener',text:'¿No se ve? Abrilo en otra pestaña'})])]);
+      f, el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:8px'},[el('a',{href:CAL,target:'_blank',rel:'noopener',style:'color:var(--lime,#C8FF47)',text:'¿No se ve? Abrilo en otra pestaña'})])]);
   }
   function accesosOpcionHtml(){
     var caja=el('div',{class:'ins'},[el('h3',{text:'¿Querés adelantar? (opcional)'}),
