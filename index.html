@@ -71786,17 +71786,19 @@ function ghlPipelineHtml(c, ops){
         +(ult?('<div style="font-size:11px;color:var(--text2);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\u00ab'+esc(ult)+'</div>'):'')
         +(tags.length?('<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px">'+tags.map(function(t){
             return '<span style="font-size:10px;padding:2px 7px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)">'+esc(t)+'</span>'; }).join('')+'</div>'):'')
-        +'<div style="display:flex;justify-content:space-between;gap:6px;margin-top:8px;font-size:10.5px;color:var(--text3);font-family:var(--mono,monospace)">'
+        +'<div style="display:flex;justify-content:space-between;gap:6px;margin-top:8px;font-size:10.5px;color:var(--text3);font-family:var(--mono,monospace);white-space:nowrap">'
         +'<span>alta '+(_ghlFecha(o.createdAt)||'-')+'</span>'
         +(cv&&cv.lastMessageDate?('<span>\u00falt. msj '+_ghlFecha(cv.lastMessageDate,true)+'</span>'):'')
         +'</div></div>';
     }).join('');
-    return '<div style="flex:0 0 230px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
+    // Todas del mismo ancho (Angie, 06/11/2026): sin min-width:0 un mensaje
+    // largo en una linea estiraba la columna.
+    return '<div style="flex:0 0 240px;width:240px;min-width:0;box-sizing:border-box;overflow:hidden;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
       +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--strong);font-weight:500;margin-bottom:9px">'
       +'<span>'+esc(st)+'</span><span style="color:var(--text3)">'+L.length+'</span></div>'
       +(cards||'<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin oportunidades</div>')+'</div>';
   }).join('');
-  return '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;align-items:flex-start">'+col+'</div>';
+  return '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;align-items:stretch">'+col+'</div>';
 }
 var _colLabel=function(k){return k==='SQL'?'Llamada calif. en vivo':k;};
 // Filtro en el encabezado de una columna. El <select> va invisible encima del
