@@ -272,6 +272,12 @@ body.light .client-state.live{text-shadow:none}
   justify-content:center;font-size:15px;line-height:1;color:var(--text2);border:1px solid var(--border2);cursor:pointer;
   text-transform:none;letter-spacing:0}
 .p3mas:hover{color:var(--accent);border-color:var(--accent)}
+button.p3tk2.p3nuevo{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:transparent !important;border:1px dashed var(--border2) !important;box-shadow:none !important;
+  color:var(--text3) !important;font-size:11.5px;text-align:center}
+button.p3tk2.p3nuevo span{font-size:20px;line-height:1;color:var(--text2)}
+button.p3tk2.p3nuevo:hover{border-color:var(--accent) !important;color:var(--accent) !important}
+button.p3tk2.p3nuevo:hover span{color:var(--accent)}
 .p3cab{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
   padding:0 2px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .p3cab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -44395,10 +44401,6 @@ function p360Html(){
           +'<span>'+esc(col.l)
             +(conSubs?'<em class="p3volver">\u2190 ver todas las columnas</em>':'')
           +'</span>'
-          // En Onboarding, el + para dar de alta un cliente nuevo (Angie, 06/11/2026).
-          +(/onboarding/i.test(col.l)?('<span role="button" tabindex="0" class="p3mas" title="Nuevo cliente" aria-label="Nuevo cliente" '
-            +'onclick="event.stopPropagation();openNewClientModal()" '
-            +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();openNewClientModal();}">+</span>'):'')
           +'<b>'+(col.cards.length||'')+'</b></div>'
         // Todas las tarjetas, adentro de un cuerpo con alto fijo que scrollea:
         // antes se cortaba a las seis con un "ver N mas" al pie (Angie, 23/10).
@@ -44410,7 +44412,12 @@ function p360Html(){
           // cada ficha aparecia un "1", un "2", un "3" sueltos, que ademas le
           // sumaban alto y rompian que midieran todas lo mismo.
           ? col.cards.map(function(d){ return tarjeta(d); }).join('')
-          : '<div class="p3nada"></div>')
+          : (/onboarding/i.test(col.l)?'':'<div class="p3nada"></div>'))
+        // Abajo de Onboarding, una ficha vacia con el + para el alta de un
+        // cliente nuevo, del tamaño de las demas (Angie, 06/11/2026).
+        +((!conSubs && /onboarding/i.test(col.l))
+          ? '<button class="p3tk2 p3nuevo" onclick="openNewClientModal()" title="Nuevo cliente" aria-label="Nuevo cliente"><span>+</span>Nuevo cliente</button>'
+          : '')
         +(conSubs ? '' : '</div>')
       +'</div>';
     }).join('')
