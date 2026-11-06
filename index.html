@@ -71498,8 +71498,18 @@ function renderVentasTab(c, el){
     +((_ghlCols.indexOf('En el portal')>=0 && _P.listo && _P.error==='sin sesion')
       ? '<span style="font-size:10.5px;color:var(--text3)">· sin sincronizar: no se puede ver lo del portal</span>' : '')
     +'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'+_ghlVistaSel()
     +'<input id="ghl-search-input" type="text" placeholder="Buscar por nombre..." value="'+esc(searchVal)+'" oninput="filterGhlTable(this.value,'+c.id+')" style="width:220px;padding:7px 11px;font-size:12px;border:1px solid var(--border2);border-radius:99px;background:var(--bg3);color:var(--text);font-family:var(--font);outline:none">'
-    +'</div>';
+    +'</div></div>';
+  // Vista de pipeline: los mismos contactos (con la busqueda y los filtros),
+  // en columnas por etapa como en GHL (Angie, 06/11/2026).
+  if(_ghlVistaActual()==='pipeline'){
+    html+=ghlPipelineHtml(c, filteredOps);
+    var _opsMensP = seg ? ops.filter(function(o){ return (keyOf(o)||'(sin dato)')===seg; }) : ops;
+    html+=mensualMatrizHtml(_opsMensP, _rules, money, c);
+    el.innerHTML=html;
+    return;
+  }
   // Velo mientras se trae de GHL, igual que en la tabla de campanas de Meta.
   html+='<div style="position:relative">'
     +((c.ghl&&c.ghl._syncing)?('<div id="ghl-velo" class="carga-velo on" style="border-radius:var(--radius-lg)">'
@@ -71583,6 +71593,76 @@ function renderVentasTab(c, el){
   el.innerHTML=html;
 }
 
+// Lista o pipeline: la misma base de contactos, dos formas de verla.
+function _ghlVistaSel(){
+  var v=_ghlVistaActual()==='pipeline'?'pipeline':'lista';
+  var b=function(k,t){ var on=v===k;
+    return '<button onclick="setGhlVista(&#39;'+k+'&#39;)" style="border:0;padding:5px 11px;font-size:11.5px;cursor:pointer;font-family:var(--font);border-radius:99px;'
+      +(on?'background:var(--accent);color:#0a0a0a;font-weight:600':'background:transparent;color:var(--text2)')+'">'+t+'</button>'; };
+  return '<div style="display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border2);border-radius:99px;background:var(--bg3)">'+b('lista','Lista')+b('pipeline','Pipeline')+'</div>';
+}
+function setGhlVista(v){ S.ghlVista=v; try{ localStorage.setItem('ghl-vista',v); }catch(e){} renderTab(); }
+function _ghlVistaActual(){ if(!S.ghlVista){ try{ S.ghlVista=localStorage.getItem('ghl-vista')||'lista'; }catch(e){ S.ghlVista='lista'; } } return S.ghlVista; }
+// Orden de las etapas: el del pipeline de GHL que mas coincide con las etapas de
+// sus contactos. Se trae una vez por cliente al abrir la vista; mientras tanto
+// (o si GHL no contesta) se ordena por el recorrido tipico del embudo.
+var GHL_PIPES={};
+function _ghlEtapaRango(st){
+  var n=String(st||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  var R=[[/nuevo|registro|lead nuevo/,0],[/contactad|propuest|calific|filtro/,1],[/no asis/,4],[/programad|agend/,2],
+    [/asisti|llamada tenida|en vivo/,3],[/tomando|decisi|presentaci|cotiz|oferta/,5],[/no compr|perdid/,7],[/compr|ganad|cerrad/,6]];
+  for(var i=0;i<R.length;i++) if(R[i][0].test(n)) return R[i][1];
+  return 8;
+}
+function ghlEtapasOrden(c, ops){
+  var vistas=[]; ops.forEach(function(o){ var s=o.pipelineStage||'(sin etapa)'; if(vistas.indexOf(s)<0) vistas.push(s); });
+  var P=GHL_PIPES[c.id], base=null;
+  if(P && P.pipelines){
+    var mejor=-1;
+    P.pipelines.forEach(function(p){
+      var nombres=(p.stages||[]).map(function(x){return x.name;});
+      var k=vistas.filter(function(v){return nombres.indexOf(v)>=0;}).length;
+      if(k>mejor){ mejor=k; base=nombres; }
+    });
+  }
+  if(!base) return vistas.slice().sort(function(a,b){ return _ghlEtapaRango(a)-_ghlEtapaRango(b); });
+  return base.concat(vistas.filter(function(v){return base.indexOf(v)<0;}));
+}
+async function _ghlTraerPipes(c){
+  var g=c.ghl||{};
+  if(GHL_PIPES[c.id] || !g.token || !g.locationId) return;
+  GHL_PIPES[c.id]={cargando:true};
+  try{
+    var r=await _ghlCli(c,'GET','/opportunities/pipelines?locationId='+encodeURIComponent(g.locationId));
+    GHL_PIPES[c.id]={pipelines:(r.status===200&&r.data&&r.data.pipelines)||null};
+  }catch(e){ GHL_PIPES[c.id]={pipelines:null}; }
+  if(S.ghlVista==='pipeline' && S.clientId===c.id) renderTab();
+}
+function ghlPipelineHtml(c, ops){
+  if(typeof _ghlCli==='function') _ghlTraerPipes(c);
+  var etapas=ghlEtapasOrden(c, ops);
+  if(!etapas.length) return '<div style="padding:20px 12px;text-align:center;color:var(--text3);border:1px solid var(--border);border-radius:var(--radius-lg)">Ningun contacto para mostrar</div>';
+  var col=etapas.map(function(st){
+    var L=ops.filter(function(o){ return (o.pipelineStage||'(sin etapa)')===st; })
+      .sort(function(a,b){ return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); });
+    var cards=L.map(function(o){
+      var est=deriveEstado(o), oId=o.id||'';
+      var ad=(typeof adOf==='function'&&adOf(o))||'';
+      return '<div onclick="openOppDetail(&#39;'+oId+'&#39;)" style="cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:7px">'
+        +'<div style="display:flex;justify-content:space-between;gap:6px;align-items:center">'
+        +'<span style="color:var(--strong);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.contactName||o.name||'-')+'</span>'
+        +'<button title="Ver recorrido del lead" onclick="event.stopPropagation();openLeadJourneyModal('+c.id+',&#39;'+oId+'&#39;)" style="border:0;background:transparent;cursor:pointer;color:var(--accent);opacity:0.65;padding:0 2px;font-size:13px">&#10022;</button></div>'
+        +'<div style="display:flex;justify-content:space-between;gap:6px;margin-top:6px;font-size:10.5px;color:var(--text3)">'
+        +'<span>'+(o.createdAt?new Date(o.createdAt).toLocaleDateString('es-AR'):'-')+(ad?' &middot; '+esc(ad):'')+'</span>'
+        +'<span style="color:'+est.color+'">'+esc(est.label)+'</span></div></div>';
+    }).join('');
+    return '<div style="flex:0 0 230px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--strong);font-weight:500;margin-bottom:9px">'
+      +'<span>'+esc(st)+'</span><span style="color:var(--text3)">'+L.length+'</span></div>'
+      +(cards||'<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin oportunidades</div>')+'</div>';
+  }).join('');
+  return '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;align-items:flex-start">'+col+'</div>';
+}
 var _colLabel=function(k){return k==='SQL'?'Llamada calif. en vivo':k;};
 // Filtro en el encabezado de una columna. El <select> va invisible encima del
 // embudo: conserva el menu nativo (teclado, lectores) sin reimplementarlo, y no
