@@ -104,7 +104,7 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
       <div id="formEstado" class="prog">Cargando cómo vas…</div>
       <div class="track" aria-hidden="true"><i id="formBar"></i></div>
       <a class="primary" id="formLink" href="#" hidden>Abrir mi formulario</a>
-      <p class="cal-alt" id="formEspera" hidden>El formulario se habilita cuando vas por la mitad del video.</p>
+      <p class="cal-alt" id="formEspera" hidden>El botón para completar tu formulario aparece cuando termines de ver el video.</p>
     </div>
   </section>
 
@@ -175,12 +175,12 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
     var s=document.createElement('div'); s.className='sin'; s.textContent='El video llega en breve. Mientras, podés ir completando el formulario.'; v.appendChild(s);
   }
 
-  /* El botón del formulario aparece cuando va por la mitad del video (Angie,
-     06/11/2026). El video es de Loom y la página no puede leer en qué minuto
+  /* El botón del formulario aparece cuando termina el video (Angie, 06/11/2026:
+     primero la mitad, después «una vez que termines de ver el video»): el 90%. El video es de Loom y la página no puede leer en qué minuto
      está, así que se cuenta el tiempo con la página a la vista: la mitad del
      video a la velocidad de Loom (1,2x). Una vez habilitado queda habilitado
      en ese navegador, y si ya empezó el formulario aparece de entrada. */
-  var MITAD=Math.round(525/1.2/2), clave='bv-ok-'+T, visto=0;
+  var MITAD=Math.round(525/1.2*0.9), clave='bv-ok-'+T, visto=0;
   var habilitar=function(){
     try{ localStorage.setItem(clave,'1'); }catch(e){}
     var b=document.getElementById('formLink'), w=document.getElementById('formEspera');
