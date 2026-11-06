@@ -264,7 +264,7 @@ header.chico h1{font-size:19px;margin-top:10px}
     });
     var cargas=0;
     var f=el('iframe',{title:'Calendario de la llamada de estrategia',scrolling:'no',
-      style:'width:100%;min-height:600px;border:0;display:block;background:transparent;margin-bottom:-40px'});
+      style:'width:calc(100% + 6px);min-height:600px;border:0;display:block;background:transparent;margin:-3px -3px -40px -3px'});
     // El script de GHL ajusta el alto solo si el id es «<id del calendario>_<numero>».
     f.id=(CAL.split('/').pop()||'cal')+'_'+Date.now(); f.src=CAL;
     f.addEventListener('load', function(){ cargas++; if(cargas>=2) avisar(); });
@@ -276,7 +276,7 @@ header.chico h1{font-size:19px;margin-top:10px}
       el('p',{text:'Es la llamada donde te presentamos la estrategia que armamos con tus respuestas. Elegí el horario que te quede mejor.'}),
       // El calendario de GHL trae abajo una franja blanca propia: el cuadro la
       // recorta (Angie, 06/11/2026: «ojo con ese marco»).
-      el('div',{style:'overflow:hidden;border-radius:0 0 14px 14px;border-bottom:1px solid rgba(255,255,255,.14)'},[f]), el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:8px'},[el('a',{href:CAL,target:'_blank',rel:'noopener',style:'color:var(--lime,#C8FF47)',text:'¿No se ve? Abrilo en otra pestaña'})]),
+      el('div',{style:'overflow:hidden;border-radius:14px;border:1px solid rgba(255,255,255,.14)'},[f]), el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:8px'},[el('a',{href:CAL,target:'_blank',rel:'noopener',style:'color:var(--lime,#C8FF47)',text:'¿No se ve? Abrilo en otra pestaña'})]),
       (F.accesos?el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:4px'},[el('a',{href:'#',style:'color:var(--lime,#C8FF47)',text:'¿Ya agendaste? Seguí acá',onclick:function(ev){ ev.preventDefault(); avisar(); }})]):null)]);
   }
   function accesosOpcionHtml(){
