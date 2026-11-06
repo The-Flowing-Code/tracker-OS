@@ -59,3 +59,17 @@ describe('tasa del dia', () => {
     expect(a.aUsd(c, 4000)).toBe(4);
   });
 });
+
+describe('falta configurar: reglas de etapas', () => {
+  const F = ['_n', 'GHL_AUTO', '_ghlReglasAuto', 'getGhlRules', '_incDe'];
+  it('si todos estan antes de la agenda, no falta nada', () => {
+    const a = cargar(F, { getActiveLine: () => null });
+    const c = { ghl: { opportunities: [{ pipelineStage: 'Nuevo registro' }, { pipelineStage: 'Respondió' }] } };
+    expect(a._incDe(c).map((x) => x.q)).not.toContain('sin reglas de etapas');
+  });
+  it('si hay etapas mas adelante que no se leen, se avisa', () => {
+    const a = cargar(F, { getActiveLine: () => null });
+    const c = { ghl: { opportunities: [{ pipelineStage: 'Nuevo registro' }, { pipelineStage: 'Reunión con Pablo' }] } };
+    expect(a._incDe(c).map((x) => x.q)).toContain('sin reglas de etapas');
+  });
+});

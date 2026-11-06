@@ -15354,7 +15354,13 @@ function _incDe(c){
     // 2. Oportunidades sin reglas: el dato esta y no se sabe leer.
     var ops=(c.ghl&&c.ghl.opportunities)||[];
     var rg=(typeof getGhlRules==='function')?getGhlRules(c):null;
-    if(ops.length && rg && !(rg.agendas||[]).length)
+    /* Si todos estan en etapas de antes de la agenda (nuevo registro,
+       respondio, contactado), no falta configurar nada: es que todavia nadie
+       agendo (Angie, 06/11/2026, Sanando raices con «Nuevo registro» y
+       «Respondió»). Se avisa solo si hay etapas mas adelante que no se leen. */
+    var _temprana=/nuevo|registr|respondi|contactad|sin respuesta|no respond/i;
+    var _hayMas=ops.some(function(o){ return !_temprana.test(String((o&&o.pipelineStage)||'')); });
+    if(ops.length && rg && !(rg.agendas||[]).length && _hayMas)
       f.push({q:'sin reglas de etapas',
               d:ops.length+' oportunidades cargadas que no se pueden leer: no se sabe cual etapa es agenda, asistencia ni calificada.'});
     // 3. Moneda: sin esto ningun importe se puede comparar contra un benchmark.
