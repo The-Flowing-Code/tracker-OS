@@ -71650,6 +71650,41 @@ function renderVentasTab(c, el){
   el.innerHTML=html;
 }
 
+/* Conversaciones de GHL para las tarjetas y la ficha del lead (Angie, 06/11/2026:
+   que la oportunidad se vea como en el reporte). Van por `_ghlCli`, que pasa
+   por la funcion `ghl-api`: el token no sale del servidor. Las ultimas
+   conversaciones de la subcuenta se piden de una vez y se recuerdan 10 min. */
+var GHL_CONVS={};
+async function _ghlConvGet(c, ruta){
+  var g=c.ghl||{};
+  var r=await fetch('https://services.leadconnectorhq.com'+ruta,{method:'GET',
+    headers:{Authorization:'Bearer '+(g.token||('cli:'+c.id)),'Version':'2021-04-15'}});
+  var d=await r.json().catch(function(){return null;});
+  if(!r.ok) throw new Error((d&&(d.message||d.error))||('HTTP '+r.status));
+  return d;
+}
+async function ghlConvsTraer(c){
+  var g=c.ghl||{};
+  if(!g.locationId) return;
+  var k=GHL_CONVS[c.id];
+  if(k && (k.cargando || Date.now()-k.at<600000)) return;
+  GHL_CONVS[c.id]={cargando:true, porContacto:(k&&k.porContacto)||{}, at:0};
+  try{
+    var d=await _ghlConvGet(c,'/conversations/search?locationId='+encodeURIComponent(g.locationId)+'&limit=100&sort=desc&sortBy=last_message_date');
+    var m={};
+    ((d&&d.conversations)||[]).forEach(function(v){ if(v.contactId && !m[v.contactId]) m[v.contactId]=v; });
+    GHL_CONVS[c.id]={porContacto:m, at:Date.now()};
+  }catch(e){ GHL_CONVS[c.id]={porContacto:(k&&k.porContacto)||{}, at:Date.now(), error:String(e.message||e)}; }
+  if(S.clientId===c.id && _ghlVistaActual()==='pipeline') renderTab();
+}
+function _ghlConvDe(c, o){ var k=GHL_CONVS[c.id]; return (k&&k.porContacto&&o.contactId)?k.porContacto[o.contactId]||null:null; }
+function _ghlFecha(t, conHora){
+  if(!t) return '';
+  var d=new Date(typeof t==='number'?t:(/^\d+$/.test(String(t))?+t:t));
+  if(isNaN(d)) return '';
+  var dd=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2);
+  return conHora?dd+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2):dd;
+}
 // Lista o pipeline: la misma base de contactos, dos formas de verla.
 function _ghlVistaSel(){
   var v=_ghlVistaActual()==='pipeline'?'pipeline':'lista';
@@ -71697,6 +71732,7 @@ async function _ghlTraerPipes(c){
 }
 function ghlPipelineHtml(c, ops){
   if(typeof _ghlCli==='function') _ghlTraerPipes(c);
+  if(typeof ghlConvsTraer==='function') ghlConvsTraer(c);
   var etapas=ghlEtapasOrden(c, ops);
   if(!etapas.length) return '<div style="padding:20px 12px;text-align:center;color:var(--text3);border:1px solid var(--border);border-radius:var(--radius-lg)">Ningun contacto para mostrar</div>';
   var col=etapas.map(function(st){
@@ -71704,14 +71740,21 @@ function ghlPipelineHtml(c, ops){
       .sort(function(a,b){ return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); });
     var cards=L.map(function(o){
       var est=deriveEstado(o), oId=o.id||'';
-      var ad=(typeof adOf==='function'&&adOf(o))||'';
-      return '<div onclick="openOppDetail(&#39;'+oId+'&#39;)" style="cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:9px 10px;margin-bottom:7px">'
+      var cv=(typeof _ghlConvDe==='function')?_ghlConvDe(c,o):null;
+      var ult=cv&&cv.lastMessageBody?String(cv.lastMessageBody).replace(/\s+/g,' '):'';
+      var tags=(o.tags||[]).slice(0,3);
+      return '<div onclick="openOppDetail(&#39;'+oId+'&#39;)" style="cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px">'
         +'<div style="display:flex;justify-content:space-between;gap:6px;align-items:center">'
-        +'<span style="color:var(--strong);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.contactName||o.name||'-')+'</span>'
+        +'<span style="color:var(--strong);font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.contactName||o.name||'-')+'</span>'
         +'<button title="Ver recorrido del lead" onclick="event.stopPropagation();openLeadJourneyModal('+c.id+',&#39;'+oId+'&#39;)" style="border:0;background:transparent;cursor:pointer;color:var(--accent);opacity:0.65;padding:0 2px;font-size:13px">&#10022;</button></div>'
-        +'<div style="display:flex;justify-content:space-between;gap:6px;margin-top:6px;font-size:10.5px;color:var(--text3)">'
-        +'<span>'+(o.createdAt?new Date(o.createdAt).toLocaleDateString('es-AR'):'-')+(ad?' &middot; '+esc(ad):'')+'</span>'
-        +'<span style="color:'+est.color+'">'+esc(est.label)+'</span></div></div>';
+        +'<div style="font-size:11px;font-weight:600;color:'+est.color+';margin-top:5px">'+esc(o.pipelineStage||est.label)+'</div>'
+        +(ult?('<div style="font-size:11px;color:var(--text2);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\u00ab'+esc(ult)+'</div>'):'')
+        +(tags.length?('<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:7px">'+tags.map(function(t){
+            return '<span style="font-size:10px;padding:2px 7px;border-radius:6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2)">'+esc(t)+'</span>'; }).join('')+'</div>'):'')
+        +'<div style="display:flex;justify-content:space-between;gap:6px;margin-top:8px;font-size:10.5px;color:var(--text3);font-family:var(--mono,monospace)">'
+        +'<span>alta '+(_ghlFecha(o.createdAt)||'-')+'</span>'
+        +(cv&&cv.lastMessageDate?('<span>\u00falt. msj '+_ghlFecha(cv.lastMessageDate,true)+'</span>'):'')
+        +'</div></div>';
     }).join('');
     return '<div style="flex:0 0 230px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
       +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--strong);font-weight:500;margin-bottom:9px">'
@@ -74677,6 +74720,7 @@ async function openOppDetail(oppId){
   if(!opp) return;
   const _est=deriveEstado(opp);
   const stColor=_est.color;
+  S._oppTab='conv';
 
   function renderModal(notes, loading, err){
     let notesHtml='';
@@ -74731,23 +74775,78 @@ async function openOppDetail(oppId){
       +'<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px">'
       +_origenChips.map(function(t){return '<span style="font-size:11px;padding:4px 10px;border-radius:var(--radius);background:var(--bg3);color:var(--text2)">'+esc(t)+'</span>';}).join('')
       +'</div>'):'';
+    /* Como la ficha del lead del reporte (Angie, 06/11/2026): arriba quien es y
+       en que etapa esta, los dos atajos a GHL, y abajo tres pestañas. */
+    var _loc=(c.ghl&&c.ghl.locationId)||'';
+    var _cv=_conv.cv;
+    var _chatUrl=_loc?('https://app.gohighlevel.com/v2/location/'+encodeURIComponent(_loc)
+      +(_cv&&_cv.id?('/conversations/conversations/'+encodeURIComponent(_cv.id)):('/contacts/detail/'+encodeURIComponent(opp.contactId||'')))):'';
+    var _pipeUrl=_loc?('https://app.gohighlevel.com/v2/location/'+encodeURIComponent(_loc)+'/opportunities/list'):'';
+    var _btn=function(u,t){ return u?('<a href="'+esc(u)+'" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:12px;padding:6px 11px;text-decoration:none">'+t+' \u2197</a>'):''; };
+    var _msgs=_conv.msgs||[];
+    var _tab=S._oppTab||'conv';
+    var _tb=function(k,t){ var on=_tab===k;
+      return '<button onclick="S._oppTab=&#39;'+k+'&#39;;_oppRepintar()" style="border:0;cursor:pointer;font-family:var(--font);font-size:12.5px;padding:8px 13px;border-radius:9px 9px 0 0;'
+        +(on?'background:var(--accent);color:#0a0a0a;font-weight:600':'background:transparent;color:var(--text2)')+'">'+t+'</button>'; };
+    var convHtml;
+    if(_conv.cargando) convHtml='<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Cargando la conversaci\u00f3n...</div>';
+    else if(_conv.error) convHtml='<div style="padding:16px;color:var(--redx);font-size:12px">No pude leer la conversaci\u00f3n: '+esc(_conv.error)+'</div>';
+    else if(!_msgs.length) convHtml='<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Todav\u00eda no hay mensajes con este lead.</div>';
+    else convHtml=_msgs.map(function(m){
+      var sal=(m.direction==='outbound');
+      var canal=/WHATSAPP/i.test(m.messageType||'')?'WhatsApp':(/SMS/i.test(m.messageType||'')?'SMS':(/EMAIL/i.test(m.messageType||'')?'Email':String(m.messageType||'').replace(/^TYPE_/,'')));
+      var auto=sal && /workflow|campaign|bulk|automation/i.test(String(m.source||''));
+      return '<div style="display:flex;justify-content:'+(sal?'flex-end':'flex-start')+';margin-bottom:10px">'
+        +'<div style="max-width:78%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;'
+          +(sal?'background:rgba(200,255,71,0.07);border:1px solid rgba(200,255,71,0.25);color:var(--text)':'background:var(--bg3);border:1px solid var(--border);color:var(--text)')+'">'
+          +esc(m.body||'('+(m.attachments&&m.attachments.length?'adjunto':'sin texto')+')')
+          +'<div style="margin-top:6px;font-size:10.5px;color:var(--text3);font-family:var(--mono,monospace)">'
+          +esc(_ghlFecha(m.dateAdded,true))+(canal?' \u00b7 '+esc(canal):'')+(auto?' \u00b7 autom\u00e1tico':'')+'</div></div></div>';
+    }).join('');
+    var formHtml=(utmHtml+tagsHtml2+faHtml)||'<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Sin datos del formulario.</div>';
+    var _nNotas=(notes&&notes.length)||0;
     document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
       +'<div class="modal" style="max-width:780px">'
-      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">'
       +'<div><div class="modal-title">'+esc(opp.contactName||opp.name)+'</div>'
-      +'<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'
-      +'<span style="font-size:11px;color:'+stColor+'">'+esc(_est.label)+'</span>'
-      +(opp.pipelineStage?'<span style="font-size:11px;color:var(--text3)">'+esc(opp.pipelineStage)+'</span>':'')
-      +(opp.monetaryValue?'<span style="font-size:11px;color:var(--text2)">'+money(opp.monetaryValue)+'</span>':'')
-      +'</div></div>'
-      +'<button class="btn btn-sm" onclick="closeModal()">Cerrar</button></div>'
-      +utmHtml
-      +tagsHtml2
-      +faHtml
-      +'<div style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin:6px 0 10px">Notas</div>'
-      +'<div id="notes-content">'+notesHtml+'</div>'
+      +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px;font-family:var(--mono,monospace)">'
+        +esc([opp.pipelineStage, _est.label, opp.createdAt?('alta '+_ghlFecha(opp.createdAt)):''].filter(Boolean).join(' \u00b7 '))
+        +(opp.monetaryValue?' \u00b7 '+money(opp.monetaryValue):'')+'</div>'
+      +(opp.contactPhone?('<div style="font-size:11.5px;color:var(--text3);margin-top:3px;font-family:var(--mono,monospace)">'+esc(opp.contactPhone)+'</div>'):'')
+      +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+_btn(_chatUrl,'Abrir el chat en GHL')+_btn(_pipeUrl,'Ver en el pipeline')+'</div>'
+      +'</div>'
+      +'<button class="btn btn-sm" onclick="closeModal()" aria-label="Cerrar">\u2715</button></div>'
+      +'<div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px">'
+        +_tb('conv','Conversaci\u00f3n ('+_msgs.length+')')+_tb('form','Formulario')+_tb('notas','Notas ('+_nNotas+')')+'</div>'
+      +'<div style="display:'+(_tab==='conv'?'block':'none')+'">'+convHtml+'</div>'
+      +'<div style="display:'+(_tab==='form'?'block':'none')+'">'+formHtml+'</div>'
+      +'<div id="notes-content" style="display:'+(_tab==='notas'?'block':'none')+'">'+notesHtml+'</div>'
       +'</div></div>';
   }
+  var _ult={notes:null, loading:true, err:null};
+  var _conv={cargando:true, msgs:[], cv:null};
+  window._oppRepintar=function(){ renderModal(_ult.notes, _ult.loading, _ult.err); };
+  var _rm=renderModal;
+  renderModal=function(n,l,e){ _ult={notes:n, loading:l, err:e}; _rm(n,l,e); };
+  // La conversacion se pide en paralelo con las notas y repinta sola.
+  (async function(){
+    try{
+      var cv=_ghlConvDe(c,opp);
+      if(!cv && opp.contactId){
+        var dS=await _ghlConvGet(c,'/conversations/search?locationId='+encodeURIComponent((c.ghl||{}).locationId||'')+'&contactId='+encodeURIComponent(opp.contactId));
+        cv=((dS&&dS.conversations)||[])[0]||null;
+      }
+      var msgs=[];
+      if(cv && cv.id){
+        var dM=await _ghlConvGet(c,'/conversations/'+encodeURIComponent(cv.id)+'/messages?limit=100');
+        var raw=(dM&&dM.messages&&dM.messages.messages)||(dM&&dM.messages)||[];
+        msgs=(Array.isArray(raw)?raw:[]).filter(function(m){ return !/ACTIVITY|CALL_LOG|TYPE_CUSTOM_PROVIDER_EMAIL_STATUS/i.test(m.messageType||'') || m.body; })
+          .sort(function(a,b){ return new Date(a.dateAdded||0)-new Date(b.dateAdded||0); });
+      }
+      _conv={cargando:false, msgs:msgs, cv:cv};
+    }catch(e){ _conv={cargando:false, msgs:[], cv:null, error:String((e&&e.message)||e)}; }
+    if(document.getElementById('notes-content')) window._oppRepintar();
+  })();
 
   renderModal(null, true, null);
   const proxy=getGhlProxy();
