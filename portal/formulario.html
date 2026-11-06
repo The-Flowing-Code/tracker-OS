@@ -245,22 +245,41 @@ header.chico h1{font-size:19px;margin-top:10px}
   function alert2(t){ estado(t, true); }
   // El calendario «Strategy Call» de la subcuenta de The Flowing Code.
   var CAL='https://www.evolvegrind.com/widget/booking/cc9jBNWELLNGljfXPofB';
-  function calendarioHtml(){
+  function agendadoHtml(){
+    var c=el('div',{},[el('div',{class:'ins'},[el('h3',{text:'¡Listo, ya agendaste!'}),
+      el('p',{text:'Te llega la confirmación por mail y por WhatsApp. Nos vemos en la llamada de estrategia.'})])]);
+    c.appendChild(accesosOpcionHtml());
+    window.scrollTo(0, c.offsetTop||0);
+    return c;
+  }
+  function calendarioHtml(alAgendar){
+    var hecho=false, avisar=function(){ if(hecho) return; hecho=true; if(alAgendar) alAgendar(); };
+    // Se da cuenta de que agendó por dos lados: el mensaje que manda el
+    // calendario de GHL al terminar, o que el cuadro del calendario cambie de
+    // página (la confirmación de la reserva).
+    window.addEventListener('message', function(e){
+      if(!/evolvegrind\.com|leadconnectorhq\.com|msgsndr/i.test(e.origin||'')) return;
+      var t=''; try{ t=typeof e.data==='string'?e.data:JSON.stringify(e.data); }catch(_e){}
+      if(/booking[-_ ]?(complete|success|confirmed)|appointment[-_ ]?(booked|created)/i.test(t)) avisar();
+    });
+    var cargas=0;
     var f=el('iframe',{title:'Calendario de la llamada de estrategia',scrolling:'no',
       style:'width:100%;min-height:600px;border:0;display:block;background:transparent'});
     // El script de GHL ajusta el alto solo si el id es «<id del calendario>_<numero>».
     f.id=(CAL.split('/').pop()||'cal')+'_'+Date.now(); f.src=CAL;
+    f.addEventListener('load', function(){ cargas++; if(cargas>=2) avisar(); });
     if(!document.getElementById('ghl-embed')){
       var sc=document.createElement('script'); sc.id='ghl-embed'; sc.async=true;
       sc.src='https://www.evolvegrind.com/js/form_embed.js'; document.body.appendChild(sc);
     }
     return el('div',{class:'ins'},[el('h3',{text:'Agendá la llamada de estrategia'}),
       el('p',{text:'Es la llamada donde te presentamos la estrategia que armamos con tus respuestas. Elegí el horario que te quede mejor.'}),
-      f, el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:8px'},[el('a',{href:CAL,target:'_blank',rel:'noopener',style:'color:var(--lime,#C8FF47)',text:'¿No se ve? Abrilo en otra pestaña'})])]);
+      f, el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:8px'},[el('a',{href:CAL,target:'_blank',rel:'noopener',style:'color:var(--lime,#C8FF47)',text:'¿No se ve? Abrilo en otra pestaña'})]),
+      (F.accesos?el('p',{style:'font-size:13.5px;color:var(--muted,#8a8f98);margin-top:4px'},[el('a',{href:'#',style:'color:var(--lime,#C8FF47)',text:'¿Ya agendaste? Seguí acá',onclick:function(ev){ ev.preventDefault(); avisar(); }})]):null)]);
   }
   function accesosOpcionHtml(){
     var caja=el('div',{class:'ins'},[el('h3',{text:'¿Querés adelantar? (opcional)'}),
-      el('p',{text:'Si ya agendaste y querés ganar tiempo, podés darnos los accesos de Meta ahora. Te dejamos los datos y los videos para hacerlo en unos minutos.'})]);
+      el('p',{text:'Si querés ganar tiempo, podés darnos los accesos de Meta ahora. Te dejamos los datos y los videos para hacerlo en unos minutos.'})]);
     var b=el('button',{type:'button',class:'primary',text:'Ver cómo darnos los accesos de Meta'});
     b.addEventListener('click', function(){
       b.disabled=true; b.textContent='Cargando…';
@@ -462,8 +481,11 @@ header.chico h1{font-size:19px;margin-top:10px}
             reunionHtml(d&&d.proxima)]));
           // En el gracias se agenda la llamada de estrategia, y después, si
           // quieren, adelantan los accesos de Meta (Angie, 06/11/2026).
-          main.appendChild(calendarioHtml());
-          if(F.accesos) main.appendChild(accesosOpcionHtml());
+          // Los accesos de Meta van como gracias de la agenda: aparecen recién
+          // cuando agendó (Angie, 06/11/2026). Hasta entonces, un link chico
+          // por si agendó y la página no se dio cuenta.
+          var cal=calendarioHtml(function(){ if(F.accesos) cal.replaceWith(agendadoHtml()); });
+          main.appendChild(cal);
           window.scrollTo(0,0);
         }).catch(function(e){ trabajo(-1); fallo(e); });
       }}),
