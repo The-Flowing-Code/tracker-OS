@@ -5,9 +5,9 @@
 import { describe, it, expect } from 'vitest';
 import { cargar } from './cargar.js';
 
-const FUNCS = ['esc', 'CSM_QUIEN', 'csmBloqueante', 'csmBloqueanteHtml'];
+const FUNCS = ['esc', 'CSM_QUIEN', 'csmBloqueante', 'csmProgresoHtml', 'csmBloqueanteHtml'];
 const app = (etapa, tareas, hechas = []) => cargar(FUNCS, {
-  csmEtapaActual: () => (etapa ? { k: etapa, tareas } : null),
+  csmEtapaActual: () => (etapa ? { k: etapa, n: 'Sistemas', tareas } : null),
   csmTareaEstado: (c, t) => ({ ok: hechas.includes(t.id) }),
 });
 
@@ -26,6 +26,16 @@ describe('bloqueante en la tarjeta', () => {
     const a = app('sistemas', tareas, ['a']);
     expect(a.csmBloqueante({}).t).toBe('Montar el embudo');
     expect(a.csmBloqueanteHtml({})).toContain('Delivery · Montar el embudo');
+  });
+
+  it('delante van las tareas de la etapa en chico: hecha, donde se quedo y lo que falta', () => {
+    const tareas = [{ id: 'a', t: 'Dar los accesos', quien: 'cliente' }, { id: 'b', t: 'Montar el embudo', quien: 'delivery' },
+      { id: 'c', t: 'Prueba', quien: 'delivery' }, { id: 'd', t: 'Diario', quien: 'csm', cada: 'dia' }];
+    const h = app('sistemas', tareas, ['a']).csmBloqueanteHtml({});
+    expect(h).toContain('Sistemas: 1 de 3 tareas hechas');
+    expect(h).toContain('class="csmpg ok"');
+    expect(h).toContain('Acá se quedó: Montar el embudo');
+    expect((h.match(/class="csmpg /g) || []).length).toBe(3);
   });
 
   it('el de la etapa le gana al ticket', () => {

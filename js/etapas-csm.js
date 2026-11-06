@@ -690,9 +690,33 @@ function csmBloqueante(c){
   if(!it) return null;
   return {t:String(it.texto||'').replace(/^Bloqueante:\s*/i,''), quien:'', para:''};
 }
+/* Las tareas de la etapa en chico, delante del bloqueante (Angie, 06/11/2026:
+   «que estén en chico las tareas y ver dónde se quedó el cliente»). Una marca
+   por tarea, en el orden del roadmap: ✓ hecha, ● donde se quedó (la primera sin
+   hacer), ○ las que siguen. Las que se repiten no cuentan. Cada marca dice en
+   el globito qué tarea es y de quién depende. */
+function csmProgresoHtml(c){
+  var def=(typeof csmEtapaActual==='function')?csmEtapaActual(c):null;
+  if(!def || !def.tareas) return '';
+  var ahora=new Date(), L=def.tareas.filter(function(t){ return !t.cada; });
+  if(!L.length) return '';
+  var hechas=0, actual=-1;
+  var est=L.map(function(t,i){
+    var ok=!!csmTareaEstado(c, t, def, ahora).ok;
+    if(ok) hechas++; else if(actual<0) actual=i;
+    return ok;
+  });
+  var marcas=L.map(function(t,i){
+    var k=est[i]?'ok':(i===actual?'ya':'no');
+    var g=est[i]?'\u2713':(i===actual?'\u25CF':'\u25CB');
+    var tit=(est[i]?'Hecha: ':(i===actual?'Ac\u00e1 se qued\u00f3: ':'Falta: '))+t.t+((CSM_QUIEN[t.quien])?(' \u00b7 '+CSM_QUIEN[t.quien]):'');
+    return '<i class="csmpg '+k+'" title="'+esc(tit)+'">'+g+'</i>';
+  }).join('');
+  return '<span class="csmpgs" title="'+esc(def.n+': '+hechas+' de '+L.length+' tareas hechas')+'">'+marcas+'</span>';
+}
 function csmBloqueanteHtml(c){
   var b=csmBloqueante(c);
   if(!b || !b.t) return '';
   var tit='Bloqueante: '+b.t+(b.quien?(' · lo destraba '+b.quien):'')+(b.para?(' · para el '+b.para):'');
-  return '<div class="p3kper p3ktraba" title="'+esc(tit)+'">'+(b.quien?(esc(b.quien)+' · '):'')+esc(b.t)+'</div>';
+  return '<div class="p3kper p3ktraba" title="'+esc(tit)+'">'+csmProgresoHtml(c)+(b.quien?(esc(b.quien)+' · '):'')+esc(b.t)+'</div>';
 }
