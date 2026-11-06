@@ -187,7 +187,7 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
     .then(function(r){ return r.json(); })
     .then(function(F){
       if(!F || F.error) throw new Error('sin formulario');
-      if(F.titulo){ var h=document.querySelector('h1'); h.innerHTML='Bienvenido, <em></em>'; h.querySelector('em').textContent=String(F.titulo).replace(/^(tu\s+)?formulario(\s+de)?\s*/i,'')||'flowing code'; }
+      if(F.titulo){ var h=document.querySelector('h1'); h.innerHTML='Bienvenido, <em></em>'; h.querySelector('em').textContent=String(F.titulo).replace(/^(tu\s+)?formulario(\s+de)?\s*/i,'').replace(/^¡?\s*bienvenid[oa]s?\s*,?\s*/i,'').replace(/[!¡\s]+$/,'')||'flowing code'; }
       var R=F.respuestas||{}, total=0, hechas=0;
       (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){
         total++; var x=R[p.id]||{};
