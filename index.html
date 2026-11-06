@@ -71823,12 +71823,16 @@ function ghlPipelineHtml(c, ops){
     }).join('');
     // Todas del mismo ancho (Angie, 06/11/2026): sin min-width:0 un mensaje
     // largo en una linea estiraba la columna.
-    return '<div style="flex:0 0 240px;width:240px;min-width:0;box-sizing:border-box;overflow:hidden;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
-      +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--strong);font-weight:500;margin-bottom:9px">'
+    // Cada columna scrollea adentro, con el titulo quieto (Angie, 06/11/2026):
+    // con 34 agendas la pagina se hacia larguisima y las otras columnas
+    // quedaban vacias arriba.
+    return '<div style="flex:0 0 240px;width:240px;min-width:0;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px">'
+      +'<div style="flex-shrink:0;display:flex;justify-content:space-between;font-size:12px;color:var(--strong);font-weight:500;margin-bottom:9px">'
       +'<span>'+esc(st)+'</span><span style="color:var(--text3)">'+L.length+'</span></div>'
-      +(cards||'<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin oportunidades</div>')+'</div>';
+      +'<div style="flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin-right:-6px;padding-right:6px">'
+      +(cards||'<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin oportunidades</div>')+'</div></div>';
   }).join('');
-  return '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;align-items:stretch">'+col+'</div>';
+  return '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;align-items:stretch;height:calc(100vh - 180px);min-height:380px">'+col+'</div>';
 }
 var _colLabel=function(k){return k==='SQL'?'Llamada calif. en vivo':k;};
 // Filtro en el encabezado de una columna. El <select> va invisible encima del
