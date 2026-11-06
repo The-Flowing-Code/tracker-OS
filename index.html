@@ -74832,7 +74832,23 @@ async function openOppDetail(oppId){
       return '<div style="display:flex;justify-content:'+(sal?'flex-end':'flex-start')+';margin-bottom:10px">'
         +'<div style="max-width:78%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;'
           +(sal?'background:rgba(200,255,71,0.07);border:1px solid rgba(200,255,71,0.25);color:var(--text)':'background:var(--bg3);border:1px solid var(--border);color:var(--text)')+'">'
-          +esc(m.body||'('+(m.attachments&&m.attachments.length?'adjunto':'sin texto')+')')
+          // Los adjuntos (Angie, 06/11/2026): GHL manda la URL de cada uno en
+          // `attachments`. Una imagen se ve en chico y abre grande; un audio se
+          // escucha ahi; el resto (PDF, video, documento) es un link.
+          +(m.body?esc(m.body):'')
+          +((m.attachments||[]).map(function(u){
+              u=String(u||''); if(!/^https:\/\//i.test(u)) return '';
+              var lim=u.split('?')[0].toLowerCase(), nom=decodeURIComponent(lim.split('/').pop()||'adjunto');
+              var cab=(m.body?'<div style="margin-top:8px">':'<div>');
+              if(/\.(png|jpe?g|gif|webp)$/.test(lim))
+                return cab+'<a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Imagen adjunta" loading="lazy" style="max-width:240px;max-height:240px;border-radius:8px;display:block"></a></div>';
+              if(/\.(ogg|oga|mp3|m4a|wav|opus|aac)$/.test(lim))
+                return cab+'<audio controls preload="none" src="'+esc(u)+'" style="max-width:260px"></audio></div>';
+              if(/\.(mp4|mov|webm)$/.test(lim))
+                return cab+'<video controls preload="none" src="'+esc(u)+'" style="max-width:260px;border-radius:8px"></video></div>';
+              return cab+'<a href="'+esc(u)+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">'+(nom.indexOf('.')>0?('Abrir '+esc(nom.length>40?nom.slice(0,18)+'\u2026'+nom.slice(-14):nom)):'Abrir el adjunto')+' \u2197</a></div>';
+            }).join(''))
+          +((!m.body && !(m.attachments||[]).length)?'<span style="color:var(--text3)">(sin texto)</span>':'')
           +'<div style="margin-top:6px;font-size:10.5px;color:var(--text3);font-family:var(--mono,monospace)">'
           +esc(_ghlFecha(m.dateAdded,true))+(canal?' \u00b7 '+esc(canal):'')+(auto?' \u00b7 autom\u00e1tico':'')+'</div></div></div>';
     }).join('');
