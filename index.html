@@ -9826,6 +9826,7 @@ function llRevisarGuardar(clientId){
    tercero, asi que lo que corre adentro es codigo de la casa. Lo que sigue sin
    poder hacer es navegar la pestaña ni abrir formularios de la app. */
 var REP_BUCKET='material';
+var _EMB_CACHE={};
 function _repEmbedHtml(c){
   var r=(typeof _repCampana==='function')?_repCampana(c):null;
   var path=((c&&c.reporteCampana)||{}).storage||'';
@@ -9971,6 +9972,8 @@ async function _embSbCargar(caja){
     if(typeof sbRenovar==='function' && SB.exp && Date.now()>SB.exp-60000){
       try{ await sbRenovar(); }catch(e){}
     }
+    var html=(_EMB_CACHE[path] && Date.now()-_EMB_CACHE[path].t<600000) ? _EMB_CACHE[path].html : null;
+    if(html===null){
     var r=await firmar();
     // Un 401 puede llegar igual: el reloj de la maquina corrido, o el token
     // vencido mientras la pestaña estaba dormida. Se renueva y se prueba una
@@ -9983,7 +9986,9 @@ async function _embSbCargar(caja){
     if(!r.ok||!u) throw new Error((d&&d.message)||('HTTP '+r.status));
     var r2=await fetch(SB_URL+'/storage/v1'+u);
     if(!r2.ok) throw new Error('HTTP '+r2.status+' al bajarlo');
-    var html=await r2.text();
+    html=await r2.text();
+    _EMB_CACHE[path]={t:Date.now(), html:html};
+    }
     if(!caja.isConnected) return;
     if(html.length<60){ fallo('El reporte guardado est\u00e1 vac\u00edo.'); return; }
     caja.style.display='block';
@@ -10001,6 +10006,25 @@ async function _embSbCargar(caja){
       var _st='<style>'+_oc+'{display:none !important}</style>';
       html=/<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function(m){ return m+_st; })
                                     : html.replace(/^(\s*<!doctype[^>]*>)?/i, function(m){ return m+_st; });
+    }
+    /* Solo algunas partes del reporte (Angie, 06/11/2026: en Middle of Funnel,
+       lo activo hoy, los avisos tecnicos y la conversacion por WhatsApp). El
+       reporte arma sus secciones con JS y las esconde en pasos; despues de que
+       carga, se dejan visibles solo esas y se esconde el resto, sin moverlas
+       para que conserven su estilo. La caja crece al alto de lo que queda. */
+    var _solo=String(caja.dataset.solo||'');
+    if(_solo && /^[a-z0-9.#\-_ ,]+$/i.test(_solo)){
+      var _js='<script>(function(){var SEL='+JSON.stringify(_solo.split(',').map(function(x){return x.trim();}).filter(Boolean))+';'
+        +'function solo(){var keep=[];SEL.forEach(function(s){var n=document.querySelector(s);if(n&&keep.indexOf(n)<0)keep.push(n);});'
+        +'if(!keep.length){document.body.innerHTML=\'<p style="font:13px sans-serif;color:#889;padding:16px">El reporte de este cliente todavia no tiene estas secciones.</p>\';return;}'
+        +'var path=[];keep.forEach(function(k){for(var p=k;p&&p!==document.documentElement;p=p.parentElement)if(path.indexOf(p)<0)path.push(p);});'
+        +'path.forEach(function(p){if(getComputedStyle(p).display===\'none\')p.style.setProperty(\'display\',\'block\',\'important\');if(keep.indexOf(p)>=0)return;'
+        +'[].slice.call(p.children).forEach(function(ch){if(path.indexOf(ch)<0&&ch.tagName!==\'SCRIPT\'&&ch.tagName!==\'STYLE\')ch.style.setProperty(\'display\',\'none\',\'important\');});});}'
+        +'function alto(){try{var fe=window.frameElement;if(fe)fe.style.height=(document.documentElement.scrollHeight+4)+\'px\';}catch(e){}}'
+        +'window.addEventListener(\'load\',function(){setTimeout(function(){solo();alto();setTimeout(alto,800);},400);});})();<\/script>';
+      html=/<\/body>/i.test(html) ? html.replace(/<\/body>/i, function(m){ return _js+m; }) : html+_js;
+      caja.style.height='auto'; caja.style.minHeight='0';
+      f.style.height='320px';
     }
     // `srcdoc` y no `src`: ver el comentario de arriba.
     f.srcdoc=html;
@@ -68023,6 +68047,23 @@ function lpTablaLandingsHtml(c, v){
     +'</div>';
 }
 
+// Lo del reporte de la mañana que es de la mitad del embudo: la landing activa
+// con sus numeros, los avisos de calendario y landing, y el WhatsApp.
+function _repMiddleHtml(c){
+  var rc=(c&&c.reporteCampana)||{}, path=rc.storage||'';
+  if(!path) return '';
+  var at=rc.at?new Date(rc.at):null;
+  return '<div style="margin-bottom:18px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">'
+      +'<div style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em">Del reporte de campa\u00f1a'
+        +(at?(' &middot; '+at.toLocaleDateString('es-AR')+' '+at.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})):'')+'</div>'
+      +(rc.url?('<a href="'+esc(rc.url)+'" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:11px;padding:3px 9px;text-decoration:none">Ver el reporte completo</a>'):'')
+    +'</div>'
+    +'<div class="emb-sb" data-path="'+esc(path)+'" data-solo=".fx-act,.fx-tec,.fx-wa" data-titulo="Reporte de campa\u00f1a: landing, avisos y WhatsApp" '
+      +'style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:#080A0F;min-height:120px;'
+      +'display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3)">Abriendo el reporte\u2026</div>'
+  +'</div>';
+}
 function dibujarMiddle(c){
   var body=document.getElementById('hoja-middle-body');
   if(!body||!c) return;
@@ -68052,7 +68093,8 @@ function dibujarMiddle(c){
     lpVerificar(c.id, true).then(_fin).catch(_fin);
   }
   var a=abCfg(c);
-  var tabla=lpTablaLandingsHtml(c, lpVentana(c));
+  var tabla=_repMiddleHtml(c)+lpTablaLandingsHtml(c, lpVentana(c));
+  setTimeout(function(){ if(typeof repEmbedCargar==='function') repEmbedCargar(); },0);
   // Guardado: queda la tabla de landings, que es lo que se mira todos los
   // dias. El resto se prende en Configuracion de agencia.
   if(!abTestPrendido() || EMB_ARCHIVADAS.abtest){ body.innerHTML=tabla; return; }
@@ -68065,7 +68107,7 @@ function dibujarMiddle(c){
   cargarAB(c).then(function(html){
     S._middleCargado=c.id; S._middleHtml=html;
     var b=document.getElementById('hoja-middle-body');
-    if(b) b.innerHTML=lpTablaLandingsHtml(c, lpVentana(c))+html;
+    if(b){ b.innerHTML=_repMiddleHtml(c)+lpTablaLandingsHtml(c, lpVentana(c))+html; repEmbedCargar(); }
   }).catch(function(e){
     var b=document.getElementById('hoja-middle-body');
     if(b) b.innerHTML='<div style="padding:16px 0;font-size:12px;color:var(--redx)">No se pudo leer: '+esc(e.message)+'</div>'
