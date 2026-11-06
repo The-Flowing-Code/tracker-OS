@@ -174,7 +174,11 @@ header.chico h1{font-size:19px;margin-top:10px}
   function progreso(){
     var vs=visibles(), hechas=vs.filter(function(q){ return respondida(q.p); }).length;
     document.getElementById('prog').style.width=(vs.length?Math.round(100*hechas/vs.length):0)+'%';
-    document.getElementById('pc').textContent=hechas+' de '+vs.length;
+    // Dice en qué pregunta está (Angie, 06/11/2026: «se quedó en 6 de 21»:
+    // contaba las respondidas y, saltando, no se movía). La barra sigue
+    // midiendo las respondidas.
+    document.getElementById('pc').textContent=(paso>=0 && paso<vs.length)
+      ? ('Pregunta '+(paso+1)+' de '+vs.length) : (hechas+' de '+vs.length+' respondidas');
     pintarNav();
     (F.bloques||[]).forEach(function(b){ (b.preguntas||[]).forEach(function(p){
       var c=document.getElementById('q-'+p.id); if(c) c.classList.toggle('ok', respondida(p)); }); });
@@ -239,6 +243,33 @@ header.chico h1{font-size:19px;margin-top:10px}
         prov.appendChild(el('button',{type:'button',text:'Cerrar',onclick:function(){ prov.remove(); }})); });
   }
   function alert2(t){ estado(t, true); }
+  // El calendario «Strategy Call» de la subcuenta de The Flowing Code.
+  var CAL='https://www.evolvegrind.com/widget/booking/cc9jBNWELLNGljfXPofB';
+  function calendarioHtml(){
+    var f=el('iframe',{title:'Calendario de la llamada de estrategia',scrolling:'no',
+      style:'width:100%;min-height:600px;border:0;display:block;border-radius:14px;background:#fff'});
+    // El script de GHL ajusta el alto solo si el id es «<id del calendario>_<numero>».
+    f.id=(CAL.split('/').pop()||'cal')+'_'+Date.now(); f.src=CAL;
+    if(!document.getElementById('ghl-embed')){
+      var sc=document.createElement('script'); sc.id='ghl-embed'; sc.async=true;
+      sc.src='https://www.evolvegrind.com/js/form_embed.js'; document.body.appendChild(sc);
+    }
+    return el('div',{class:'ins'},[el('h3',{text:'Agendá la llamada de estrategia'}),
+      el('p',{text:'Es la llamada donde te presentamos la estrategia que armamos con tus respuestas. Elegí el horario que te quede mejor.'}),
+      f, el('p',{},[el('a',{href:CAL,target:'_blank',rel:'noopener',text:'¿No se ve? Abrilo en otra pestaña'})])]);
+  }
+  function accesosOpcionHtml(){
+    var caja=el('div',{class:'ins'},[el('h3',{text:'¿Querés adelantar? (opcional)'}),
+      el('p',{text:'Si ya agendaste y querés ganar tiempo, podés darnos los accesos de Meta ahora. Te dejamos los datos y los videos para hacerlo en unos minutos.'})]);
+    var b=el('button',{type:'button',class:'primary',text:'Ver cómo darnos los accesos de Meta'});
+    b.addEventListener('click', function(){
+      b.disabled=true; b.textContent='Cargando…';
+      api({accion:'enviar', accesos:true}).then(function(d){ caja.replaceWith(instructivosHtml(d&&d.instructivos)); })
+        .catch(function(e){ b.disabled=false; b.textContent='Ver cómo darnos los accesos de Meta'; fallo(e); });
+    });
+    caja.appendChild(b);
+    return caja;
+  }
   // Los mismos instructivos de Meta del artifact «Instructivos del CRM» (pestaña Meta).
   function instructivosHtml(ins){
     var box=el('div',{class:'ins'},[el('h3',{text:'Adelantá los accesos de Meta'})]);
@@ -367,7 +398,7 @@ header.chico h1{font-size:19px;margin-top:10px}
     envio.hidden=(paso!==vs.length);
     document.getElementById('empezar').hidden=(paso!==-1);
     nav.hidden=(paso===-1);
-    pintarNav();
+    progreso();
     window.scrollTo(0,0);
     if(actual){ var t=actual.card.querySelector('.qt'); if(t){ t.setAttribute('tabindex','-1'); t.focus({preventScroll:true}); } }
   }
@@ -429,15 +460,18 @@ header.chico h1{font-size:19px;margin-top:10px}
           main.appendChild(el('div',{class:'msg gracias'},[el('h2',{text:'¡Gracias!'}),
             el('p',{text:'Ya tenemos tus respuestas. Con esto armamos tu estrategia. Si te acordás de algo más, volvé a abrir este link y sumalo.'}),
             reunionHtml(d&&d.proxima)]));
-          if(conAccesos) main.appendChild(instructivosHtml(d&&d.instructivos));
+          // En el gracias se agenda la llamada de estrategia, y después, si
+          // quieren, adelantan los accesos de Meta (Angie, 06/11/2026).
+          main.appendChild(calendarioHtml());
+          if(F.accesos) main.appendChild(accesosOpcionHtml());
           window.scrollTo(0,0);
         }).catch(function(e){ trabajo(-1); fallo(e); });
       }}),
       el('button',{type:'button',class:'chip',text:'Todavía no',onclick:function(){ conf.hidden=true; btn.hidden=false; if(btnAcc) btnAcc.hidden=false; }})
     ]));
     var btnAcc=null;
-    if(F.accesos){
-      // Solo a los que ya pautaron (accesos = true en su formulario, Angie 23/10/2026).
+    if(false){
+      // Los accesos ahora se ofrecen en el gracias, después de agendar (06/11/2026).
       btnAcc=el('button',{type:'button',class:'chip accesos',text:'Enviar y adelantar accesos'});
       btnAcc.addEventListener('click', function(){ conAccesos=true; conf.hidden=false; btn.hidden=true; btnAcc.hidden=true; });
     }
