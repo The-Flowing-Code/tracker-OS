@@ -31,12 +31,18 @@ describe('configuracion automatica', () => {
       { pipelineStage: 'Asistió a 1ra llamada' }, { pipelineStage: 'No asistió a 1ra llamada' }, { pipelineStage: 'Compró' },
     ] } };
     const r = a.getGhlRules(c);
-    expect(r.agendas).toEqual(['1ra llamada programada', 'asistio a 1ra llamada', 'compro']);
+    expect(r.agendas).toEqual(['1ra llamada programada', 'asistio a 1ra llamada', 'compro', 'no asistio a 1ra llamada']);
     expect(r.llamadaEnVivo).toEqual(['asistio a 1ra llamada', 'compro']);
     expect(r.noShows).toEqual(['no asistio a 1ra llamada']);
     expect(r.ganado).toEqual(['compro']);
     c.ghlRules = { agendas: ['agendo'] };
     expect(a.getGhlRules(c).agendas).toEqual(['agendo']);
+  });
+
+  it('con solo un no show, igual hay agenda', () => {
+    const a = cargar(FUNCS);
+    const c = { ghl: { opportunities: [{ pipelineStage: 'Nuevo registro' }, { pipelineStage: 'No asistió a 1ra llamada' }] } };
+    expect(a.getGhlRules(c).agendas).toEqual(['no asistio a 1ra llamada']);
   });
 });
 

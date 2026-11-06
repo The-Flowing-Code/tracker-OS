@@ -66348,6 +66348,9 @@ function _ghlReglasAuto(c){
       return true;
     }).map(function(st){ return (typeof _n==='function')?_n(st):st.toLowerCase(); });
   });
+  // Un no show tuvo agenda: cuenta en Agendas, como en el reporte de campañas
+  // (Angie, 06/11/2026, Mi stock: un no show y Agendas en «configurar»).
+  (out.noShows||[]).forEach(function(st){ if(out.agendas.indexOf(st)<0) out.agendas.push(st); });
   return out;
 }
 function getGhlRules(c){
