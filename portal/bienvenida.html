@@ -186,7 +186,8 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
      está, así que se cuenta el tiempo con la página a la vista: la mitad del
      video a la velocidad de Loom (1,2x). Una vez habilitado queda habilitado
      en ese navegador, y si ya empezó el formulario aparece de entrada. */
-  var MITAD=Math.round(525/1.2*0.9), clave='bv-ok-'+T, visto=0;
+  // A los 5 minutos con la página a la vista (Angie, 06/11/2026).
+  var MITAD=300, clave='bv-ok-'+T, visto=0;
   var habilitar=function(){
     try{ localStorage.setItem(clave,'1'); }catch(e){}
     var b=document.getElementById('formLink'), w=document.getElementById('formEspera');
