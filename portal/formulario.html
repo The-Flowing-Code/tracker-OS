@@ -476,6 +476,8 @@ header.chico h1{font-size:19px;margin-top:10px}
           trabajo(-1); estado('Enviado');
           main.innerHTML=''; nav=null;
           document.querySelector('header').classList.add('chico');
+          // En el gracias ya no va la barra de «6 de 21» (Angie, 06/11/2026).
+          var _bar=document.getElementById('bar'); if(_bar) _bar.hidden=true;
           main.appendChild(el('div',{class:'msg gracias'},[el('h2',{text:'¡Gracias!'}),
             el('p',{text:'Ya tenemos tus respuestas. Con esto armamos tu estrategia. Si te acordás de algo más, volvé a abrir este link y sumalo.'}),
             reunionHtml(d&&d.proxima)]));
