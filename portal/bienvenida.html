@@ -155,11 +155,11 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
 
   var T=(location.hash||'').replace(/^#/,'').trim();
   var valido=/^[A-Za-z0-9]{40}$/.test(T) || (/^[a-z0-9]+(-[a-z0-9]+)*-[A-Za-z0-9]{8}$/.test(T) && T.length<=60);
-  if(!valido){
-    document.getElementById('main').innerHTML='<div class="msg"><h2>Este link no está completo</h2><p>Abrilo desde el mensaje que te mandamos, sin cortarlo. Si sigue sin andar, escribile a tu CSM.</p></div>';
-    document.querySelector('.pasos').hidden=true;
-    return;
-  }
+  /* Sin el código del partner igual se ve la página (Angie, 06/11/2026: «no
+     funciona de vuelta el link»): el video y el calendario no dependen del
+     código. Lo único que necesita el código es el formulario, así que ese paso
+     dice dónde está su link en vez de cortar toda la página. */
+  var sinCodigo=!valido;
 
   // 1. El video
   var v=document.getElementById('video');
@@ -177,6 +177,10 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
   }
 
   // 2. El formulario y cómo va
+  if(sinCodigo){
+    document.getElementById('formEstado').textContent='Tu formulario personal te llega por WhatsApp, con tu link. Si no lo encontrás, escribile a tu CSM.';
+    document.getElementById('formLink').hidden=true;
+  } else {
   var link=FORM+'#'+T;
   document.getElementById('formLink').href=link;
   fetch(FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'leer', t:T})})
@@ -201,6 +205,7 @@ footer{margin-top:56px;color:var(--muted);font-size:12.5px}
       }
     })
     .catch(function(){ document.getElementById('formEstado').textContent='Tu formulario te espera.'; });
+  }
 
   // 3. El calendario
   var cal=document.getElementById('cal');
