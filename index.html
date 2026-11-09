@@ -31697,7 +31697,7 @@ function _cmMensaje(c, tipo){
 }
 function cliMenuIconoHtml(c, antes){
   var n=parseInt(antes,10)||0;
-  var t='Uno a uno con Martín, ver el embudo o el reporte';
+  var t='Agendar una reunión, ver el embudo o el reporte';
   return '<span class="p3kcap p3kmenu'+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
     +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
     +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
@@ -31760,7 +31760,10 @@ function cliMenu(ancla, clientId){
   p.addEventListener('click', function(e){ e.stopPropagation(); });
   p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+'</div>'
     +'<div class="cm-ops">'
-    +op('unoauno','Agendar uno a uno con Martín','Copia el mensaje con la agenda de Martín')
+    /* Agendar cualquier reunion (Angie, 09/11/2026): reemplaza al «uno a uno
+       con Martin», que pedia un link que no estaba cargado, y al "+" que
+       vivia suelto en la tarjeta. Abre la misma agenda que el "+". */
+    +ir('cliMenuCerrar();p360Agendar('+clientId+',true)', IC.unoauno,'Agendar una reunión','Elegí qué reunión, el día y la hora')
     +'</div>'
     +'<div class="cm-sep">Ver</div>'
     +'<div class="cm-ops">'
@@ -44014,10 +44017,9 @@ function p360Html(){
     // ofrecia dos cosas a la vez y el mas le comia el lugar al nombre; y si ya
     // hay algo agendado, lo que se quiere es ver eso, no poner otra. Para una
     // segunda reunion esta el calendario, que lleva a la ficha.
-    var masBtn=(prox.viva||pend) ? '' : ('<span class="p3kmas" title="Agendar una reunion con '
-      +esc(String(d.c.name||''))+'" style="cursor:pointer" '
-      +'onclick="event.stopPropagation();p360Agendar('+d.c.id+')">'
-      +'<span class="p3kmasb">+</span></span>');
+    // El "+" salio de la tarjeta (Angie, 09/11/2026): agendar cualquier
+    // reunion pasa a ser la primera opcion del menu ⋮ (ver cliMenu).
+    var masBtn='';
     // Los dias del circulo, y de que color. El freno manda; si no hay, la
     // cuenta al lanzamiento; y si tampoco, hace cuanto entro el cliente.
     // El circulo dice dos cosas a la vez, cada una por su lado: el COLOR es el
