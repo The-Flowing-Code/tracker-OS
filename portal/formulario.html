@@ -114,6 +114,7 @@ header.chico h1{font-size:19px;margin-top:10px}
 .empezar{margin-top:22px}
 .send .row{margin-top:0}
 .send .chip.accesos{border-color:var(--lime);color:var(--lime)}
+.chip.accesos{border-color:var(--lime);color:var(--lime);margin-top:12px}
 .ins{margin:40px auto 0;text-align:left;max-width:560px}
 .ins h3{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--white);margin:0 0 6px}
 .ins>p{color:var(--soft);font-size:14.5px;margin:0 0 14px}
@@ -308,6 +309,22 @@ header.chico h1{font-size:19px;margin-top:10px}
   }
   // Los mismos instructivos de Meta del artifact «Instructivos del CRM» (pestaña Meta).
   function instructivosHtml(ins){
+    var vids=[], desde=Date.now(), renovando=false;
+    var renovar=function(seguir, abrirEste){
+      if(renovando) return; renovando=true;
+      api({accion:'enviar', accesos:true}).then(function(d){
+        renovando=false; desde=Date.now();
+        var nuevos=((d&&d.instructivos&&d.instructivos.videos)||[]);
+        vids.forEach(function(x){
+          var n=nuevos.filter(function(v){ return v.titulo===x.titulo; })[0];
+          if(!n||!n.url) return;
+          x.vid.src=n.url; x.a.href=n.url;
+          if(n.poster) x.vid.setAttribute('poster', n.poster);
+        });
+        if(seguir) seguir.play().catch(function(){});
+        if(abrirEste) window.open(abrirEste.href,'_blank','noopener');
+      }).catch(function(){ renovando=false; });
+    };
     var box=el('div',{class:'ins'},[el('h3',{text:'Adelantá los accesos de Meta'})]);
     if(!ins){ box.appendChild(el('p',{text:'No pudimos cargar los videos. Te los mandamos por WhatsApp.'})); return box; }
     box.appendChild(el('p',{text:ins.intro||''}));
@@ -326,7 +343,15 @@ header.chico h1{font-size:19px;margin-top:10px}
       if(!v.url) return;
       var vid=el('video',{controls:'',preload:'metadata',playsinline:'',src:v.url,'aria-label':v.titulo||''});
       if(v.poster) vid.setAttribute('poster', v.poster);
-      box.appendChild(el('div',{class:'vid'},[el('b',{text:v.titulo||''}), vid, el('a',{href:v.url,target:'_blank',rel:'noopener',text:'Abrir video'})]));
+      var abrir=el('a',{href:v.url,target:'_blank',rel:'noopener',text:'Abrir video'});
+      vids.push({titulo:v.titulo, vid:vid, a:abrir});
+      // Los links de los videos vencen a las 6 horas (Angie, 09/11/2026: a
+      // Commit Zero «no funcionan» al otro día). Si falla o pasó mucho, se piden
+      // de nuevo y se reemplazan solos.
+      vid.addEventListener('error', function(){ renovar(); });
+      vid.addEventListener('play', function(){ if(Date.now()-desde>5*3600*1000) renovar(vid); });
+      abrir.addEventListener('click', function(ev){ if(Date.now()-desde>5*3600*1000){ ev.preventDefault(); renovar(null, abrir); } });
+      box.appendChild(el('div',{class:'vid'},[el('b',{text:v.titulo||''}), vid, abrir]));
     });
     box.appendChild(el('p',{text:'Si te trabás en algún paso, anotá el minuto del video y escribinos por el grupo de WhatsApp.'}));
     return box;
@@ -477,6 +502,15 @@ header.chico h1{font-size:19px;margin-top:10px}
         if(!yaEnviado){ for(i=0;i<vs.length && respondida(vs[i].p);i++){} }
         irA(i);
       }}));
+    if(yaEnviado && F.accesos){
+      var verAcc=el('button',{type:'button',class:'chip accesos',text:'Ver cómo darnos los accesos de Meta'});
+      verAcc.addEventListener('click', function(){
+        verAcc.disabled=true; verAcc.textContent='Cargando…';
+        api({accion:'enviar', accesos:true}).then(function(d){ verAcc.replaceWith(instructivosHtml(d&&d.instructivos)); })
+          .catch(function(e){ verAcc.disabled=false; verAcc.textContent='Ver cómo darnos los accesos de Meta'; fallo(e); });
+      });
+      arranque.appendChild(verAcc);
+    }
     envio=el('div',{class:'send'});
     envio.appendChild(el('p',{text:yaEnviado
       ? 'Ya nos llegó tu formulario. Si querés sumar o corregir algo, hacelo y volvé a tocar Enviar.'
