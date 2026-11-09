@@ -54,7 +54,9 @@ var CSM_ETAPAS=[
     {id:'onb-factura', t:'Verificar los datos de la factura', quien:'csm'},
     {id:'onb-crm', t:'Crear la subcuenta del CRM y mandarle la invitación al cliente', quien:'claude',
      ayuda:'Al alta: subcuenta en GoHighLevel con el nombre del cliente, su usuario invitado y el link en la ficha.'},
-    {id:'onb-form-armado', t:'Armar el formulario personalizado con lo que dijo en la venta', quien:'claude',
+    /* `guia` (Angie, 09/11/2026): el botón «Abrir guía» con la guía del
+       onboarding (`c.guiaOnboarding.url`), que antes era un ícono en la tarjeta. */
+    {id:'onb-form-armado', t:'Armar el formulario personalizado con lo que dijo en la venta', quien:'claude', guia:true,
      ayuda:'Arranca solo con el alta del cliente. Sin preguntar accesos: competencia, diferencial, qué resuelve, costos fijos y rentabilidad.'},
     {id:'onb-pagina', t:'Armar la página de bienvenida (video, formulario y calendario)', quien:'claude',
      ayuda:'Con su marca; el calendario es el de Strategy Call. Deja el mensaje con el link listo para que Santi lo copie.'},
@@ -608,6 +610,19 @@ function _csmEtapaHtml(c){
           +'title="'+esc(m.falta||'Copia el mensaje para pegarlo en el WhatsApp del cliente')+'" '
           +'onclick="event.stopPropagation();cliMenuCopiar('+c.id+',\''+t.msg+'\')">'
           +(m.falta?'Falta el link':'Copiar mensaje')+'</button>';
+      })()
+      +(function(){
+        if(!t.guia) return '';
+        var g=(c&&c.guiaOnboarding)||null;
+        var url=(g && typeof g.url==='string'
+          && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9_-]{6,64}$/.test(g.url)) ? g.url : '';
+        if(!url) return '';
+        var f=String(g.fecha||'');
+        return '<button class="pet-msg" '
+          +'title="'+esc('Guía del onboarding'+(f?(' del '+f.slice(8,10)+'/'+f.slice(5,7)):'')
+            +': qué nos llevamos para el dataset y las preguntas')+'" '
+          +'onclick="event.stopPropagation();window.open(\''+url+'\',\'_blank\',\'noopener\')">'
+          +'Abrir guía</button>';
       })()
       +'</div>';
   }
