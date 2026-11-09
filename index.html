@@ -2980,13 +2980,16 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
         <div class="torre-sub-item" data-k="estaticos" onclick="irTorre('estaticos')">Estáticos con IA</div>
         <div class="torre-sub-item" data-k="rentabilidad" id="nav-rentabilidad" onclick="irTorre('rentabilidad')">Rentabilidad</div>
       </div>
-      <div class="nav-head-row" style="margin-top:6px">
+      <!-- La lista de clientes salio de la barra (Angie, 09/11/2026): a los
+           clientes se entra desde el Panel 360. Queda oculta y no borrada
+           porque el resto del codigo sigue escribiendo en #client-list. -->
+      <div class="nav-head-row" style="margin-top:6px;display:none">
         <div class="nav-label">Clientes</div>
         <button class="cli-filtro-btn" id="cli-filtro-btn" onclick="event.stopPropagation();toggleCliFiltro(this)" title="Filtrar clientes" aria-label="Filtrar clientes">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>
         </button>
       </div>
-      <div id="client-list"></div>
+      <div id="client-list" style="display:none"></div>
     </div>
     <div class="sidebar-bottom">
       <div class="sb-acciones">
