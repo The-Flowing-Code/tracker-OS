@@ -529,7 +529,10 @@ function _bv2MensGuardar(k, cambio){
   Object.keys(E).forEach(function(x){ if(x.slice(0,10)<lim) delete E[x]; });
   try{ save(); }catch(e){}
 }
-function _bv2MensHtml(noche){
+/* La lista de mensajes del día, ya filtrada por cartera y con los mandados al
+   final. La usan la pantalla «Buen día» y el 💬 de la tarjeta del tablero
+   (Angie, 09/11/2026), así las dos cuentan lo mismo. */
+function _bv2MensLista(noche){
   /* CADA MENSAJE EN SU CLIENTE (Angie, 28/10/2026). Antes vivian todos en el
      cliente interno, y la regla de cartera de la base (cartera_alcanza) no le
      deja a un CSM leer ese cliente: Santi no veia ninguno. Ahora la rutina
@@ -565,6 +568,10 @@ function _bv2MensHtml(noche){
     L=L.filter(function(m){ var c=_porNom(m.x.cliente)||m.en; return !!(c && !c.archived && esDeMiCartera(c)); });
   }
   L=L.filter(function(m){ return !m.listo; }).concat(L.filter(function(m){ return m.listo; }));
+  return L;
+}
+function _bv2MensHtml(noche){
+  var L=_bv2MensLista(noche);
   _BV2.mlist=L; _BV2.msgs=L.map(function(m){ return m.texto; });
   var pend=L.filter(function(m){ return !m.listo; }).length;
   var porNombre=function(n){ var q=String(n||'').toLowerCase().trim(); return q?((DB.clients||[]).filter(function(c){ return c && !c.archived && String(c.name||'').toLowerCase().trim()===q; })[0]||null):null; };
@@ -930,4 +937,91 @@ function buenasNochesToca(){
 }
 function buenasNochesVista(){
   try{ localStorage.setItem(_bnKey(), rvISO(new Date())); }catch(e){}
+}
+
+/* ── El 💬 en la tarjeta del tablero (Angie, 09/11/2026, pedido 19) ─────────
+   Cuando un cliente tiene un mensaje para mandar hoy, su tarjeta lo dice con un
+   💬 (con el número si son varios). Al tocarlo se abren sus mensajes con
+   Enviar, Copiar y Listo, los mismos de «Mensajes para mandar hoy»: el «Listo»
+   se guarda en el mismo lugar (DB.mensajesEstado), así que marcarlo acá o allá
+   es lo mismo, y el 💬 se va. Cada persona ve solo los de los clientes que ve
+   en «Buen día»: el CSM, los de su cartera. */
+var _MENS_CACHE={t:0, L:null};
+function _mensDe(c){
+  if(!c) return [];
+  var ahora=Date.now();
+  if(!_MENS_CACHE.L || ahora-_MENS_CACHE.t>1500){
+    try{ _MENS_CACHE.L=_bv2MensLista(false); }catch(e){ _MENS_CACHE.L=[]; }
+    _MENS_CACHE.t=ahora;
+  }
+  var q=function(n){ return String(n||'').toLowerCase().trim(); };
+  return _MENS_CACHE.L.filter(function(m){
+    var n=q(m.x && m.x.cliente);
+    return n ? n===q(c.name) : (m.en && m.en.id===c.id);
+  });
+}
+function mensIconoHtml(c){
+  var pend=_mensDe(c).filter(function(m){ return !m.listo; }).length;
+  if(!pend) return '';
+  var t=(pend===1?'Hay un mensaje':'Hay '+pend+' mensajes')+' para mandar hoy. Tocalo para verlo.';
+  return '<span class="p3kmens" role="button" tabindex="0" title="'+esc(t)+'" aria-label="'+esc(t)+'" '
+    +'onclick="event.stopPropagation();mensCliPop(this,'+c.id+')" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();mensCliPop(this,'+c.id+');}">'
+    +'<span aria-hidden="true">💬</span>'+(pend>1?'<b>'+pend+'</b>':'')+'</span>';
+}
+var _MENS_POP=[];
+function mensCliCerrar(){
+  var p=document.getElementById('mens-pop'); if(p) p.remove();
+  document.removeEventListener('mousedown', _mensFuera, true);
+  document.removeEventListener('keydown', _mensTecla, true);
+}
+function _mensFuera(e){ var p=document.getElementById('mens-pop'); if(p && !p.contains(e.target)) mensCliCerrar(); }
+function _mensTecla(e){ if(e.key==='Escape'){ e.stopPropagation(); mensCliCerrar(); } }
+function mensCliPop(ancla, clientId){
+  var c=(DB.clients||[]).find(function(x){ return x.id===clientId; }); if(!c) return;
+  mensCliCerrar();
+  _MENS_CACHE.L=null;
+  _MENS_POP=_mensDe(c).filter(function(m){ return !m.listo; });
+  if(!_MENS_POP.length) return;
+  var caja='margin-top:6px;padding:9px 11px;border-radius:9px;background:var(--bg3);white-space:pre-wrap;'
+    +'font-size:12.5px;line-height:1.5;color:var(--text);max-height:220px;overflow:auto';
+  var bt='font-size:11.5px;padding:4px 10px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--text);cursor:pointer;text-decoration:none';
+  var p=document.createElement('div');
+  p.id='mens-pop'; p.className='cpop climenu';
+  p.style.width='min(380px,92vw)';
+  p.addEventListener('click', function(e){ e.stopPropagation(); });
+  p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+' · para mandar hoy</div>'
+    +_MENS_POP.map(function(m,i){
+      var x=m.x, dq=[x.donde, x.quien?('lo manda '+x.quien):''].filter(Boolean).join(' · ');
+      return '<div style="padding:8px 4px'+(i?';border-top:1px solid var(--border)':'')+'">'
+        +(dq?'<div style="font-size:11px;color:var(--text3)">'+esc(dq)+'</div>':'')
+        +(x.motivo?'<div style="font-size:11px;color:var(--text3)">'+esc(x.motivo)+'</div>':'')
+        +'<div style="'+caja+'">'+esc(m.texto)+'</div>'
+        +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px">'
+          +'<a style="'+bt+'" href="'+esc(_bv2WaLink(m.texto))+'" target="_blank" rel="noopener" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'">Enviar</a>'
+          +'<button style="'+bt+'" onclick="mensCliCopiar('+i+')">Copiar</button>'
+          +'<button style="'+bt+';border-color:var(--accent);color:var(--accent)" onclick="mensCliListo('+i+')" title="Ya lo mandé">Listo</button>'
+        +'</div></div>';
+    }).join('');
+  document.body.appendChild(p);
+  var r=ancla.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
+  var x=Math.min(Math.max(12, r.right-w), window.innerWidth-w-12), y=r.bottom+8;
+  if(y+h>window.innerHeight-12 && r.top-h-8>12) y=r.top-h-8;
+  p.style.left=Math.round(x)+'px'; p.style.top=Math.round(Math.max(12,y))+'px';
+  document.addEventListener('mousedown', _mensFuera, true);
+  document.addEventListener('keydown', _mensTecla, true);
+}
+function mensCliCopiar(i){
+  var m=_MENS_POP[i]; if(!m) return;
+  var ok=function(){ try{ if(typeof toast==='function') toast('Mensaje copiado'); }catch(e){} };
+  try{ navigator.clipboard.writeText(m.texto).then(ok,function(){ _bv2CopiarViejo(m.texto); ok(); }); }
+  catch(e){ _bv2CopiarViejo(m.texto); ok(); }
+}
+function mensCliListo(i){
+  var m=_MENS_POP[i]; if(!m) return;
+  _bv2MensGuardar(m.k, {listo:new Date().toISOString(),
+    por:(String(personaNombre((SB&&SB.email)||'')||'').split(' ')[0]||null)});
+  _MENS_CACHE.L=null;
+  mensCliCerrar();
+  try{ p360Repintar(); }catch(e){}
 }

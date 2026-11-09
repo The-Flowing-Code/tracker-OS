@@ -1545,6 +1545,11 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
    que hace la x de los prospectos- y la linea del nombre reserva 26px por cada
    uno. Se usa ese mismo mecanismo en vez de inventar otro. */
 .p3kcap{position:absolute;top:11px;right:11px;line-height:1;cursor:pointer}
+/* El 💬 de los mensajes para mandar hoy (pedido 19, 09/11/2026). */
+.p3kmens{display:inline-flex;align-items:center;gap:2px;height:22px;padding:0 4px;border-radius:11px;
+  font-size:13px;line-height:1;cursor:pointer}
+.p3kmens:hover{background:var(--bg4)}
+.p3kmens b{font-size:10.5px;font-weight:700;color:var(--accent)}
 .p3kcap.con1{right:38px}
 .p3kcap.con2{right:65px}
 .p3kcap.con3{right:92px}
@@ -44280,7 +44285,9 @@ function p360Html(){
     /* Se cuenta el "+" igual que el calendario. Nunca se lo habia contado, asi
        que con el mas presente la linea del nombre reservaba lugar para un icono
        menos del que habia y el nombre largo se metia abajo del boton. */
-    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0);
+    // El 💬 de los mensajes para mandar hoy (Angie, 09/11/2026, pedido 19).
+    var _menIco=(typeof mensIconoHtml==='function')?mensIconoHtml(d.c):'';
+    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0)+(_menIco?1:0);
     // En Reparto la tarjeta lleva un renglon mas -lo que le debe esa persona-,
     // asi que su piso es una linea mas alto. Dentro de cada vista siguen
     // midiendo todas lo mismo, que es lo que hace legible una columna.
@@ -44307,7 +44314,7 @@ function p360Html(){
       +'<div class="p3kins">'
       // El menu va primero: con row-reverse queda en la punta de arriba a la
       // derecha, antes del calendario o el + (Angie, 27/10/2026).
-      +_capIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
+      +_capIco+_menIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
       // Una tarjeta de prospecto se crea sola desde una llamada: una prueba, un
       // mail mal leido o alguien del equipo abren una que no va. Si no se puede
       // borrar, queda para siempre ocupando una columna.
