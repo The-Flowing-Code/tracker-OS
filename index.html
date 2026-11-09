@@ -1640,6 +1640,9 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
 .p3kmenub{width:14px;height:22px;display:inline-flex;align-items:center;justify-content:center;
   color:var(--text3);font-size:17px;font-weight:700;line-height:1;transition:color .15s}
 .p3kmenu:hover .p3kmenub,.p3kmenu:focus-visible .p3kmenub{color:var(--text)}
+.p3kmenu.pend .p3kmenub{color:var(--amberx);font-weight:700}
+.cm-op.cm-pend b{color:var(--amberx)}
+.cm-op.cm-pend .cm-ic{color:var(--amberx)}
 .p3kmenu:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .cpop{position:fixed;z-index:9000;width:300px;max-width:calc(100vw - 24px);
   background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-lg);
@@ -31705,8 +31708,10 @@ function _cmMensaje(c, tipo){
 }
 function cliMenuIconoHtml(c, antes){
   var n=parseInt(antes,10)||0;
-  var t='Agendar una reunión, ver el embudo o el reporte';
-  return '<span class="p3kcap p3kmenu'+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
+  var ci=(window._P3_CITA||{})[c.id]||null, pend=!!(ci&&ci.pend);
+  var t=pend ? (ci.cuando+': falta decir qué pasó. Tocalo para cargarlo.')
+             : 'Agendar una reunión, ver el embudo o el reporte';
+  return '<span class="p3kcap p3kmenu'+(pend?' pend':'')+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
     +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
     +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
     +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();cliMenu(this,'+c.id+');}">'
@@ -31766,8 +31771,19 @@ function cliMenu(ancla, clientId){
   p.id='cli-menu'; p.className='cpop climenu'; p.dataset.cli=String(clientId);
   p.setAttribute('role','menu');
   p.addEventListener('click', function(e){ e.stopPropagation(); });
+  /* La reunion (Angie, 09/11/2026): antes era el calendario de la tarjeta.
+     La que paso sin resultado va primero y en naranja; si no, la que viene. */
+  var ci=(window._P3_CITA||{})[clientId]||null;
+  window._cliMenuAncla=ancla;
+  var reu=ci ? ('<button class="cp-b cm-op cm-ir'+(ci.pend?' cm-pend':'')+'" role="menuitem" '
+      +'onclick="var a=window._cliMenuAncla;cliMenuCerrar();citaPop(a,'+clientId+',\''+esc(String(ci.popId||'')).replace(/'/g,"\\'")+'\')">'
+      +'<span class="cm-ic">'+(ci.pend?AVISO:IC.unoauno)+'</span>'
+      +'<span class="cm-tx"><b>'+(ci.pend?'¿Qué pasó?':'Próxima reunión')+'</b><span>'
+        +esc(ci.pend?(ci.cuando+' · falta decir qué pasó'):(ci.cuando+' · tocala para cambiarla'))+'</span></span>'
+      +'<span class="cm-cp">'+IR+'</span></button>') : '';
   p.innerHTML='<div class="cp-lbl">'+esc(c.name||'')+'</div>'
     +'<div class="cm-ops">'
+    +reu
     /* Agendar cualquier reunion (Angie, 09/11/2026): reemplaza al «uno a uno
        con Martin», que pedia un link que no estaba cargado, y al "+" que
        vivia suelto en la tarjeta. Abre la misma agenda que el "+". */
@@ -44008,7 +44024,16 @@ function p360Html(){
     var _popId=pend ? String(pend.x.id) : (prox.viva ? String(prox.viva.id||'') : '');
     if(pend) _calTit='Era el '+_cpDia(new Date(pend.x.inicio))+' a las '
       +_citaHora(pend.x.inicio)+': falta decir que paso';
-    var calBtn=(prox.viva||pend)
+    /* El calendario salio de la tarjeta (Angie, 09/11/2026): la reunion que
+       viene y el «¿Que paso?» de la que paso viven en el menu ⋮, y el ⋮ se
+       pinta naranja cuando falta decir que paso. Se guarda lo que el menu
+       necesita para no repetir esta cuenta. */
+    window._P3_CITA=window._P3_CITA||{};
+    window._P3_CITA[d.c.id]=(prox.viva||pend)
+      ? {popId:_popId, tit:_calTit, pend:!!pend,
+         cuando:pend ? ('Era el '+_cpDia(new Date(pend.x.inicio))+' a las '+_citaHora(pend.x.inicio)) : proxTxt}
+      : null;
+    var calBtn=false
       ? ('<span class="p3kcal'+(pend?' pend':'')+'" role="button" tabindex="0" '
         +'aria-label="'+esc(_calTit)+'" style="cursor:pointer" '
         +'onclick="event.stopPropagation();citaPop(this,'+d.c.id+',\''
