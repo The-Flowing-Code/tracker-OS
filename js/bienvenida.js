@@ -961,7 +961,13 @@ function _mensDe(c){
   });
 }
 function mensIconoHtml(c){
-  var pend=_mensDe(c).filter(function(m){ return !m.listo; }).length;
+  /* Sin el informe diario (Angie, 09/11/2026: «si no tiene mensajes, que no
+     aparezca»). La rutina de la mañana arma el «cómo venimos» (fuente 'leads')
+     para TODOS los clientes, todos los días, así que con él el 💬 estaba en
+     todas las tarjetas. Cuenta solo lo que espera una respuesta: lo que el
+     cliente escribió por WhatsApp y el link de bienvenida. Al abrirlo se ven
+     todos sus mensajes, el informe también. */
+  var pend=_mensDe(c).filter(function(m){ return !m.listo && m.k.split('|')[1]!=='leads'; }).length;
   if(!pend) return '';
   var t=(pend===1?'Hay un mensaje':'Hay '+pend+' mensajes')+' para mandar hoy. Tocalo para verlo.';
   return '<span class="p3kmens" role="button" tabindex="0" title="'+esc(t)+'" aria-label="'+esc(t)+'" '
