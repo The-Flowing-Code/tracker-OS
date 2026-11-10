@@ -202,11 +202,44 @@ function _lzOkCelda(c){
   return '<td><span class="lz-sel lz-no lz-auto" '+abrir+' title="Angie pidió cambios: tocalo para verlos">Cambios pedidos</span> '+boton('Volver a pedir')+'</td>';
 }
 
+/* Campaña, creativos y landing se completan solos (Angie, 10/11): salen de lo
+   que el tracker ya trajo de Meta. La campaña es la última creada en la cuenta
+   del cliente; los creativos, sus anuncios en el Administrador; la landing, el
+   destino más repetido de esos anuncios (o la landing publicada). Quedan
+   editables: si Meta no se sincronizó desde que se armó la campaña, se corrige
+   a mano. */
+function _lzOkSugeridos(c){
+  var out={campana:'', creativos:'', landing:'', nota:''};
+  var cs=[];
+  (c.conversionLines||[]).forEach(function(l){ (l&&l.metaCampaigns||[]).forEach(function(cp){ if(cp&&cp.id) cs.push(cp); }); });
+  var acc=String(c.metaAccountId||'').replace(/^act_/,'');
+  if(cs.length && acc){
+    cs.sort(function(a,b){ return String(b.createdTime||'').localeCompare(String(a.createdTime||'')); });
+    var cp=cs[0], base='https://adsmanager.facebook.com/adsmanager/manage/';
+    out.campana=base+'campaigns?act='+acc+'&selected_campaign_ids='+cp.id;
+    var ads=[]; (cp.adsets||[]).forEach(function(as){ (as.ads||[]).forEach(function(ad){ if(ad) ads.push(ad); }); });
+    if(ads.length) out.creativos=base+'ads?act='+acc+'&selected_campaign_ids='+cp.id;
+    var cuenta={}, wa=0;
+    ads.forEach(function(ad){ var u=String(ad.destLink||'').trim();
+      if(/whatsapp\.com|wa\.me/i.test(u)){ wa++; return; }
+      if(/^https?:\/\//i.test(u) && !/fb\.me\//i.test(u)) cuenta[u]=(cuenta[u]||0)+1; });
+    var top=Object.keys(cuenta).sort(function(a,b){ return cuenta[b]-cuenta[a]; })[0];
+    if(top) out.landing=top;
+    else if(wa) out.wa=true;
+    var f=String(cp.createdTime||'').slice(0,10).split('-').reverse().slice(0,2).join('/');
+    out.nota='Desde Meta: «'+(cp.name||'campaña')+'»'+(f?(', creada el '+f):'')+', '+ads.length+' anuncio'+(ads.length===1?'':'s')+(out.wa?'; los anuncios van a WhatsApp, así que falta pegar el primer mensaje':'')+'.';
+  }
+  if(!out.landing){ var l=c.landing||{}, ab=c.ab||{};
+    out.landing=String(l.publicadaUrl||ab.landingUrl||'').trim(); }
+  return out;
+}
+
 function lzOkModal(clientId){
   var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(clientId); });
   if(!c) return;
   var ds=_lzOfertaUrl(c)||_lzV(c,'linkDataset');
   var f=lanzFaltan(c);
+  var sg=_lzOkSugeridos(c);
   var campo=function(id, lab, ph, val){
     return '<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+lab+'</div>'
       +'<input id="'+id+'" type="text" value="'+esc(val||'')+'" placeholder="'+esc(ph)+'" '
@@ -225,9 +258,10 @@ function lzOkModal(clientId){
         +LZ_OK_CHECK.map(function(x,i){ return '<label style="font-size:12.5px;color:var(--text);display:flex;gap:8px;align-items:center">'
           +'<input type="checkbox" class="lzok-ck" data-i="'+i+'"> '+(i+1)+'. '+esc(x)+'</label>'; }).join('')
       +'</div>'
-      +campo('lzok-campana','Campaña en Meta','Link a la campaña o al conjunto','')
-      +campo('lzok-creativos','Creativos','Link a las piezas (Drive, artifact…)','')
-      +campo('lzok-landing','Landing o primer mensaje','Link a la landing, o el texto del primer mensaje','')
+      +(sg.nota?('<div style="font-size:11.5px;color:var(--text3);line-height:1.5">Campaña, creativos y landing se completaron solos. '+esc(sg.nota)+' Si no es la que vas a lanzar, cambiá el link.</div>'):'<div style="font-size:11.5px;color:var(--amberx);line-height:1.5">No encontré campañas de Meta de este cliente en el tracker: pegá los links a mano.</div>')
+      +campo('lzok-campana','Campaña en Meta','Link a la campaña o al conjunto',sg.campana)
+      +campo('lzok-creativos','Creativos','Link a las piezas (Drive, artifact…)',sg.creativos)
+      +campo('lzok-landing','Landing o primer mensaje',sg.wa?'Pegá el primer mensaje de WhatsApp':'Link a la landing, o el texto del primer mensaje',sg.landing)
       +campo('lzok-dataset','Dataset','https://claude.ai/artifact/…', ds)
     +'</div>'
     +'<div id="lzok-err" style="font-size:11.5px;color:var(--redx);margin-top:10px"></div>'
