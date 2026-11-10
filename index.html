@@ -34888,7 +34888,7 @@ function _acordadoResumenHtml(c){
   var a=(typeof _acordado==='function')?_acordado(c):null;
   if(!a) return '';
   var campos=[['Precio','precio'],['Forma de pago','pago'],['Plazo','plazo'],
-              ['Renovacion','renovacion']];
+              ['Renovación','renovacion']];
   // El link al minuto exacto: es lo que deja chequearlo en diez segundos en vez
   // de volver a escuchar la llamada entera.
   var link=function(f){
@@ -34903,9 +34903,9 @@ function _acordadoResumenHtml(c){
       if(seg) u=(cl.url||cl.link)+((cl.url||cl.link).indexOf('?')>=0?'&':'?')+'timestamp='+seg;
     }
     return u
-      ? ('<a href="'+esc(u)+'" target="_blank" rel="noopener" style="flex:none;'
-        +'font-size:10.5px;color:var(--text3)">'+esc(t)+'</a>')
-      : ('<span style="flex:none;font-size:10.5px;color:var(--text3)">'+esc(t)+'</span>');
+      ? ('<a href="'+esc(u)+'" target="_blank" rel="noopener" style="display:block;margin-top:3px;'
+        +'font-size:10.5px;color:var(--text3);overflow-wrap:anywhere">'+esc(t)+' \u2197</a>')
+      : ('<span style="display:block;margin-top:3px;font-size:10.5px;color:var(--text3);overflow-wrap:anywhere">'+esc(t)+'</span>');
   };
   var hay=campos.filter(function(x){ return a[x[1]]&&a[x[1]].valor; });
   var cerca=campos.filter(function(x){ return a[x[1]] && !a[x[1]].valor && a[x[1]].cerca; });
@@ -34915,19 +34915,22 @@ function _acordadoResumenHtml(c){
   var fila=function(rot, val, f, nota, col){
     return '<div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;'
         +'border-top:1px solid var(--border)">'
-      +'<span style="flex:none;width:96px;font-size:11px;color:var(--text3)">'+rot+'</span>'
-      +'<span style="flex:1;min-width:120px;font-size:12px;color:'+(col||'var(--text)')+';'
+      +'<span style="flex:none;width:84px;font-size:11px;color:var(--text3)">'+rot+'</span>'
+      +'<span style="flex:1;min-width:0;font-size:12px;color:'+(col||'var(--text)')+';'
         +'line-height:1.5">'+esc(_lpLimpiar(String(val)))
         +(nota?('<span style="display:block;font-size:10.5px;color:var(--text3)">'
           +esc(_lpLimpiar(nota))+'</span>'):'')
+        // De dónde sale va abajo del dato y no en una tercera columna (Angie,
+        // 10/11/2026: «quedó raro»): en la columna angosta de Facturación el
+        // nombre de la llamada se cortaba y apretaba el dato.
+        +link(f)
       +'</span>'
-      +link(f)
     +'</div>';
   };
   var cuerpo=hay.map(function(x){ return fila(x[0], a[x[1]].valor, a[x[1]].f, a[x[1]].detalle); })
       .join('')
     +cerca.map(function(x){
-      return fila(x[0], 'Se hablo pero no quedo cerrado', a[x[1]].f, a[x[1]].cerca,
+      return fila(x[0], 'Se habló pero no quedó cerrado', a[x[1]].f, a[x[1]].cerca,
                   'var(--amberx)'); }).join('');
   if(!cuerpo)
     return '<div style="font-size:11.5px;color:var(--amberx);line-height:1.55;'
@@ -34935,7 +34938,7 @@ function _acordadoResumenHtml(c){
       +'ni el plazo. Se cerro por otro lado: cargalo abajo desde el contrato.</div>';
   return '<div style="margin:-4px 0 14px">'+cuerpo
     +(faltan.length?('<div style="font-size:11px;color:var(--text3);line-height:1.5;'
-      +'margin-top:7px">No se hablo de: '+faltan.join(', ')+'.</div>'):'')
+      +'margin-top:7px">No se habló de: '+faltan.join(', ')+'.</div>'):'')
     // Las cifras que encontro, aunque no las haya sabido mapear a un campo. Es
     // lo que deja ver si el problema es que no las ve o que no las clasifica.
     +((a.cifras||[]).length
