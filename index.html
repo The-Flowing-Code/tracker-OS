@@ -1012,6 +1012,30 @@ body.light .fx-fecha{color-scheme:light}
 .p3v:hover{color:var(--text2)}
 .p3v.on{color:var(--text)}
 .p3vsep{color:var(--border2);padding:0 9px}
+/* Panel 360 · vista Lista (planilla de lanzamientos, 10/11/2026) */
+.lz-tot{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.lz-tot div{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;min-width:92px}
+.lz-tot b{display:block;font-size:18px;font-weight:600;color:var(--strong);font-variant-numeric:tabular-nums}
+.lz-tot span{font-size:10.5px;color:var(--text3)}
+.lz-tot .lz-ok b{color:var(--accent)}
+.lz-tab{border-collapse:separate;border-spacing:0;font-size:11.5px;min-width:100%}
+.lz-tab th{position:sticky;top:0;background:var(--bg2);color:var(--text3);font-weight:500;text-align:left;
+  white-space:nowrap;padding:7px 8px;border-bottom:1px solid var(--border)}
+.lz-tab td{padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:middle}
+.lz-tab .lz-fijo{position:sticky;left:0;background:var(--bg);z-index:1;font-weight:500}
+.lz-tab th.lz-fijo{background:var(--bg2);z-index:2}
+.lz-tab .lz-fijo a{color:var(--strong);text-decoration:none}
+.lz-et{color:var(--text2)}
+.lz-falta{max-width:220px;overflow:hidden;text-overflow:ellipsis;color:var(--amberx)}
+.lz-listo{color:var(--accent);font-weight:600}
+.lz-sel{font:11.5px var(--font);border:0;border-radius:999px;padding:3px 8px;background:var(--bg3);color:var(--text2);cursor:pointer;width:auto;max-width:170px}
+.lz-sel.lz-si{background:rgba(55,138,221,.18);color:#5BA3EA}
+.lz-sel.lz-no{background:rgba(216,90,48,.16);color:var(--redx)}
+.lz-sel.lz-med{background:rgba(240,138,40,.18);color:var(--amberx)}
+.lz-sel.lz-proc{background:var(--bg3);color:var(--text)}
+.lz-tx input{font:11.5px var(--font);width:150px;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:var(--radius);color:var(--text);padding:3px 7px}
+.lz-tx a{margin-left:5px;color:var(--text2);text-decoration:none}
 .p3vn{font-size:10px;color:var(--amberx);margin-left:5px;font-variant-numeric:tabular-nums}
 /* Datos que faltan: lo que el panel no puede ubicar solo. */
 .p3bd{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
@@ -3051,6 +3075,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/avisos.js?v=DEV"></script>
 <script src="js/etapas-csm.js?v=DEV"></script>
 <script src="js/mensual.js?v=DEV"></script>
+<script src="js/lista-lanzamientos.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -44426,6 +44451,8 @@ function p360Html(){
       ? ('<div class="p3scroll">'+_p360RepartoHtml(ver, cols, tarjeta)+'</div>')
       : '')
     +((vista==='faltan') ? _p360FaltanHtml(faltan) : '')
+    // La planilla de lanzamientos de Ashtyn, como vista (10/11/2026): js/lista-lanzamientos.js
+    +((vista==='lista' && typeof p360ListaHtml==='function') ? p360ListaHtml(ver, cols) : '')
     +'<div'+((vista==='etapas')?'':' hidden')+'>'
     +'<div class="p3scroll"><div class="p3cols">'
     +cols.map(function(col){
@@ -44538,7 +44565,7 @@ function p360Html(){
         :(q?('<span style="font-size:11px;color:var(--text3);white-space:nowrap">'
              +ver.length+(ver.length===1?' resultado':' resultados')+'</span>'):''))
       +'<span class="ebsep"></span>'
-      +[['etapas','Por cliente'],['reparto','Reparto'],['faltan','Datos que faltan']]
+      +[['etapas','Por cliente'],['lista','Lista'],['reparto','Reparto'],['faltan','Datos que faltan']]
         .map(function(x){
           return '<button class="eb'+((vista===x[0])?' on':'')
             +'" onclick="p360Vista(\''+x[0]+'\')">'+x[1]
