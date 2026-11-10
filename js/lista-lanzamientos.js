@@ -48,7 +48,47 @@ function _lzAuto(c, k){
   if(k==='linkDataset') return u;
   return '';
 }
-function _lzV(c, k){ return _lzAuto(c,k) || (c.lanz&&c.lanz[k]) || ''; }
+/* La Lista y la ruta del cliente son la misma cosa (Angie, 10/11): lo que se
+   marca en una aparece en la otra. Cada tarea de Sistemas de la ruta
+   (js/etapas-csm.js) tiene sus columnas acá; con todas en «Sí» o «No aplica»,
+   la tarea está hecha. Se escribe en los dos lados al guardar, y al leer cada
+   lado mira al otro si el suyo está vacío (lo cargado antes de conectarlas). */
+var LZ_RUTA={
+  'sis-accesos-cli':['accesosMeta','invitadoCrm'],
+  'sis-pago-meta':['pago'],
+  'sis-whatsapp':['waCrm'],
+  'sis-embudo':['landing'],
+  'sis-estaticos':['estaticos'],
+  'sis-videos':['videos']
+};
+function _lzHecho(v){ return v==='Sí'||v==='No aplica'; }
+function _lzTareaDe(k){
+  for(var id in LZ_RUTA){ if(LZ_RUTA[id].indexOf(k)>=0) return id; }
+  return '';
+}
+/* ¿La Lista da por hecha esta tarea de la ruta? Solo con lo escrito en la
+   Lista (c.lanz), sin mirar la ruta: así no se leen en círculo. */
+function lzRutaHecha(c, tareaId){
+  var ks=LZ_RUTA[tareaId]; if(!ks||!c||!c.lanz) return false;
+  return ks.every(function(k){ return _lzHecho(c.lanz[k]); });
+}
+/* Al tildar o destildar en la ruta, la Lista acompaña. */
+function lzDesdeRuta(d, tareaId, val){
+  var ks=LZ_RUTA[tareaId]; if(!ks) return;
+  d.lanz=Object.assign({}, d.lanz||{});
+  ks.forEach(function(k){
+    if(val){ if(!_lzHecho(d.lanz[k])) d.lanz[k]='Sí'; }
+    else if(_lzHecho(d.lanz[k])) delete d.lanz[k];
+  });
+  d.lanz._at=new Date().toISOString();
+}
+
+function _lzV(c, k){
+  var v=_lzAuto(c,k) || (c.lanz&&c.lanz[k]) || '';
+  if(v) return v;
+  var id=_lzTareaDe(k), m=id&&c.csmTareas&&c.csmTareas[id];
+  return (m&&m.ok)?'Sí':'';
+}
 
 /* Ya lanzó (Ashtyn, Loom del 10/11: la lista es para los que todavía no
    lanzamos): está en una columna del tablero posterior a «Lanzamiento», o
@@ -100,6 +140,13 @@ function lanzGuardar(clientId, k, v){
   v=String(v||'').trim();
   if(v) c.lanz[k]=v; else delete c.lanz[k];
   c.lanz._at=new Date().toISOString();
+  var tid=_lzTareaDe(k);
+  if(tid){
+    c.csmTareas=(c.csmTareas&&typeof c.csmTareas==='object')?Object.assign({},c.csmTareas):{};
+    var prev=c.csmTareas[tid], yo=(typeof SB!=='undefined'&&SB.email)||'';
+    if(lzRutaHecha(c, tid)){ if(!(prev&&prev.ok)) c.csmTareas[tid]={ok:true, at:c.lanz._at, por:yo, desde:'lista'}; }
+    else if(prev&&prev.ok) delete c.csmTareas[tid];
+  }
   try{ save(); }catch(e){}
   try{ showTickets(); }catch(e){}
 }

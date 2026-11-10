@@ -249,6 +249,10 @@ function csmTareaEstado(c, t, def, ahora){
     var _act=csmEtapaActual(c), _ia=_act?CSM_ETAPAS.indexOf(_act):-1, _it=CSM_ETAPAS.indexOf(def);
     if(_ia>0 && _it>=0 && _it<_ia) return {ok:true, auto:true, porEtapa:true, cita:null, at:'', por:''};
   }
+  /* Lo marcado en la vista Lista de lanzamientos (Angie, 10/11/2026), si
+     nadie la tocó en la ruta. */
+  if(!m && typeof lzRutaHecha==='function' && lzRutaHecha(c, t.id))
+    return {ok:true, auto:false, lista:true, cita:null, at:(c.lanz&&c.lanz._at)||'', por:''};
   if(!ok && t.agenda){
     var ci=csmCita(c, def);
     if(ci && (ci.estado==='agendada' || ci.estado==='hecha'))
@@ -295,6 +299,8 @@ function csmTildar(clientId, tareaId, val){
     // Una de una etapa pasada se daría por hecha sola: destildarla se guarda.
     else if(pasada) d.csmTareas[tareaId]={ok:false, at:at, por:yo};
     else delete d.csmTareas[tareaId];
+    // La vista Lista acompaña (js/lista-lanzamientos.js, LZ_RUTA).
+    if(typeof lzDesdeRuta==='function') lzDesdeRuta(d, tareaId, !!val);
   });
 }
 
@@ -570,6 +576,8 @@ function _csmEtapaHtml(c){
       meta.push('<span style="color:var(--accent)">'
         +(st.cita.estado==='hecha'?'ya se hizo':('agendada para el '+esc(_csmFecha(st.cita.cuando, true))))
         +' · la tildó la agenda</span>');
+    }else if(st.lista){
+      meta.push('<span style="color:var(--accent)">hecha · desde la Lista</span>');
     }else if(st.ok){
       /* La evidencia del hecho en el title, y al tocar sale en un aviso: en
          el celular no hay mouse, y sin ver la evidencia un tildado de Claude
