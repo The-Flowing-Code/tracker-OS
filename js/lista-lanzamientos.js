@@ -156,7 +156,7 @@ function p360ListaHtml(ver, cols){
 
   return tot
     +'<div class="p3scroll"><table class="lz-tab"><thead><tr>'
-      +'<th class="lz-fijo">Cliente</th><th>Etapa</th><th>Para lanzar</th>'
+      +'<th class="lz-fijo">Cliente</th><th>Etapa</th><th>Para lanzar</th><th>OK de lanzamiento</th>'
       +LANZ_COLS.map(function(x){ return '<th>'+esc(x.l)+'</th>'; }).join('')
     +'</tr></thead><tbody>'
     +filas.map(function(d){
@@ -167,8 +167,129 @@ function p360ListaHtml(ver, cols){
         +'<td class="lz-falta">'+(f.length
             ?'<span title="'+esc('Falta: '+f.join(', '))+'">Falta: '+esc(f.join(', '))+'</span>'
             :'<span class="lz-listo">Listo</span>')+'</td>'
+        +_lzOkCelda(c)
         +LANZ_COLS.map(function(col){ return _lzCelda(c, col); }).join('')
       +'</tr>';
     }).join('')
     +'</tbody></table></div>';
+}
+
+/* ── El OK de lanzamiento (Angie y Ashtyn, llamada del 09/11/2026) ─────────
+   Antes iba suelto por WhatsApp. Ahora se pide desde la vista Lista: Ashtyn
+   carga el Loom (que muestra, en este orden, la campaña, los creativos, el
+   objetivo y el destino, la landing o el primer mensaje, el filtro de API en
+   GHL y la prueba del embudo al 100 %) y los links. Queda como tarea en
+   «Esperando aprobación» a nombre de Angie, y a Angie le llega el paquete
+   ordenado por WhatsApp. Aprobar es pasar la tarea a «Revisada»: a quien la
+   pidió le llega la luz verde, como con cualquier tarea. */
+var LZ_OK_CHECK=['La configuración de la campaña','Los creativos','El objetivo y a dónde va la campaña',
+  'La landing o el primer mensaje de WhatsApp','El filtro de API en GHL','La prueba del embudo completo, al 100 %'];
+
+function _lzOkTarea(c){
+  var ts=(c&&c.tasks||[]).filter(function(t){ return t && t.lanzOk && !t.deleted; });
+  return ts.length?ts[ts.length-1]:null;
+}
+function _lzOkCelda(c){
+  var t=_lzOkTarea(c), id=String(c.id).replace(/'/g,'');
+  var boton=function(txt){ return '<button class="btn btn-sm" style="font-size:10.5px;padding:2px 8px" '
+    +'onclick="lzOkModal(\''+id+'\')">'+txt+'</button>'; };
+  if(!t) return '<td>'+boton('Pedir OK')+'</td>';
+  var abrir='onclick="ticketEditarModal('+c.id+','+t.id+')" style="cursor:pointer"';
+  if(t.done||t.estado==='revisada'||t.estado==='finalizada')
+    return '<td><span class="lz-listo" '+abrir+' title="Tocalo para ver la tarea">Aprobado ✓</span></td>';
+  if(t.estado==='revision')
+    return '<td><span class="lz-sel lz-med lz-auto" '+abrir+' title="Tocalo para ver el pedido y aprobarlo">Esperando OK</span></td>';
+  return '<td><span class="lz-sel lz-no lz-auto" '+abrir+' title="Angie pidió cambios: tocalo para verlos">Cambios pedidos</span> '+boton('Volver a pedir')+'</td>';
+}
+
+function lzOkModal(clientId){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(clientId); });
+  if(!c) return;
+  var ds=_lzOfertaUrl(c)||_lzV(c,'linkDataset');
+  var f=lanzFaltan(c);
+  var campo=function(id, lab, ph, val){
+    return '<div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+lab+'</div>'
+      +'<input id="'+id+'" type="text" value="'+esc(val||'')+'" placeholder="'+esc(ph)+'" '
+      +'style="width:100%;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:12.5px"></div>';
+  };
+  document.getElementById('modal-root').innerHTML=''
+    +'<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
+    +'<div class="modal" style="max-width:620px;width:92%">'
+    +'<div style="font-size:15px;font-weight:600;color:var(--strong);margin-bottom:4px">Pedir el OK de lanzamiento · '+esc(c.name||'')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Queda como tarea esperando la aprobación de Angie, y a ella le llega todo ordenado por WhatsApp.</div>'
+    +(f.length?('<div style="font-size:11.5px;color:var(--amberx);margin-bottom:12px">En la lista todavía falta: '+esc(f.join(', '))+'.</div>'):'')
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+      +campo('lzok-loom','Loom (obligatorio)','https://www.loom.com/share/…','')
+      +'<div style="font-size:11.5px;color:var(--text2);line-height:1.5">El Loom muestra, en este orden:</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;margin-top:-4px">'
+        +LZ_OK_CHECK.map(function(x,i){ return '<label style="font-size:12.5px;color:var(--text);display:flex;gap:8px;align-items:center">'
+          +'<input type="checkbox" class="lzok-ck" data-i="'+i+'"> '+(i+1)+'. '+esc(x)+'</label>'; }).join('')
+      +'</div>'
+      +campo('lzok-campana','Campaña en Meta','Link a la campaña o al conjunto','')
+      +campo('lzok-creativos','Creativos','Link a las piezas (Drive, artifact…)','')
+      +campo('lzok-landing','Landing o primer mensaje','Link a la landing, o el texto del primer mensaje','')
+      +campo('lzok-dataset','Dataset','https://claude.ai/artifact/…', ds)
+    +'</div>'
+    +'<div id="lzok-err" style="font-size:11.5px;color:var(--redx);margin-top:10px"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
+      +'<button class="btn btn-sm" onclick="closeModal()">Cancelar</button>'
+      +'<button class="btn btn-sm btn-primary" onclick="lzOkPedir(\''+String(c.id).replace(/'/g,'')+'\')">Pedir el OK</button>'
+    +'</div></div></div>';
+}
+
+function lzOkPedir(clientId){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(clientId); });
+  if(!c) return;
+  var v=function(id){ return String((document.getElementById(id)||{}).value||'').trim(); };
+  var err=function(t){ var e=document.getElementById('lzok-err'); if(e) e.textContent=t; };
+  var loom=v('lzok-loom');
+  if(!/^https?:\/\/(www\.)?loom\.com\//i.test(loom)) return err('Falta el link del Loom (loom.com).');
+  var cks=[].slice.call(document.querySelectorAll('.lzok-ck'));
+  var sin=cks.filter(function(x){ return !x.checked; }).map(function(x){ return Number(x.getAttribute('data-i'))+1; });
+  if(sin.length) return err('El Loom tiene que mostrar todo: falta tildar '+sin.join(', ')+'.');
+  var ok={loom:loom, campana:v('lzok-campana'), creativos:v('lzok-creativos'), landing:v('lzok-landing'),
+          dataset:v('lzok-dataset'), at:new Date().toISOString(), por:(typeof SB!=='undefined'&&SB.email)||''};
+  var adj=[['Loom',ok.loom],['Campaña',ok.campana],['Creativos',ok.creativos],['Landing o primer mensaje',ok.landing],['Dataset',ok.dataset]]
+    .filter(function(x){ return /^https?:\/\//i.test(x[1]); }).map(function(x){ return {url:x[1], label:x[0]}; });
+  var aprob=(typeof _respMail==='function')?_respMail('Angie'):'Angie';
+  var t={id:Date.now()+Math.floor(Math.random()*1000), text:'Aprobar el lanzamiento de '+(c.name||''),
+    responsible:ok.por||'Ashy', aprobador:aprob, estado:'revision', revisionAt:ok.at, done:false,
+    source:'Lanzamiento', creadoAt:ok.at, lanzOk:ok,
+    ticket:(typeof nextTicketFromApp==='function')?('#'+nextTicketFromApp()):''};
+  if(adj.length) t.attachments=adj;
+  c.tasks=c.tasks||[]; c.tasks.push(t);
+  try{ save(); }catch(e){}
+  var mandado=_lzOkAvisar(c, t);
+  closeModal();
+  try{ showTickets(); }catch(e){}
+  if(typeof toast==='function') toast(mandado?'Pedido. A Angie le llegó por WhatsApp.'
+    :'Pedido: quedó la tarea, pero el WhatsApp no salió desde este navegador. Avisale a Angie.');
+}
+
+/* El paquete, en el mismo orden que el Loom. Sale por el mismo canal que los
+   demás avisos de tareas (alert_msg del proxy de GHL). Se manda aunque el
+   aviso de «Esperando aprobación» esté apagado en este navegador: este lo
+   pidió Angie siempre. */
+function _lzOkAvisar(c, t){
+  try{
+    var mail=t.aprobador||'', num=(typeof telDe==='function'&&mail)?telDe(mail):'';
+    var proxy=(typeof getGhlProxy==='function')?getGhlProxy():{};
+    if(!num || !proxy.url) return false;
+    if(typeof soyYo==='function' && soyYo(mail)) return true;
+    var o=t.lanzOk||{};
+    var txt='OK de lanzamiento · '+(c.name||'')+'\n'
+      +'1. Loom: '+o.loom+'\n'
+      +(o.campana?('2. Campaña: '+o.campana+'\n'):'')
+      +(o.creativos?('3. Creativos: '+o.creativos+'\n'):'')
+      +(o.landing?('4. Landing o primer mensaje: '+o.landing+'\n'):'')
+      +(o.dataset?('5. Dataset: '+o.dataset+'\n'):'')
+      +'Lo pide '+((typeof personaNombre==='function'&&o.por)?personaNombre(o.por):'el equipo')
+      +(t.ticket?(' · '+t.ticket):'')+'. Aprobalo pasando la tarea a Revisada.';
+    proxyFetch(proxy.url+'?secret='+encodeURIComponent(proxy.secret)
+      +'&action=alert_msg&numero='+encodeURIComponent(num)
+      +'&texto='+encodeURIComponent(txt)).catch(function(){});
+    t.lanzOk.avisadoAt=new Date().toISOString();
+    try{ save(); }catch(e){}
+    return true;
+  }catch(e){ return false; }
 }
