@@ -1575,6 +1575,8 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
   font-size:13px;line-height:1;cursor:pointer}
 .p3kmens:hover{background:var(--bg4)}
 .p3kmens b{font-size:10.5px;font-weight:700;color:var(--accent)}
+/* 🧾 facturación: con algo vencido, un aro rojo. */
+.p3kfact.urg{box-shadow:inset 0 0 0 1.5px var(--redx)}
 .p3kcap.con1{right:38px}
 .p3kcap.con2{right:65px}
 .p3kcap.con3{right:92px}
@@ -31900,6 +31902,55 @@ function incIconoHtml(c, antes){
       +'<a href="javascript:void(0)" onclick="event.stopPropagation();selectClient('+c.id+')">Completar ahora \u2192</a>'
     +'</span></span>';
 }
+/* ── 🧾 Facturación en la tarjeta (Angie, 10/11/2026) ───────────────────
+   «Un emoji con facturación si tiene un pago pendiente o ya se le tendría que
+   renovar el servicio». Sale de lo mismo que usa Facturación, sin datos nuevos:
+   - una cuota con fecha sin cobrar, vencida o que vence en 7 días o menos;
+   - sin cuotas con fecha: el próximo pago (o la renovación mes a mes) en 7
+     días o menos, o ya pasado;
+   - el contrato que termina este mes o ya terminó, sin baja y sin renovación
+     automática: hay que renovarlo.
+   Los cobros por hito no van acá: ya tienen su $ (`cobroIconoHtml`). */
+function _factAviso(c){
+  if(!c || (typeof esProspecto==='function' && esProspecto(c)) || c.archived) return null;
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  var dia=function(f){ var p=String(f||'').slice(0,10).split('-'); if(p.length<3) return null;
+    var d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2])); return isNaN(d.getTime())?null:d; };
+  var dd=function(d){ return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2); };
+  var en=function(d){ return Math.round((d.getTime()-hoy.getTime())/86400000); };
+  var cuando=function(d){ var n=en(d); return n<0?('vencido desde el '+dd(d)):(n===0?'vence hoy':(n===1?'vence mañana':'vence el '+dd(d))); };
+  var ps=[]; try{ ps=_pagos(c); }catch(e){}
+  var cuotas=ps.filter(function(x){ return x && !x.pagadoAt && x.tipo!=='hito' && dia(x.fecha); })
+    .sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
+  if(cuotas.length){
+    var d0=dia(cuotas[0].fecha);
+    if(en(d0)<=7){
+      var venc=cuotas.filter(function(x){ return en(dia(x.fecha))<0; }).length;
+      return {urg:en(d0)<0, t:'Pago pendiente: '+cuando(d0)
+        +(venc>1?(' ('+venc+' cuotas vencidas)'):'')+'. Tocalo para ver la facturación.'};
+    }
+  } else {
+    var prox=(c.renuevaSolo && typeof proxPagoVigente==='function')?proxPagoVigente(c):c.nextPaymentDate;
+    var dp=dia(prox);
+    if(dp && en(dp)<=7)
+      return {urg:en(dp)<0, t:(c.renuevaSolo?'Renovación del mes: ':'Próximo pago: ')+cuando(dp)+'. Tocalo para ver la facturación.'};
+  }
+  var h=null; try{ h=(typeof _eerrHasta==='function')?_eerrHasta(c):null; }catch(e){}
+  if(h && !h.porBaja && !c.renuevaSolo){
+    var mh=h.a*12+h.m, mhoy=hoy.getFullYear()*12+hoy.getMonth();
+    var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    if(mh<mhoy) return {urg:true, t:'El contrato terminó en '+MESES[h.m]+(h.a!==hoy.getFullYear()?(' de '+h.a):'')+': hay que renovarlo o cargar la baja.'};
+    if(mh===mhoy) return {urg:false, t:'El contrato termina este mes: hay que renovarlo.'};
+  }
+  return null;
+}
+function factIconoHtml(c){
+  var a=_factAviso(c); if(!a) return '';
+  return '<span class="p3kmens p3kfact'+(a.urg?' urg':'')+'" role="button" tabindex="0" title="'+esc(a.t)+'" aria-label="'+esc(a.t)+'" '
+    +'onclick="event.stopPropagation();factModal('+c.id+')" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();factModal('+c.id+');}">'
+    +'<span aria-hidden="true">🧾</span></span>';
+}
 function cobroIconoHtml(c, antes){
   var l=_cobrosMarcados(c);
   if(!l.length) return '';
@@ -44338,7 +44389,8 @@ function p360Html(){
        menos del que habia y el nombre largo se metia abajo del boton. */
     // El 💬 de los mensajes para mandar hoy (Angie, 09/11/2026, pedido 19).
     var _menIco=(typeof mensIconoHtml==='function')?mensIconoHtml(d.c):'';
-    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0)+(_menIco?1:0);
+    var _facIco=factIconoHtml(d.c);
+    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0)+(_menIco?1:0)+(_facIco?1:0);
     // En Reparto la tarjeta lleva un renglon mas -lo que le debe esa persona-,
     // asi que su piso es una linea mas alto. Dentro de cada vista siguen
     // midiendo todas lo mismo, que es lo que hace legible una columna.
@@ -44365,7 +44417,7 @@ function p360Html(){
       +'<div class="p3kins">'
       // El menu va primero: con row-reverse queda en la punta de arriba a la
       // derecha, antes del calendario o el + (Angie, 27/10/2026).
-      +_capIco+_menIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
+      +_capIco+_menIco+_facIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
       // Una tarjeta de prospecto se crea sola desde una llamada: una prueba, un
       // mail mal leido o alguien del equipo abren una que no va. Si no se puede
       // borrar, queda para siempre ocupando una columna.
