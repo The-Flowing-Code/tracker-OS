@@ -3969,11 +3969,14 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                        cierra o crea su ticket y el Dashboard lo lista en «Hechos».
                        Cumple el filtro a medias: lo aplicado queda en datos.hechosAplicados,
                        asi que si se pierde la lista solo se deja de ver, no se rehace. */
-                    'hechos'];
+                    'hechos',
+                    /* «Lo que tenés que saber» del cliente (10/11/2026, migracion 054): lo
+                       escribe la rutina contexto-clientes cada mañana. Cumple el filtro. */
+                    'contexto'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1, contexto:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.
@@ -35240,9 +35243,13 @@ function _queHaceHtml(c){
       +'style="font-size:10.5px;padding:2px 8px">'+(q?'Volver a leer':'Escribirlo con IA')+'</button>'
     +'<button class="btn btn-sm" onclick="queHaceEditar('+c.id+')" '
       +'style="font-size:10.5px;padding:2px 8px">'+(q?'Editar':'Escribirlo')+'</button>';
-  var hoy=String((q&&(q.hoy||q.txt))||'').trim();
-  var nos=String((q&&q.conNosotros)||'').trim();
-  if(!hoy && !nos){
+  // Lo que escribe la rutina contexto-clientes (Angie, 10/11/2026). Lo escrito
+  // a mano en la ficha manda; la rutina completa solo lo que esta vacio.
+  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
+  var hoy=String((q&&(q.hoy||q.txt))||(cx&&cx.hoy)||'').trim();
+  var nos=String((q&&q.conNosotros)||(cx&&cx.conNosotros)||'').trim();
+  var saber=_contextoSaberHtml(cx);
+  if(!hoy && !nos && !saber){
     return '<div style="'+marco+'">'
       +'<div style="display:flex;align-items:flex-start;gap:26px;flex-wrap:wrap">'
         +'<div style="flex:1;min-width:240px;display:flex;align-items:center;gap:10px;'
@@ -35272,10 +35279,33 @@ function _queHaceHtml(c){
   return '<div style="'+marco+'">'
     +'<div id="qh-estado" style="font-size:11px;color:var(--text3)"></div>'
     +'<div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">'
-      +parte('De que vive hoy', hoy)
-      +parte('Que quiere trabajar con nosotros', nos, 'var(--accent)')
+      +saber
+      +parte('De qué vive hoy', hoy)
+      +parte('Qué quiere trabajar con nosotros', nos, 'var(--accent)')
       +_factResumenHtml(c)
     +'</div>'
+  +'</div>';
+}
+/* «Lo que tenés que saber» (Angie, 10/11/2026: «quiero en un segundo tener
+   toda la información rápida sobre ese cliente y cuál es su necesidad»). Va
+   primero, antes de «De qué vive hoy»: es lo que se lee en un segundo. */
+function _contextoSaberHtml(cx){
+  if(!cx) return '';
+  var nec=String(cx.necesidad||'').trim();
+  var ps=(Array.isArray(cx.puntos)?cx.puntos:[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+  if(!nec && !ps.length) return '';
+  var cuando='';
+  try{ if(cx.at) cuando=new Date(cx.at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}); }catch(e){}
+  return '<div style="flex:1 1 100%;min-width:240px;background:var(--bg3);border:1px solid var(--border);'
+      +'border-left:3px solid var(--accent);border-radius:var(--radius);padding:11px 14px">'
+    +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:5px">'
+      +'<span style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.07em">Lo que tenés que saber</span>'
+      +(cuando?('<span style="margin-left:auto;font-size:10.5px;color:var(--text3)" title="'
+        +esc('Lo escribe la rutina de cada mañana'+(cx.fuentes?(', con '+cx.fuentes):''))+'">al '+cuando+'</span>'):'')
+    +'</div>'
+    +(nec?('<div style="font-size:13.5px;font-weight:600;color:var(--strong);line-height:1.5">'+esc(nec)+'</div>'):'')
+    +(ps.length?('<ul style="margin:6px 0 0;padding-left:17px;font-size:12.5px;color:var(--text2);line-height:1.6">'
+      +ps.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'):'')
   +'</div>';
 }
 function queHaceEditar(clientId){ S._qhEdit=clientId; renderTab(); }
