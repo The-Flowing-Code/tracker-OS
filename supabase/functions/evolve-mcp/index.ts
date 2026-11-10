@@ -20,6 +20,9 @@
 //  leer_mensajes_estado. Con alcance.campanas='leer': estado_anuncios (Meta con
 //  el token del cliente DEL LADO DEL SERVIDOR, como leer_conversaciones).
 //
+//  10/11/2026 (v1.4.0): con alcance.tareas='escribir', cargar_dataset: carga o
+//  corrige el link del dataset de la ficha (set_oferta_estado), sin pisar el resto.
+//
 //  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
 //  existe con que. La UNICA escritura es `pedir_cambio_app` (17/10/2026): deja
@@ -609,6 +612,13 @@ const HERRAMIENTAS = [
       cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
       dias: { type: "number", description: "Gasto de los últimos N días (1 a 30, 7 por defecto)" },
       solo_activos: { type: "boolean", description: "Solo los que están ACTIVE (por defecto, todos los que no están archivados ni borrados)" } } } },
+  { name: "cargar_dataset",
+    description: "Carga o corrige el link del dataset de oferta en la ficha de un cliente (el que se ve en Documentos y en la vista Lista), sin pisar lo demás: texto, estado y copias quedan como estaban. Para cuando el link de la ficha no abre o falta. Solo links de claude.ai/artifact. Solo para quien tiene permiso de escribir tareas; tope diario compartido con crear_tarea.",
+    inputSchema: { type: "object", required: ["cliente"], properties: {
+      cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
+      link: { type: "string", description: "Link del dataset, vista del equipo: https://claude.ai/artifact/<id> (opcional si mandás link_cliente)" },
+      link_cliente: { type: "string", description: "Link de la vista para el partner: https://claude.ai/artifact/<id> (opcional)" },
+      completo: { type: "boolean", description: "true si el dataset está terminado (marca «Dataset listo» en la vista Lista). Si no lo mandás, queda el estado que tenía" } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -651,7 +661,7 @@ const TOPE_TAREAS_DIA = 30;
 async function puedeEscribirTareas(c: Clave) {
   if ((c.alcance || {}).tareas !== "escribir") return "Tu clave no tiene permiso para escribir tareas. Pedile a Angie que te lo active.";
   const hoy = new Date(); hoy.setUTCHours(0, 0, 0, 0);
-  const hechos = await sb("mcp_registro?select=id&clave_id=eq." + c.id + "&herramienta=in.(crear_tarea,cambiar_estado_tarea)&at=gte." + hoy.toISOString());
+  const hechos = await sb("mcp_registro?select=id&clave_id=eq." + c.id + "&herramienta=in.(crear_tarea,cambiar_estado_tarea,cargar_dataset)&at=gte." + hoy.toISOString());
   if (Array.isArray(hechos) && hechos.length >= TOPE_TAREAS_DIA)
     return "Ya se hicieron " + TOPE_TAREAS_DIA + " cambios de tareas hoy desde este conector. Seguí mañana o hacelo desde el tracker.";
   return "";
@@ -681,6 +691,38 @@ async function crearTarea(c: Clave, a: any) {
   if (ok !== true) return { error: "No se pudo cargar (la lista del cliente está llena o ya existe)." };
   return { ok: true, cliente: cl[0].nombre, tarea: texto, responsable: resp || "el responsable del cliente",
            nota: "Quedó cargada. La app la convierte en ticket cuando alguien la abre (en unos minutos). Se puede deshacer desde Tickets." };
+}
+/* ── El link del dataset (Santi y Ashtyn, llamada del 09/11/2026) ────────────
+   El link de la ficha de Juan Argüello no abría y desde el conector no habia
+   con que corregirlo. Usa set_oferta_estado (migracion 033), que rearma el
+   renglon de cero: por eso se lee el que hay y se le pasa todo. */
+const RE_ARTIFACT = /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9_-]{6,64}$/;
+async function cargarDataset(c: Clave, a: any) {
+  const veto = await puedeEscribirTareas(c); if (veto) return { error: veto };
+  const link = String(a?.link || "").trim(), linkCli = String(a?.link_cliente || "").trim();
+  if (!link && !linkCli) return { error: "Mandá el link del dataset (link) o el de la vista para el partner (link_cliente)." };
+  if (link && !RE_ARTIFACT.test(link)) return { error: "El link tiene que ser https://claude.ai/artifact/<id>." };
+  if (linkCli && !RE_ARTIFACT.test(linkCli)) return { error: "El link para el partner tiene que ser https://claude.ai/artifact/<id>." };
+  const cl = await buscarClienteIds(c, a?.cliente);
+  if (!cl.length) return { error: "No encontré ese cliente (o no está en tu alcance)." };
+  if (cl.length > 1) return { error: "Hay más de un cliente que coincide: " + cl.slice(0, 6).map((x: any) => x.nombre).join(", ") + ". Decime cuál." };
+  const f = await sb("clientes?select=id,of:maquina->oferta&id=eq." + cl[0].id);
+  const ant: any = (f && f[0] && f[0].of) || {};
+  const url = link || ant.url || null;
+  let estado = ant.estado || (url ? "completa" : "curso");
+  if (a?.completo === true) estado = "completa";
+  if (a?.completo === false) estado = "curso";
+  if (estado === "completa" && !url) return { error: "Para marcarlo completo hace falta el link de la vista del equipo (link)." };
+  await rpc("set_oferta_estado", {
+    p_id: Number(cl[0].id), p_estado: estado, p_texto: String(ant.texto || "Dataset de oferta").slice(0, 60),
+    p_url: url, p_storage: link && link !== ant.url ? null : (ant.storage || null),
+    p_avance: estado === "completa" ? 100 : (typeof ant.avance === "number" ? ant.avance : null),
+    p_url_cliente: linkCli || ant.urlCliente || null,
+    p_storage_cliente: linkCli && linkCli !== ant.urlCliente ? null : (ant.storageCliente || null),
+  });
+  return { ok: true, cliente: cl[0].nombre, link: url, link_cliente: linkCli || ant.urlCliente || null, estado,
+           antes: { link: ant.url || null, link_cliente: ant.urlCliente || null, estado: ant.estado || null },
+           nota: "Quedó cargado en la ficha. Para volver atrás, cargá de nuevo el link de «antes»." };
 }
 async function cambiarEstadoTarea(c: Clave, a: any) {
   const veto = await puedeEscribirTareas(c); if (veto) return { error: veto };
@@ -867,6 +909,7 @@ async function correr(c: Clave, nombre: string, a: any) {
   if (nombre === "pedir_cambio_app") return await pedirCambio(c, a);
   if (nombre === "crear_tarea") return await crearTarea(c, a);
   if (nombre === "cambiar_estado_tarea") return await cambiarEstadoTarea(c, a);
+  if (nombre === "cargar_dataset") return await cargarDataset(c, a);
   if (nombre === "buscar_llamadas") return await buscarLlamadas(c, a);
   if (nombre === "leer_llamada") return await leerLlamada(c, a);
   if (nombre === "listar_clientes") return await listarClientes(c, a);
@@ -910,7 +953,7 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.3.1" },
+      serverInfo: { name: "evolve-os-consulta", version: "1.4.0" },
       instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Para las rutinas de mensajes: estado_anuncios antes de hablar de campañas, guardar_mensajes_dia (uno por cliente) y guardar_parte; al cierre, leer_mensajes_estado. Los mensajes son borradores: nada se le manda a nadie desde acá. Lo demás que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }

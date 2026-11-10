@@ -42,7 +42,9 @@ function _lzOfertaUrl(c){
 function _lzAuto(c, k){
   var u=_lzOfertaUrl(c);
   if(!u) return '';
-  if(k==='dataset') return 'Sí';
+  // «Sí» solo con el dataset terminado: una estrategia a medias (estado
+  // «curso», como la de Juan Argüello el 10/11) tiene link y no está lista.
+  if(k==='dataset') return (c.oferta.estado==='completa')?'Sí':'';
   if(k==='linkDataset') return u;
   return '';
 }
