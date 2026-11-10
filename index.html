@@ -19425,10 +19425,16 @@ function _torreVacio(titulo, texto){
 // ---- Materiales ---------------------------------------------------------
 // Solapa del Panel 360 (16/10/2026): los documentos de apoyo del equipo.
 // Cada material es un artifact con link fijo; sumar uno es agregar una fila.
-// Los links no abren sin cuenta con acceso: el artifact es privado.
+// Los artifacts no abren sin cuenta con acceso; el recorrido de prueba, sí.
 var MATERIALES=[
   {t:'Instructivos del CRM', d:'Videos paso a paso del CRM, en orden, con el tilde de «ya lo vi».',
-   url:'https://claude.ai/artifact/1YzBFGS4VTUaQEyc88gyFB'}
+   url:'https://claude.ai/artifact/1YzBFGS4VTUaQEyc88gyFB'},
+  /* El recorrido que recibe un partner nuevo (video, formulario y calendario),
+     con un formulario de PRUEBA de la ficha «Evolve (interno)» (Angie,
+     10/11/2026): para que cualquiera del equipo lo recorra y pruebe sin usar
+     el link de un partner. El calendario del paso 3 es el real. */
+  {t:'Recorrido de onboarding (prueba)', d:'Lo que ve un partner nuevo: video, formulario y calendario. El formulario es de prueba: completalo libremente. El calendario es el real.',
+   url:'https://theflowingcode.com/bienvenida#prueba-e1R7wviz'}
 ];
 function materialesHtml(){
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">'
