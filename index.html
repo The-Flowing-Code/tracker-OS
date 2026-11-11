@@ -3079,6 +3079,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/etapas-csm.js?v=DEV"></script>
 <script src="js/mensual.js?v=DEV"></script>
 <script src="js/lista-lanzamientos.js?v=DEV"></script>
+<script src="js/tiempo-equipo.js?v=DEV"></script>
 <script>
 const LS_KEY = 'evold-v1';
 
@@ -3972,11 +3973,15 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                     'hechos',
                     /* «Lo que tenés que saber» del cliente (10/11/2026, migracion 054): lo
                        escribe la rutina contexto-clientes cada mañana. Cumple el filtro. */
-                    'contexto'];
+                    'contexto',
+                    /* El tiempo con Claude de cada persona, por día y tipo de trabajo, para la
+                       rueda del Dashboard (11/11/2026, migracion 055). Cumple el filtro: cada
+                       máquina lo vuelve a medir y reportar. */
+                    'tiempoEquipo'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1, contexto:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1, contexto:1, tiempoEquipo:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.
@@ -19458,7 +19463,10 @@ var MATERIALES_EQUIPO=[
            {l:'Parte 2 · El formulario de onboarding', url:'https://www.loom.com/share/bf7e86952aa04121a702eded31714b0f'}]},
   {t:'Crear los estáticos de un cliente con las skills', v:'v1 · 11/11/2026',
    d:'Con Nullcash de ejemplo. Siempre con la skill planificar-set-estaticos, sin saltear pasos. Si va la cara de una persona, primero se crea el personaje con sus fotos (videos crudos, Instagram, LinkedIn) y, si no sale igual, no se usa. Los tres grupos (promesa directa, disruptivos y estilo competencia) y cómo elegir 4 o 5. En el primer lanzamiento, la promesa va de título y el ángulo abajo. Cómo corregir: escenas de noche y salones del nivel del ticket, verificar que use la promesa del dataset, acortar el título y que un «duplicamos» sea creíble. Ugly ads, piezas de dos escenas sin escribir «antes» ni «después», la auditoría y el OK de la persona que aparece. Al final, cómo revisar la competencia en la Biblioteca de anuncios: competidor directo, el anuncio activo más viejo y su landing.',
-   url:'https://www.loom.com/share/9130ffd89f114b1280549566fb1640de'}
+   url:'https://www.loom.com/share/9130ffd89f114b1280549566fb1640de'},
+  {t:'Videos hechos con IA (y cómo crear y subir una skill)', v:'v1 · 11/11/2026',
+   d:'Con Nullcash de ejemplo. Primero, cómo crear una skill: preguntarle a Claude si ya existe y, si no, crearla, subirla al repositorio para que la tenga todo el equipo y avisar en el grupo de WhatsApp que hay una nueva. Después, la skill armar-video-actor-ia en uso: confirma la promesa, manda el guion, se audita, se elige la voz (pedir siempre rioplatense, o el acento que quiera el cliente) y entrega el video final. Qué mejorar: un gancho más disruptivo, música de fondo y un sonido cuando se nombra la marca.',
+   url:'https://www.loom.com/share/74757d01c1cb4fadb246c6e89fad1f85'}
 ];
 function _matTarjeta(m){
   var caja='display:block;text-decoration:none;background:var(--bg2);border:1px solid var(--border);'
@@ -43895,6 +43903,8 @@ function dashboardHtml(){
     +'</div>'
     // Mes contra mes del servicio completo (Angie, 04/11/2026): reemplaza las tarjetas y la actividad.
     +(typeof dashMensualHtml==='function'?dashMensualHtml(cls):kpis+actividad)
+    // En qué se va el tiempo del equipo (Angie, 11/11/2026): js/tiempo-equipo.js
+    +(typeof tiempoEquipoHtml==='function'&&!soloCartera()?tiempoEquipoHtml():'')
     +'<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">'+alarmas+pulso+'</div>'
     +rutina
     +'<div style="height:40px"></div></div></div>';
