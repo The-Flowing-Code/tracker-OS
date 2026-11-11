@@ -23,6 +23,11 @@
 //  10/11/2026 (v1.4.0): con alcance.tareas='escribir', cargar_dataset: carga o
 //  corrige el link del dataset de la ficha (set_oferta_estado), sin pisar el resto.
 //
+//  11/11/2026 (v1.5.0): reportar_tiempo, para cualquier clave activa: los minutos
+//  con Claude de esa persona por dia y tipo de trabajo, que mide
+//  tools/medir-tiempo.mjs de TFC-OS en su maquina (set_tiempo_dias, migracion
+//  055). La persona sale de la clave: nadie reporta por otro. Solo totales.
+//
 //  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
 //  existe con que. La UNICA escritura es `pedir_cambio_app` (17/10/2026): deja
@@ -619,6 +624,14 @@ const HERRAMIENTAS = [
       link: { type: "string", description: "Link del dataset, vista del equipo: https://claude.ai/artifact/<id> (opcional si mandás link_cliente)" },
       link_cliente: { type: "string", description: "Link de la vista para el partner: https://claude.ai/artifact/<id> (opcional)" },
       completo: { type: "boolean", description: "true si el dataset está terminado (marca «Dataset listo» en la vista Lista). Si no lo mandás, queda el estado que tenía" } } } },
+  { name: "reportar_tiempo",
+    description: "Sube tus minutos con Claude por día y tipo de trabajo, para la rueda «En qué se va el tiempo» del Dashboard. Mandá tal cual lo que imprime `node tools/medir-tiempo.mjs --json` en la raíz de TFC-OS. Reemplaza los días que mandás (volver a mandar la misma semana no suma dos veces). La persona sale de tu clave. Solo totales, nunca el contenido de las sesiones.",
+    inputSchema: { type: "object", required: ["dias"], properties: {
+      persona: { type: "string", description: "La que imprimió medir-tiempo (se compara con la de tu clave)" },
+      dias: { type: "array", description: "Hasta 31 días: {fecha AAAA-MM-DD, estrategia, optimizacion, implementacion, sin_clasificar} en minutos",
+        items: { type: "object", required: ["fecha"], properties: {
+          fecha: { type: "string" }, estrategia: { type: "number" }, optimizacion: { type: "number" },
+          implementacion: { type: "number" }, sin_clasificar: { type: "number" } } } } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -723,6 +736,27 @@ async function cargarDataset(c: Clave, a: any) {
   return { ok: true, cliente: cl[0].nombre, link: url, link_cliente: linkCli || ant.urlCliente || null, estado,
            antes: { link: ant.url || null, link_cliente: ant.urlCliente || null, estado: ant.estado || null },
            nota: "Quedó cargado en la ficha. Para volver atrás, cargá de nuevo el link de «antes»." };
+}
+/* ── El tiempo con Claude de cada persona (Angie, 11/11/2026) ───────────────
+   La rueda del Dashboard. Lo mide tools/medir-tiempo.mjs en la maquina de la
+   persona; aca solo se valida y se guarda con set_tiempo_dias (055), que
+   repite las validaciones. La persona es la de la clave. */
+const slugPersona = (v: unknown) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().trim().split(/[\s@._]+/)[0].replace(/[^a-z0-9-]/g, "");
+async function reportarTiempo(c: Clave, a: any) {
+  const persona = slugPersona(c.persona);
+  if (!/^[a-z0-9_-]{2,40}$/.test(persona)) return { error: "Tu clave no tiene una persona válida. Avisale a Angie." };
+  if (a?.persona && slugPersona(a.persona) !== persona)
+    return { error: "medir-tiempo dice «" + String(a.persona) + "» y tu clave es de " + c.persona + ". Revisá la línea «Persona en TFC-OS» de tu ~/.claude/CLAUDE.md." };
+  const dias = Array.isArray(a?.dias) ? a.dias : null;
+  if (!dias || !dias.length) return { error: "No vino ningún día. Mandá lo que imprime `node tools/medir-tiempo.mjs --json`." };
+  if (dias.length > 31) return { error: "Hasta 31 días por vez." };
+  const n = await rpc("set_tiempo_dias", { p_id: INTERNO, p_persona: persona, p_dias: dias });
+  if (typeof n !== "number") return { error: "No se pudo guardar: " + JSON.stringify(n).slice(0, 200) };
+  const tot = dias.reduce((s: number, d: any) => s + ["estrategia", "optimizacion", "implementacion", "sin_clasificar"]
+    .reduce((x, k) => x + (Number(d?.[k]) || 0), 0), 0);
+  return { ok: true, persona, dias: n, minutos: Math.round(tot),
+           nota: "Quedó en el Dashboard, en «En qué se va el tiempo» (se ve al recargar la app)." };
 }
 async function cambiarEstadoTarea(c: Clave, a: any) {
   const veto = await puedeEscribirTareas(c); if (veto) return { error: veto };
@@ -910,6 +944,7 @@ async function correr(c: Clave, nombre: string, a: any) {
   if (nombre === "crear_tarea") return await crearTarea(c, a);
   if (nombre === "cambiar_estado_tarea") return await cambiarEstadoTarea(c, a);
   if (nombre === "cargar_dataset") return await cargarDataset(c, a);
+  if (nombre === "reportar_tiempo") return await reportarTiempo(c, a);
   if (nombre === "buscar_llamadas") return await buscarLlamadas(c, a);
   if (nombre === "leer_llamada") return await leerLlamada(c, a);
   if (nombre === "listar_clientes") return await listarClientes(c, a);
@@ -953,7 +988,7 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.4.0" },
+      serverInfo: { name: "evolve-os-consulta", version: "1.5.0" },
       instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Para las rutinas de mensajes: estado_anuncios antes de hablar de campañas, guardar_mensajes_dia (uno por cliente) y guardar_parte; al cierre, leer_mensajes_estado. Los mensajes son borradores: nada se le manda a nadie desde acá. Lo demás que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
