@@ -4,7 +4,8 @@
    un rango de fechas (por defecto, esta semana desde el lunes).
 
    Solo entra lo que se mide de verdad:
-   · El tiempo con Claude de cada máquina: `tools/medir-tiempo.mjs` de TFC-OS
+   · El tiempo con Claude de cada máquina (cuatro tipos y «sin clasificar»; el
+     cuarto, «sistemas y procesos», es lo interno: migración 056): `tools/medir-tiempo.mjs` de TFC-OS
      lo cuenta desde las sesiones de esa máquina y lo sube como totales por
      día (maquina.tiempoEquipo del cliente interno, migración 055). El tipo
      sale de la skill que usó la sesión; sin skill, «sin clasificar».
@@ -18,6 +19,8 @@ var TQ_TIPOS=[
   {k:'estrategia',     l:'Estrategia y dataset',               col:'#C8FF47'},
   {k:'optimizacion',   l:'Revisión y optimización de embudos', col:'#4CC9F0'},
   {k:'implementacion', l:'Cambios e implementación',           col:'#B388FF'},
+  // Lo interno: la web app, las skills, las herramientas y los procesos (Angie, 11/11/2026).
+  {k:'sistemas',       l:'Sistemas y procesos (interno)',      col:'#FFB547'},
   {k:'sin_clasificar', l:'Sin clasificar',                     col:'#3A3F4B'}
 ];
 // Quienes tienen con qué medir: una rutina o la herramienta en su máquina.
@@ -40,6 +43,8 @@ function _tqMinutos(s){
 }
 function tqTipoLlamada(t){
   t=String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  // Lo interno va primero: «Revisión del tracker» es sistemas, no optimización.
+  if(/sistema|proceso|skill|tracker|web ?app|automatiza/.test(t)) return 'sistemas';
   if(/estrateg|dataset|oferta|diagnost|onboarding|kick ?off|propuesta/.test(t)) return 'estrategia';
   if(/seguimiento|revision|catch ?up|optimiz|resultado|reporte/.test(t)) return 'optimizacion';
   if(/implementa|lanzamiento|embudo|landing|setup|configura|campana/.test(t)) return 'implementacion';

@@ -15,7 +15,7 @@ const personas = [
   { email: 'santi@x.com', nombre: 'Santi' },
 ];
 const interno = { id: 1, name: 'Evolve', tiempoEquipo: { dias: [
-  { persona: 'angie', fecha: '2026-11-10', estrategia: 30, optimizacion: 15, implementacion: 200, sin_clasificar: 40, at: '2026-11-11T22:00:00Z' },
+  { persona: 'angie', fecha: '2026-11-10', estrategia: 30, optimizacion: 15, implementacion: 200, sistemas: 50, sin_clasificar: 40, at: '2026-11-11T22:00:00Z' },
   { persona: 'angie', fecha: '2026-11-03', estrategia: 999, optimizacion: 0, implementacion: 0, sin_clasificar: 0, at: '2026-11-04T22:00:00Z' },
 ] } };
 const llamada = { id: 'f1', title: 'Switcho - Estrategia', date: '10/11/2026', duration: '1h 6m', grabo: 'angie@x.com' };
@@ -35,6 +35,7 @@ describe('rueda del tiempo del equipo', () => {
     const r = tqDatos(clientes, personas, '2026-11-09', '2026-11-11', '');
     expect(r.porTipo.estrategia).toBe(30 + 66);
     expect(r.porTipo.implementacion).toBe(200);
+    expect(r.porTipo.sistemas).toBe(50);
     expect(r.porTipo.sin_clasificar).toBe(40 + 20);
     expect(r.nLlamadas).toBe(2);
   });
@@ -55,6 +56,7 @@ describe('rueda del tiempo del equipo', () => {
     expect(tqTipoLlamada('Metrodev - Onboarding')).toBe('estrategia');
     expect(tqTipoLlamada('Switcho <> Catchup')).toBe('optimizacion');
     expect(tqTipoLlamada('Marce y Martin')).toBe('sin_clasificar');
+    expect(tqTipoLlamada('Revisión del tracker y las skills')).toBe('sistemas');
     expect(_tqFechaLlamada('9/11/2026')).toBe('2026-11-09');
   });
 

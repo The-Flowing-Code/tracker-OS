@@ -118,7 +118,7 @@ los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
   un ticket, origen 'rutina'|'claude', por). Solo service_role; agrega sin pisar
   y guarda 30 días. La app cierra o crea el ticket (js/avisos.js).
 - `set_tiempo_dias` (055): los minutos con Claude de cada persona por día y
-  tipo de trabajo (estrategia, optimizacion, implementacion, sin_clasificar),
+  tipo de trabajo (estrategia, optimizacion, implementacion, sistemas —lo interno, 056—, sin_clasificar),
   que mide `tools/medir-tiempo.mjs` de TFC-OS en su máquina; solo totales, nunca
   el contenido. Van en `maquina.tiempoEquipo` del cliente interno; cada reporte
   reemplaza los días que trae de esa persona y se guardan 120 días. Lo escribe la
