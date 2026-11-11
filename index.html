@@ -19448,31 +19448,53 @@ var MATERIALES=[
    proceso, para no gastar llamadas explicándolos. Si un Loom se grabó en dos
    partes, va una sola tarjeta con las partes en orden (`partes`); cuando se
    sube el video unido, queda `url` y las partes se sacan. */
+var MATERIALES_EQUIPO_ETAPAS=['Alta del cliente','Creativos','Lanzamiento','Optimización'];
 var MATERIALES_EQUIPO=[
-  {t:'Skill de lanzamiento: cómo revisar un cliente antes de prender', v:'v1 · 10/11/2026',
-   d:'Con Hace Click de ejemplo: cómo pedirle a Claude la revisión con la skill lanzar-embudo (que avise que la usa), qué audita en Meta (nomenclatura y configuración), la prueba en el CRM y el bot, y «actualizá el contexto de este cliente en el repositorio». Después, los 7 pasos de la skill (del paso 0 al chequeo final) y que antes de prender hace falta el OK de Angie.',
-   partes:[{l:'Parte 1 · Revisión con Hace Click', url:'https://www.loom.com/share/6f1fb63b6b664600a47fe2d6b1993762'},
-           {l:'Parte 2 · Los pasos de la skill', url:'https://www.loom.com/share/77e1a88c2b564877b8b0227d1e03ee6b'}]},
-  {t:'Montar una campaña desde cero en Meta', v:'v1 · 10/11/2026',
-   d:'Montar una campaña es la misma skill que lanzar el embudo (lanzar-embudo). Accesos de los clientes: como persona al principio (Meta no deja dar acceso como socio a un portfolio recién abierto) y después pedir que pasen a socio, para no acumular portfolios y arriesgar la cuenta. Con Hace Click de ejemplo: el pedido por audio en la sesión del cliente y Claude montando la campaña paso a paso. Al final, cómo queda: publicada pero apagada para auditarla, cuenta nueva a USD 5 por día y un solo anuncio prendido.',
-   partes:[{l:'Parte 1 · Accesos y montado con Claude', url:'https://www.loom.com/share/d8d5504a955d42afbfd0819f18d80e5a'},
-           {l:'Parte 2 · Cómo queda la campaña', url:'https://www.loom.com/share/ae84ece5042a4ee7bae918188a1683ec'}]},
-  {t:'Dar de alta a un cliente y armar su formulario de onboarding', v:'v1 · 10/11/2026',
-   d:'Con Tracción Argentina de ejemplo. Si un cliente no está en la app, no tiene contexto ni su sesión abierta, no se le dio el alta: es grave. Se le pide a Claude desde Team / Operaciones con el nombre del grupo de WhatsApp; crea la tarjeta, la ficha en el cerebro y la subcuenta de GHL, y manda la invitación con los instructivos de accesos. Después: Cmd+Shift+R en la app para verla y completar a mano lo que falte (llamadas de venta, onboarding, facturación). Al final, cómo pedirle el formulario de onboarding personalizado: lo arma con las llamadas de venta, se abre el link para revisarlo y recién ahí va al cliente.',
+  {e:'Alta del cliente', t:'Dar de alta a un cliente y armar su formulario', v:'v1 · 10/11/2026', ej:'Tracción Argentina',
+   r:'Si un cliente no está en la app, sin contexto ni sesión abierta, no se le dio el alta: es grave.',
+   p:['Se pide desde Team / Operaciones con el nombre del grupo de WhatsApp: crea tarjeta, ficha y subcuenta de GHL',
+      'Cmd+Shift+R en la app y completar a mano lo que falte (llamadas, onboarding, facturación)',
+      'El formulario de onboarding sale de las llamadas de venta: se revisa antes de mandarlo'],
    partes:[{l:'Parte 1 · El alta', url:'https://www.loom.com/share/b64d74b62c6f47b8aa93259d5f42472d'},
-           {l:'Parte 2 · El formulario de onboarding', url:'https://www.loom.com/share/bf7e86952aa04121a702eded31714b0f'}]},
-  {t:'Crear los estáticos de un cliente con las skills', v:'v1 · 11/11/2026',
-   d:'Con Nullcash de ejemplo. Siempre con la skill planificar-set-estaticos, sin saltear pasos. Si va la cara de una persona, primero se crea el personaje con sus fotos (videos crudos, Instagram, LinkedIn) y, si no sale igual, no se usa. Los tres grupos (promesa directa, disruptivos y estilo competencia) y cómo elegir 4 o 5. En el primer lanzamiento, la promesa va de título y el ángulo abajo. Cómo corregir: escenas de noche y salones del nivel del ticket, verificar que use la promesa del dataset, acortar el título y que un «duplicamos» sea creíble. Ugly ads, piezas de dos escenas sin escribir «antes» ni «después», la auditoría y el OK de la persona que aparece. Al final, cómo revisar la competencia en la Biblioteca de anuncios: competidor directo, el anuncio activo más viejo y su landing.',
+           {l:'Parte 2 · El formulario', url:'https://www.loom.com/share/bf7e86952aa04121a702eded31714b0f'}]},
+  {e:'Creativos', t:'Crear los estáticos de un cliente', v:'v1 · 11/11/2026', sk:'planificar-set-estaticos', ej:'Nullcash',
+   r:'Siempre con la skill y sin saltear pasos: 9 propuestas, se eligen 4 o 5.',
+   p:['Tres grupos: promesa directa, disruptivos y estilo competencia',
+      'Si va la cara de alguien, primero el personaje; si no sale igual, no se usa',
+      'Corregir: hora y lugar del avatar, la promesa del dataset, títulos cortos y creíbles',
+      'Ugly ads, piezas de dos escenas y la competencia en la Biblioteca de anuncios'],
    url:'https://www.loom.com/share/9130ffd89f114b1280549566fb1640de'},
-  {t:'Videos hechos con IA (y cómo crear y subir una skill)', v:'v1 · 11/11/2026',
-   d:'Con Nullcash de ejemplo. Primero, cómo crear una skill: preguntarle a Claude si ya existe y, si no, crearla, subirla al repositorio para que la tenga todo el equipo y avisar en el grupo de WhatsApp que hay una nueva. Después, la skill armar-video-actor-ia en uso: confirma la promesa, manda el guion, se audita, se elige la voz (pedir siempre rioplatense, o el acento que quiera el cliente) y entrega el video final. Qué mejorar: un gancho más disruptivo, música de fondo y un sonido cuando se nombra la marca.',
+  {e:'Creativos', t:'Videos hechos con IA', v:'v1 · 11/11/2026', sk:'armar-video-actor-ia', ej:'Nullcash',
+   r:'Un anuncio vertical sin crudos: actor de IA, escenas, voz y pantallas del producto.',
+   p:['Confirma la promesa, manda el guion y se audita',
+      'La voz: rioplatense, o el acento que pida el cliente',
+      'Mejorar: gancho disruptivo, música y un sonido al nombrar la marca',
+      'Al inicio: cómo crear una skill, subirla y avisar en el grupo'],
    url:'https://www.loom.com/share/74757d01c1cb4fadb246c6e89fad1f85'},
-  {t:'Diagnosticar un embudo y optimizarlo cada semana', v:'v1 · 11/11/2026',
-   d:'Con Quironex de ejemplo, con la skill diagnosticar-cuenta-meta («diagnosticá X en vivo»). Escalón por escalón, con los períodos en cuadros: dónde se rompe y dónde se encarece. El costo por agenda es la métrica clave, nunca el costo por registro de Meta. Verificar todo en Meta y GHL, cruzar los datos antes de tocar algo (acá, la edad: Meta mandaba a mayores de 65 porque convertían más barato) y no achicar tanto el público que se quemen los anuncios. Cuando hay que esperar, se deja una rutina que avise. Al final, el post mortem: qué se vio, la conclusión y los cambios, si son técnicos, de embudo o estratégicos, y se sube al contexto del cliente. Lo ideal: un diagnóstico por semana de todos los clientes, en un momento fijo.',
+  {e:'Lanzamiento', t:'Montar una campaña desde cero en Meta', v:'v1 · 10/11/2026', sk:'lanzar-embudo', ej:'Hace Click',
+   r:'Montar la campaña es la misma skill que lanzar el embudo.',
+   p:['Accesos: como persona al principio y después como socio',
+      'El pedido por audio en la sesión del cliente y Claude montando paso a paso',
+      'Queda publicada y apagada para auditar: USD 5 por día y un solo anuncio'],
+   partes:[{l:'Parte 1 · Accesos y montado', url:'https://www.loom.com/share/d8d5504a955d42afbfd0819f18d80e5a'},
+           {l:'Parte 2 · Cómo queda', url:'https://www.loom.com/share/ae84ece5042a4ee7bae918188a1683ec'}]},
+  {e:'Lanzamiento', t:'Revisar un cliente antes de prender', v:'v1 · 10/11/2026', sk:'lanzar-embudo', ej:'Hace Click',
+   r:'La revisión con la skill: que avise que la usa y siga sus 7 pasos.',
+   p:['Qué audita en Meta: nomenclatura y configuración',
+      'La prueba en el CRM y el bot',
+      'Antes de prender hace falta el OK de Angie'],
+   partes:[{l:'Parte 1 · La revisión', url:'https://www.loom.com/share/6f1fb63b6b664600a47fe2d6b1993762'},
+           {l:'Parte 2 · Los pasos de la skill', url:'https://www.loom.com/share/77e1a88c2b564877b8b0227d1e03ee6b'}]},
+  {e:'Optimización', t:'Diagnosticar un embudo cada semana', v:'v1 · 11/11/2026', sk:'diagnosticar-cuenta-meta', ej:'Quironex',
+   r:'Escalón por escalón: dónde se rompe y dónde se encarece. La clave es el costo por agenda.',
+   p:['Los períodos en cuadros y todo verificado en Meta y GHL',
+      'Cruzar datos antes de tocar (la edad) sin achicar tanto que se quemen los anuncios',
+      'Si hay que esperar, una rutina que avise',
+      'Post mortem: técnico, de embudo o estratégico, y al contexto del cliente'],
    url:'https://www.loom.com/share/490b80a6d6994fa596fa4918b900724b'}
 ];
 function _matTarjeta(m){
-  var caja='display:block;text-decoration:none;background:var(--bg2);border:1px solid var(--border);'
+  var caja='display:flex;flex-direction:column;text-decoration:none;background:var(--bg2);border:1px solid var(--border);'
     +'border-radius:var(--radius-lg);padding:16px 18px';
   var cab='<div style="font-size:14px;font-weight:600;color:var(--strong);margin-bottom:4px">'+esc(m.t)+'</div>'
     +(m.v?('<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+esc(m.v)+'</div>'):'')
@@ -19484,12 +19506,36 @@ function _matTarjeta(m){
       +'style="font-size:12px;color:var(--accent);text-decoration:none">'+esc(p.l)+' &rarr;</a>'; }).join('')
     +'</div></div>';
 }
+/* Los instructivos del equipo, en el orden de la ruta del cliente (Angie,
+   11/11/2026: «ordename mejor esto»): numerados, con la skill, el ejemplo,
+   una línea de para qué y 3 o 4 puntos, en vez de un párrafo largo. */
+function _matInstructivo(m, n){
+  var chip=function(t, fuerte){ return '<span style="font-size:11px;padding:2px 8px;border-radius:99px;'
+    +(fuerte?'background:rgba(200,255,71,.12);color:var(--accent)':'border:1px solid var(--border);color:var(--text3)')+'">'+esc(t)+'</span>'; };
+  var links=m.url?['<a href="'+m.url+'" target="_blank" rel="noopener noreferrer" style="font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:500">Ver el video &rarr;</a>']
+    :(m.partes||[]).map(function(p){ return '<a href="'+p.url+'" target="_blank" rel="noopener noreferrer" '
+      +'style="font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:500">'+esc(p.l)+' &rarr;</a>'; });
+  return '<div style="display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px">'
+    +'<div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">'+esc(m.e)+'</div>'
+    +'<div style="display:flex;gap:10px;align-items:flex-start">'
+      +'<span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--bg3);color:var(--strong);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums">'+n+'</span>'
+      +'<div style="min-width:0"><div style="font-size:14px;font-weight:600;color:var(--strong);line-height:1.35">'+esc(m.t)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2,var(--text3));margin-top:4px;line-height:1.45">'+esc(m.r)+'</div></div></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+(m.sk?chip(m.sk,true):'')+chip('Ejemplo: '+m.ej)+chip(m.v)+'</div>'
+    +'<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:4px">'
+      +m.p.map(function(x){ return '<li style="font-size:12px;color:var(--text3);line-height:1.45">'+esc(x)+'</li>'; }).join('')+'</ul>'
+    +'<div style="margin-top:auto;padding-top:4px;display:flex;flex-direction:column;gap:6px">'+links.join('')+'</div>'
+    +'</div>';
+}
 function materialesHtml(){
   var grilla=function(xs){ return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">'
     +xs.map(_matTarjeta).join('')+'</div>'; };
   var tit=function(t){ return '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 10px">'+t+'</div>'; };
+  var orden=MATERIALES_EQUIPO.slice().sort(function(x,y){ return MATERIALES_EQUIPO_ETAPAS.indexOf(x.e)-MATERIALES_EQUIPO_ETAPAS.indexOf(y.e); });
+  var equipo='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">'
+    +orden.map(function(m,i){ return _matInstructivo(m, i+1); }).join('')+'</div>';
   return grilla(MATERIALES)
-    +(MATERIALES_EQUIPO.length?('<div style="margin-top:22px">'+tit('Instructivos internos del equipo')+grilla(MATERIALES_EQUIPO)+'</div>'):'');
+    +(MATERIALES_EQUIPO.length?('<div style="margin-top:26px">'+tit('Instructivos internos del equipo · en el orden de la ruta del cliente')+equipo+'</div>'):'');
 }
 
 // ---- Prioridad ----------------------------------------------------------
