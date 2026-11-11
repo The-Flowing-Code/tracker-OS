@@ -25,8 +25,8 @@
 //
 //  11/11/2026 (v1.5.0): reportar_tiempo, para cualquier clave activa: los minutos
 //  con Claude de esa persona por dia y tipo de trabajo, que mide
-//  tools/medir-tiempo.mjs de TFC-OS en su maquina (set_tiempo_dias, migracion
-//  055). La persona sale de la clave: nadie reporta por otro. Solo totales.
+//  tools/medir-tiempo.mjs de TFC-OS en su maquina (set_tiempo_dias, migraciones
+//  055 y 056: con «sistemas y procesos», lo interno). La persona sale de la clave: nadie reporta por otro. Solo totales.
 //
 //  ⚠️  NADA DE ACA CAMBIA LA APP NI LOS CLIENTES (salvo lo de arriba). Es a proposito, y es lo que
 //  lo hace seguro: aunque a ese Claude le pidan "borra tal cosa", aca no
@@ -628,10 +628,10 @@ const HERRAMIENTAS = [
     description: "Sube tus minutos con Claude por día y tipo de trabajo, para la rueda «En qué se va el tiempo» del Dashboard. Mandá tal cual lo que imprime `node tools/medir-tiempo.mjs --json` en la raíz de TFC-OS. Reemplaza los días que mandás (volver a mandar la misma semana no suma dos veces). La persona sale de tu clave. Solo totales, nunca el contenido de las sesiones.",
     inputSchema: { type: "object", required: ["dias"], properties: {
       persona: { type: "string", description: "La que imprimió medir-tiempo (se compara con la de tu clave)" },
-      dias: { type: "array", description: "Hasta 31 días: {fecha AAAA-MM-DD, estrategia, optimizacion, implementacion, sin_clasificar} en minutos",
+      dias: { type: "array", description: "Hasta 31 días: {fecha AAAA-MM-DD, estrategia, optimizacion, implementacion, sistemas, sin_clasificar} en minutos",
         items: { type: "object", required: ["fecha"], properties: {
           fecha: { type: "string" }, estrategia: { type: "number" }, optimizacion: { type: "number" },
-          implementacion: { type: "number" }, sin_clasificar: { type: "number" } } } } } } },
+          implementacion: { type: "number" }, sistemas: { type: "number" }, sin_clasificar: { type: "number" } } } } } } },
   { name: "ver_cliente",
     description: "La ficha de un cliente: contacto, equipo, reuniones agendadas, etapas, tareas abiertas, llamadas cargadas, estado de la oferta, link al reporte de campaña y cambios propuestos. No incluye credenciales ni montos.",
     inputSchema: { type: "object", required: ["cliente"], properties: {
@@ -753,7 +753,7 @@ async function reportarTiempo(c: Clave, a: any) {
   if (dias.length > 31) return { error: "Hasta 31 días por vez." };
   const n = await rpc("set_tiempo_dias", { p_id: INTERNO, p_persona: persona, p_dias: dias });
   if (typeof n !== "number") return { error: "No se pudo guardar: " + JSON.stringify(n).slice(0, 200) };
-  const tot = dias.reduce((s: number, d: any) => s + ["estrategia", "optimizacion", "implementacion", "sin_clasificar"]
+  const tot = dias.reduce((s: number, d: any) => s + ["estrategia", "optimizacion", "implementacion", "sistemas", "sin_clasificar"]
     .reduce((x, k) => x + (Number(d?.[k]) || 0), 0), 0);
   return { ok: true, persona, dias: n, minutos: Math.round(tot),
            nota: "Quedó en el Dashboard, en «En qué se va el tiempo» (se ve al recargar la app)." };
