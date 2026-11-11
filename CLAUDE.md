@@ -117,6 +117,16 @@ los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
   cliente a `maquina.hechos` (id, texto, evidencia, fecha, taskId/ticket si es
   un ticket, origen 'rutina'|'claude', por). Solo service_role; agrega sin pisar
   y guarda 30 días. La app cierra o crea el ticket (js/avisos.js).
+- `set_tiempo_dias` (055): los minutos con Claude de cada persona por día y
+  tipo de trabajo (estrategia, optimizacion, implementacion, sin_clasificar),
+  que mide `tools/medir-tiempo.mjs` de TFC-OS en su máquina; solo totales, nunca
+  el contenido. Van en `maquina.tiempoEquipo` del cliente interno; cada reporte
+  reemplaza los días que trae de esa persona y se guardan 120 días. Lo escribe la
+  rutina `resumen-de-mis-llamadas`: Angie con `sbw`, el resto con
+  `reportar_tiempo` del conector (evolve-mcp v1.5.0, la persona sale de la clave).
+  La rueda del Dashboard («En qué se va el tiempo», `js/tiempo-equipo.js`, 11/11/2026)
+  suma eso y las llamadas grabadas de Fathom (tipo por el título, persona por
+  `grabo`); quien no reportó dice «sin datos», no cero.
 - Las policies de `clientes`, `config` y `llamadas_fathom` exigen **rol
   agencia**. Toda cuenta nueva nace como `cliente` sin acceso: para darle
   acceso a alguien hay que agregarle el perfil.
