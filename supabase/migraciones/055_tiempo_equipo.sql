@@ -56,7 +56,7 @@ begin
       'optimizacion',   round(coalesce((v_x->>'optimizacion')::numeric,0)),
       'implementacion', round(coalesce((v_x->>'implementacion')::numeric,0)),
       'sin_clasificar', round(coalesce((v_x->>'sin_clasificar')::numeric,0)),
-      'at', to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))));
+      'at', to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')));
   end loop;
 
   select coalesce(jsonb_agg(x), '[]'::jsonb) into v_viejos
