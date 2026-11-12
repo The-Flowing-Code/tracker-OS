@@ -10229,6 +10229,9 @@ function _ctxResumenHtml(c){
     +'</span>',
     ofDoc+(ds.length
       ? ds.map(function(d, _i){
+          // El texto del dataset (gen-oferta) sigue guardado para los generadores,
+          // pero no se lista: el dataset ya tiene su fila arriba, con el link.
+          if(ofDoc && d && d.auto==='gen-oferta') return '';
           // Los archivados no entran en ningun analisis, asi que no pueden
           // decir "leido": era la unica etiqueta y afirmaba lo contrario.
           var arch=(_docUso(d)==='archivo');
