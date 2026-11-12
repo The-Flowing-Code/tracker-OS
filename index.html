@@ -19448,7 +19448,7 @@ var MATERIALES=[
    proceso, para no gastar llamadas explicándolos. Si un Loom se grabó en dos
    partes, va una sola tarjeta con las partes en orden (`partes`); cuando se
    sube el video unido, queda `url` y las partes se sacan. */
-var MATERIALES_EQUIPO_ETAPAS=['Alta del cliente','Creativos','Lanzamiento','Optimización'];
+var MATERIALES_EQUIPO_ETAPAS=['Alta del cliente','Estrategia','Creativos','Lanzamiento','Optimización'];
 var MATERIALES_EQUIPO=[
   {e:'Alta del cliente', t:'Dar de alta a un cliente y armar su formulario', v:'v1 · 10/11/2026', ej:'Tracción Argentina',
    r:'Si un cliente no está en la app, sin contexto ni sesión abierta, no se le dio el alta: es grave.',
@@ -19457,6 +19457,13 @@ var MATERIALES_EQUIPO=[
       'El formulario de onboarding sale de las llamadas de venta: se revisa antes de mandarlo'],
    partes:[{l:'Parte 1 · El alta', url:'https://www.loom.com/share/b64d74b62c6f47b8aa93259d5f42472d'},
            {l:'Parte 2 · El formulario', url:'https://www.loom.com/share/bf7e86952aa04121a702eded31714b0f'}]},
+  {e:'Estrategia', t:'Armar el dataset de oferta', v:'v1 · 12/11/2026', sk:'armar-dataset-oferta',
+   r:'La oferta y la estrategia del cliente, en tres partes; ninguna avanza sin el OK de Angie.',
+   p:['A · Insumos: llamadas, sitio, campañas previas, pauta y un cliente parecido que ya lanzamos',
+      'B · Mercado: competencia directa e indirecta, voz del comprador, nivel de conciencia y 2 o 3 hipótesis',
+      'C · Oferta: ecuación de valor, filtro HIDE, mecanismos, creativos, embudo y proceso comercial',
+      'Estáticos primero por volumen; video si la oferta cuesta explicarla o el ticket es alto'],
+   url:'https://www.loom.com/share/e74618bd2a7548a19728a9e1d15d828a'},
   {e:'Creativos', t:'Crear los estáticos de un cliente', v:'v1 · 11/11/2026', sk:'planificar-set-estaticos', ej:'Nullcash',
    r:'Siempre con la skill y sin saltear pasos: 9 propuestas, se eligen 4 o 5.',
    p:['Tres grupos: promesa directa, disruptivos y estilo competencia',
@@ -19521,7 +19528,7 @@ function _matInstructivo(m, n){
       +'<span style="flex:none;width:24px;height:24px;border-radius:50%;background:var(--bg3);color:var(--strong);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums">'+n+'</span>'
       +'<div style="min-width:0"><div style="font-size:14px;font-weight:600;color:var(--strong);line-height:1.35">'+esc(m.t)+'</div>'
       +'<div style="font-size:12px;color:var(--text2,var(--text3));margin-top:4px;line-height:1.45">'+esc(m.r)+'</div></div></div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+(m.sk?chip(m.sk,true):'')+chip('Ejemplo: '+m.ej)+chip(m.v)+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+(m.sk?chip(m.sk,true):'')+(m.ej?chip('Ejemplo: '+m.ej):'')+chip(m.v)+'</div>'
     +'<ul style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:4px">'
       +m.p.map(function(x){ return '<li style="font-size:12px;color:var(--text3);line-height:1.45">'+esc(x)+'</li>'; }).join('')+'</ul>'
     +'<div style="margin-top:auto;padding-top:4px;display:flex;flex-direction:column;gap:6px">'+links.join('')+'</div>'
