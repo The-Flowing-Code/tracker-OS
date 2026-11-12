@@ -10214,7 +10214,7 @@ function _ctxResumenHtml(c){
       +'</div>';
     };
     ofDoc=fila('Dataset de oferta', o.texto, u, u, 'Link del dataset copiado')
-      +(uc?fila('Dataset de oferta, vista cliente', 'sin lo interno', uc, uc, 'Link de la vista cliente copiado'):'');
+      +((uc&&uc!==u)?fila('Dataset de oferta, vista cliente', 'sin lo interno', uc, uc, 'Link de la vista cliente copiado'):'');
   })();
 
   var der=bloque('Documentos',
