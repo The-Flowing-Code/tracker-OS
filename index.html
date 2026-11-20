@@ -10359,7 +10359,8 @@ function _ctxResumenHtml(c){
   var _rc=c.reporteCampana||{};
   var _rcUrl=(typeof _rc.url==='string'
     && /^https:\/\/claude\.ai\/artifact\/[A-Za-z0-9_-]{6,64}$/.test(_rc.url))?_rc.url:'';
-  var _rcFila=(_rcUrl||_rc.storage)
+  /* Archivado (Angie, 20/11/2026): ver el menú del cliente. */
+  var _rcFila=(false&&(_rcUrl||_rc.storage))
     ? ('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin-bottom:12px;'
         +'border:1px solid rgba(200,255,71,.25);border-radius:var(--radius);background:rgba(200,255,71,.04)">'
       +'<span style="flex:1;min-width:180px;font-size:12.5px;color:var(--text)">Reporte de campaña'
@@ -31947,7 +31948,9 @@ function cliMenu(ancla, clientId){
     +ir('cliMenuIr('+clientId+',\'top\')', _svg('<path d="M3 11l18-8-8 18-2-8z"/>'),'Top of Funnel','Gasto, alcance, CPL y avisos de Meta')
     +ir('cliMenuIr('+clientId+',\'middle\')', _svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/>'),'Middle of Funnel','Visitas y conversión de la landing')
     +ir('cliMenuIr('+clientId+',\'bottom\')', _svg('<path d="M12 2v20M17 6H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),'Bottom of Funnel','Agendas, cierres, revenue y CAC')
-    +(hayRep?ir('cliMenuCerrar();embReporte('+clientId+')', _svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/>'),'Reporte de campaña',
+    /* Reporte de campaña archivado (Angie, 20/11/2026: «nadie lo está usando, es
+       muy complejo»). Para volver a mostrarlo, sacar el `false&&`. */
+    +(false&&hayRep?ir('cliMenuCerrar();embReporte('+clientId+')', _svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 17v-3M12 17v-6M15 17v-2"/>'),'Reporte de campaña',
         'El de la mañana'+(r.at?(' · '+String(r.at).slice(8,10)+'/'+String(r.at).slice(5,7)):'')):'')
     /* Integraciones (Angie, 06/11/2026): conectar Meta o GHL desde acá, sin
        entrar a la ficha y buscar la pestaña. La bajada dice qué falta. */
@@ -43014,7 +43017,8 @@ function _embFunnelBtn(c, antes){
   var hay=!!(r && (r.storage || r.url));
   // Sin reporte no hay insignia: apagada en media cartera es ruido, y lo que
   // diria -"lo escribe la tarea de la mañana"- no se acciona desde aca.
-  if(!hay) return '';
+  // Archivado (Angie, 20/11/2026): sin insignia mientras el reporte esté archivado.
+  if(true||!hay) return '';
   var t='Reporte de campaña'
     +((r.at)?(' del '+String(r.at).slice(0,10).split('-').reverse().join('/')):'')
     +' — tocalo para verlo acá.';
