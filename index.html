@@ -1105,13 +1105,15 @@ body.light .fx-fecha{color-scheme:light}
   border:1.5px solid var(--accent);opacity:.55}
 @media (prefers-reduced-motion:reduce){.p3kpulso{animation:none}}
 .p3tk2r{min-height:109px}
-.p3tk2 .p3knom.b1::before{content:'';float:right;width:26px;height:2px}
-.p3tk2 .p3knom.b2::before{content:'';float:right;width:50px;height:2px}
-.p3tk2 .p3knom.b3::before{content:'';float:right;width:74px;height:2px}
-.p3tk2 .p3knom.b4::before{content:'';float:right;width:98px;height:2px}
-.p3tk2 .p3knom.b5::before{content:'';float:right;width:122px;height:2px}
-.p3tk2 .p3knom.b6::before{content:'';float:right;width:146px;height:2px}
-.p3tk2 .p3knom.b7::before{content:'';float:right;width:170px;height:2px}
+/* 29px por insignia (Angie, 20/11/2026): 22 de la insignia y 5 de separacion, mas un margen.
+   Con 24 por lugar no alcanzaba: con el 📊 la etiqueta «Prioritaria» se pisaba con los iconos. */
+.p3tk2 .p3knom.b1::before{content:'';float:right;width:29px;height:2px}
+.p3tk2 .p3knom.b2::before{content:'';float:right;width:58px;height:2px}
+.p3tk2 .p3knom.b3::before{content:'';float:right;width:87px;height:2px}
+.p3tk2 .p3knom.b4::before{content:'';float:right;width:116px;height:2px}
+.p3tk2 .p3knom.b5::before{content:'';float:right;width:145px;height:2px}
+.p3tk2 .p3knom.b6::before{content:'';float:right;width:174px;height:2px}
+.p3tk2 .p3knom.b7::before{content:'';float:right;width:203px;height:2px}
 /* ── La fila de insignias ────────────────────────────────────────────────
    Una sola caja flex arriba a la derecha. Adentro, cada insignia deja de
    ubicarse sola: el `right` fijo de .con1..con4 topaba en cuatro y las de mas
