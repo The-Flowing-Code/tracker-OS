@@ -32015,7 +32015,70 @@ function _embIco(parte, roto, tono){
 /* «Acerca del cliente» desde el menú de la tarjeta (Angie, 20/11/2026): el
    mismo bloque de la ficha (Success · Contexto), en una ventana, para leerlo
    sin salir del tablero. */
-function acercaCliente(id){ _cliVentana(id, _queHaceHtml, 'el contexto'); }
+function acercaCliente(id){
+  _cliVentana(id, function(c){
+    return _queHaceHtml(c)
+      +'<div style="margin-top:18px">'+_acercaPulsoHtml(c)+'</div>'
+      +'<div style="margin-top:18px"><div style="font-size:10px;font-weight:500;color:var(--text3);'
+        +'text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Llamadas - Fathom</div>'
+        +((typeof fathomCallsHTML==='function')?fathomCallsHTML(c):'')+'</div>';
+  }, 'el contexto');
+}
+/* Satisfacción, cambios y tiempo del equipo de UN cliente (Angie, 20/11/2026),
+   con lo que la app ya mide: el estado de cada llamada de Fathom y el «Ánimo»
+   del contexto; los cambios detectados y los cargados a mano; y las horas de
+   llamadas grabadas con el cliente. El tiempo con Claude no está por cliente
+   todavía (se mide por máquina), y se dice. */
+function _acercaPulsoHtml(c){
+  var caja='flex:1;min-width:220px;border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;background:var(--bg2)';
+  var rot='font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px';
+  var big='font-size:20px;font-weight:600;color:var(--strong);font-variant-numeric:tabular-nums';
+  var chico='font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:4px';
+  // Satisfacción
+  var calls=(c.fathomCalls||[]);
+  var ok=calls.filter(function(x){ return x&&x.sentiment==='satisfecho'; }).length;
+  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
+  var animo=((cx&&cx.puntos)||[]).filter(function(t){ return /^\s*Ánimo:/i.test(String(t)); })[0]||'';
+  var est=calls.length?((ok/calls.length>=0.6)?'Activo':'En riesgo'):'Sin llamadas';
+  var col=est==='Activo'?'var(--accent)':est==='En riesgo'?'var(--redx)':'var(--text3)';
+  var sat='<div style="'+caja+'"><div style="'+rot+'">Satisfacción del cliente</div>'
+    +'<div style="'+big+';color:'+col+'">'+est+'</div>'
+    +'<div style="'+chico+'">'+(calls.length?(ok+' de '+calls.length+' llamadas sin alertas'):'Todavía no hay llamadas grabadas')+'</div>'
+    +(animo?('<div style="'+chico+';color:var(--text2)">'+esc(String(animo).replace(/^\s*Ánimo:\s*/i,''))+'</div>'):'')
+    +'</div>';
+  // Cambios realizados
+  var todos=((c.cambiosDetectados&&c.cambiosDetectados.items)||[])
+    .concat(Array.isArray(c.cambiosManuales)?c.cambiosManuales:[])
+    .filter(function(x){ return x&&x.fecha; })
+    .sort(function(a,b){ return String(b.fecha).localeCompare(String(a.fecha)); });
+  var hace30=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+  var mes=todos.filter(function(x){ return String(x.fecha).slice(0,10)>=hace30; });
+  var delCli=mes.filter(function(x){ return x.lado==='cliente'; }).length;
+  var ult=todos[0];
+  var camb='<div style="'+caja+'"><div style="'+rot+'">Cambios realizados</div>'
+    +'<div style="'+big+'">'+mes.length+' <span style="font-size:12px;font-weight:400;color:var(--text3)">en 30 días</span></div>'
+    +'<div style="'+chico+'">'+(mes.length?((mes.length-delCli)+' nuestros · '+delCli+' del cliente'):'Ninguno en el último mes')+' · '+todos.length+' en total</div>'
+    +(ult?('<div style="'+chico+';color:var(--text2)">Último, '+esc(String(ult.fecha).slice(8,10)+'/'+String(ult.fecha).slice(5,7))+': '+esc(String(ult.texto||'').slice(0,80))+'</div>'):'')
+    +'</div>';
+  // Tiempo del equipo en ejecución
+  var min=0, n=0, porTipo={};
+  calls.forEach(function(l){
+    var m=(typeof _tqMinutos==='function')?_tqMinutos(l&&l.duration):0; if(!m) return;
+    min+=m; n++;
+    var t=(typeof tqTipoLlamada==='function')?tqTipoLlamada(l.title):'sin_clasificar';
+    porTipo[t]=(porTipo[t]||0)+m;
+  });
+  var hs=function(m){ m=Math.round(m); return m>=60?(Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')):(m+' min'); };
+  var nombres={estrategia:'estrategia',optimizacion:'optimización',implementacion:'implementación',sistemas:'sistemas',sin_clasificar:'sin clasificar'};
+  var reparto=Object.keys(porTipo).sort(function(a,b){ return porTipo[b]-porTipo[a]; })
+    .map(function(k){ return hs(porTipo[k])+' '+(nombres[k]||k); }).join(' · ');
+  var tq='<div style="'+caja+'"><div style="'+rot+'">Tiempo del equipo en ejecución</div>'
+    +'<div style="'+big+'">'+(min?hs(min):'—')+'</div>'
+    +'<div style="'+chico+'">'+(n?(n+' llamadas grabadas'+(reparto?(': '+reparto):'')):'Sin llamadas grabadas')+'</div>'
+    +'<div style="'+chico+'">El tiempo con Claude todavía no se mide por cliente.</div>'
+    +'</div>';
+  return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+sat+camb+tq+'</div>';
+}
 /* «Materiales» (Angie, 20/11/2026): embudos y landings, creativos, material,
    documentos, accesos y marca, el mismo bloque de la ficha (Success · Contexto). */
 function materialesCliente(id){ _cliVentana(id, _ctxResumenHtml, 'los materiales'); }
