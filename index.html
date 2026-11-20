@@ -1135,7 +1135,7 @@ body.light .fx-fecha{color-scheme:light}
     margin:-2px -2px 7px 0}
   .p3tk2 .p3knom::before{display:none}
 }
-/* Y con muchas insignias el corte es mas ancho: con cinco o mas, la reserva
+/* Y con muchas insignias el corte es mas ancho: con cuatro o mas (desde el 20/11/2026), la reserva
    del nombre pasa de 120px, y en una tarjeta de 300px el nombre quedaba con
    lo que sobraba. La clase la pone la tarjeta segun cuantas lleva; el ancho lo
    mide el CSS. Ninguno de los dos solo alcanza para decidir. */
@@ -1629,7 +1629,10 @@ details[open]>.pet-eth .pet-fl{transform:rotate(90deg)}
    Se abre desde el icono de la tarjeta y vive en el body, por encima de todo:
    adentro de la tarjeta lo cortaba el scroll de la columna. */
 /* .cpop.climenu y no .climenu: .cpop (mas abajo) le pisaba el ancho. */
-.cpop.climenu{width:340px;padding:14px 8px 10px}
+.cpop.climenu{width:340px;padding:14px 8px 10px;
+  /* Con Archivar y Eliminar el menu es mas alto que la pantalla en las tarjetas de abajo:
+     se achica a la pantalla y baja con scroll (Angie, 20/11/2026). */
+  max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain}
 .climenu .cp-lbl{padding:0 10px}
 /* Rediseño (Angie, 29/10/2026: «mejorame el diseño de las opciones»): una
    lista de menu, no tres cajas con borde. Cada opcion lleva su icono, el
@@ -31956,6 +31959,8 @@ function cliMenu(ancla, clientId){
   var r=base.getBoundingClientRect(), w=p.offsetWidth, h=p.offsetHeight;
   var x=Math.min(Math.max(12, r.left), window.innerWidth-w-12), y=r.bottom+8;
   if(y+h>window.innerHeight-12 && r.top-h-8>12) y=r.top-h-8;
+  // Si no entra ni abajo ni arriba, se sube hasta que entre: el resto se ve con scroll.
+  if(y+h>window.innerHeight-12) y=window.innerHeight-12-h;
   p.style.left=Math.round(x)+'px'; p.style.top=Math.round(Math.max(12,y))+'px';
   document.addEventListener('mousedown', _cliMenuFuera, true);
   document.addEventListener('keydown', _cliMenuTecla, true);
@@ -44547,7 +44552,7 @@ function p360Html(){
     // `muchas`: con cinco o mas lugares de insignias la fila baja arriba del
     // nombre aunque la tarjeta sea ancha (ver .p3kins en el CSS).
     return '<button class="p3tk2'+(extra?' p3tk2r':'')+(S.p360Abierto===d.c.id?' sel':'')
-        +(_nb>=5?' muchas':'')+'" '
+        +(_nb>=4?' muchas':'')+'" '
         +'draggable="true" ondragstart="p360Arrastrar(event,'+d.c.id+')" '
         +'ondragend="p360FinArrastre()" '
         +'onclick="p360Abrir('+d.c.id+')" '
