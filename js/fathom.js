@@ -2300,8 +2300,6 @@ function fathomCallsHTML(c){
       +btnAgregar
       +'</div>'
       +(_grupalesListaHtml(c)?('<div style="margin-top:10px">'+_grupalesListaHtml(c)+'</div>'):'')
-      +_ticketsDe(c).sort(function(a,b){ return _tsTicket(b)-_tsTicket(a); })
-        .map(function(t){ return '<div style="margin-top:8px">'+renderTaskRow(t, c.id, 'tl')+'</div>'; }).join('')
       +sug
       +citasProximasHtml(c);
   }
@@ -2387,7 +2385,8 @@ function fathomCallsHTML(c){
       toggle: "tlToggle("+c.id+",'"+cl.id+"',"+(_i===0?'true':'false')+")"
     }) });
   });
-  _ticketsDe(c).forEach(function(t){ _items.push({t:_tsTicket(t), h:renderTaskRow(t, c.id, 'tl')}); });
+  /* Las tareas ya no van en la línea de las llamadas (Angie, 20/11/2026: «que
+     las tareas no figuren»): viven en Tickets y en las tareas de la ficha. */
   _items.sort(function(a,b){ return b.t-a.t; });
   var _n=_items.length;
   var _rueda = _n>=4;
