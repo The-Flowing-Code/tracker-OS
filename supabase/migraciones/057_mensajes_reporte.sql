@@ -21,10 +21,16 @@ begin
     raise notice '057: ya acepta reporte';
     return;
   end if;
+  -- Con la 052 aplicada la lista es (leads, whatsapp, onboarding); sin ella, (leads, whatsapp).
+  -- Se suma 'reporte' a la que haya, sin agregar ni sacar ninguna otra.
   v_def := replace(v_def, 'not in (''leads'',''whatsapp'',''onboarding'')', 'not in (''leads'',''whatsapp'',''onboarding'',''reporte'')');
   v_def := replace(v_def, 'fuente tiene que ser leads, whatsapp u onboarding', 'fuente tiene que ser leads, whatsapp, onboarding o reporte');
   if position('''reporte''' in v_def) = 0 then
-    raise exception '057: no encontré la lista de fuentes para cambiar (¿está aplicada la 052?)';
+    v_def := replace(v_def, 'not in (''leads'',''whatsapp'')', 'not in (''leads'',''whatsapp'',''reporte'')');
+    v_def := replace(v_def, 'fuente tiene que ser leads o whatsapp', 'fuente tiene que ser leads, whatsapp o reporte');
+  end if;
+  if position('''reporte''' in v_def) = 0 then
+    raise exception '057: no encontré la lista de fuentes para cambiar';
   end if;
   execute v_def;
 end $$;
@@ -32,5 +38,5 @@ end $$;
 notify pgrst, 'reload schema';
 
 -- COMO SE VUELVE ATRAS
---   Volver a correr la definición con not in ('leads','whatsapp','onboarding').
+--   Volver a correr la definición con la lista que tenía antes (sin 'reporte').
 --   Lo que ya se guardó en maquina.mensajesDia.reporte queda, y la app lo sigue leyendo.
