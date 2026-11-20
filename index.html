@@ -31947,6 +31947,12 @@ function cliMenu(ancla, clientId){
     +'</div>'
     +'<div class="cm-sep">Ver</div>'
     +'<div class="cm-ops">'
+    /* Acerca del cliente (Angie, 20/11/2026): abre en una ventana lo mismo que
+       la ficha en Contexto: «Acerca del cliente», de qué vive, qué quiere con
+       nosotros y la facturación. */
+    +ir('cliMenuCerrar();acercaCliente('+clientId+')',
+        _svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),'Acerca del cliente',
+        'Qué hace, qué necesita y qué hay que saber')
     /* Embudo en partes (Angie, 20/11/2026): cada fila muestra el embudo con su
        parte llena, y la parte rota va en rojo. Cuál está rota sale de
        `c.embudoRoto` ({parte, tono, motivo}): lo calcula cada mañana la rutina
@@ -32002,6 +32008,25 @@ function _embIco(parte, roto, tono){
         +(esta?'fill="currentColor" stroke="currentColor"'
               :('fill="none" stroke="'+(r?col:'currentColor')+'" opacity="'+(r?'.9':'.35')+'"'))+'/>';
     }).join('')+'</svg>';
+}
+/* «Acerca del cliente» desde el menú de la tarjeta (Angie, 20/11/2026): el
+   mismo bloque de la ficha (Success · Contexto), en una ventana, para leerlo
+   sin salir del tablero. */
+function acercaCliente(id){
+  var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
+  if(!c) return;
+  var cuerpo='';
+  try{ cuerpo=_queHaceHtml(c); }catch(e){ cuerpo='<div style="font-size:12.5px;color:var(--text3)">No pude armar el contexto de este cliente.</div>'; }
+  document.getElementById('modal-root').innerHTML=
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
+    +'<div class="modal" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+        +'<div style="flex:1;font-size:16px;font-weight:600;color:var(--strong)">'+esc(c.name||'')+'</div>'
+        +'<button class="btn btn-sm" onclick="closeModal();selectClient('+c.id+');S._shHoja=\'contexto\';openClientTab(\'success\')">Abrir la ficha</button>'
+        +'<button class="btn btn-sm" onclick="closeModal()" aria-label="Cerrar">×</button>'
+      +'</div>'
+      +cuerpo
+    +'</div></div>';
 }
 function cliMenuIr(clientId, hoja){
   cliMenuCerrar();
