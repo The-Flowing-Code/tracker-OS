@@ -588,12 +588,13 @@ const HERRAMIENTAS = [
     description: "Deja los borradores de los mensajes del día de UN cliente en «Mensajes para mandar hoy» del tracker. No manda nada: los manda Santi a mano desde su WhatsApp. Pisa los de la corrida anterior de ese cliente y esa fuente. Solo para quien tiene permiso de mensajes. Tope diario compartido con guardar_parte.",
     inputSchema: { type: "object", required: ["cliente", "fuente", "fecha", "mensajes"], properties: {
       cliente: { type: "string", description: "Nombre (o parte) o id del cliente" },
-      fuente: { type: "string", description: "whatsapp (parte de WhatsApp) o leads (leads sin mensaje 1)" },
+      fuente: { type: "string", description: "whatsapp (parte de WhatsApp), leads (leads sin mensaje 1) o reporte (el reporte semanal del viernes; cada mensaje puede llevar link, https)" },
       fecha: { type: "string", description: "AAAA-MM-DD: el día en que se mandan" },
       mensajes: { type: "array", description: "Hasta 50", items: { type: "object", required: ["cliente", "texto"], properties: {
         cliente: { type: "string", description: "Hasta 80" }, donde: { type: "string", description: "Grupo o chat, hasta 120" },
         quien: { type: "string", description: "Quién lo manda, hasta 40" }, motivo: { type: "string", description: "Por qué, hasta 250" },
-        texto: { type: "string", description: "El mensaje, hasta 1500" } } } } } } },
+        texto: { type: "string", description: "El mensaje, hasta 1500" },
+        link: { type: "string", description: "Solo para fuente reporte: el link https al reporte semanal, hasta 500" } } } } } } },
   { name: "guardar_parte",
     description: "Deja el parte del día (lo que vigila la rutina) en el «buen día» o el «buenas noches» del tracker. Pisa el de la corrida anterior de esa fuente. Solo para quien tiene permiso de mensajes. Tope diario compartido con guardar_mensajes_dia.",
     inputSchema: { type: "object", required: ["fuente", "fecha", "momento"], properties: {
@@ -803,7 +804,9 @@ const corto = (s: unknown, n: number) => String(s ?? "").trim().length <= n;
 async function guardarMensajesDia(c: Clave, a: any) {
   const veto = await puedeEscribirMensajes(c); if (veto) return { error: veto };
   const fuente = String(a?.fuente || "");
-  if (fuente !== "whatsapp" && fuente !== "leads") return { error: "fuente tiene que ser whatsapp o leads." };
+  // 'reporte' (20/11/2026): el reporte semanal del viernes, con su link, para que el Claude de
+  // cualquiera del equipo lo deje corregido en «Mensajes para mandar hoy».
+  if (fuente !== "whatsapp" && fuente !== "leads" && fuente !== "reporte") return { error: "fuente tiene que ser whatsapp, leads o reporte." };
   const dia = fecha(a?.fecha); if (!dia) return { error: "Falta fecha AAAA-MM-DD (el día en que se mandan)." };
   const ms = Array.isArray(a?.mensajes) ? a.mensajes : null;
   if (!ms || ms.length > 50) return { error: "mensajes es una lista de hasta 50." };
@@ -820,6 +823,11 @@ async function guardarMensajesDia(c: Clave, a: any) {
     // El cliente de cada mensaje es el de la fila: así no se cuela uno ajeno.
     const x: any = { cliente: String(cli.nombre).slice(0, 80), texto };
     for (const k of ["donde", "quien", "motivo"]) if (String(m?.[k] || "").trim()) x[k] = String(m[k]).trim();
+    const link = String(m?.link || "").trim();
+    if (link) {
+      if (!/^https:\/\/\S+$/.test(link) || link.length > 500) return { error: "link tiene que ser una dirección https de hasta 500 caracteres." };
+      x.link = link;
+    }
     mensajes.push(x);
   }
   await rpc("set_mensajes_dia", { p_id: Number(cli.id), p_parte: { fuente, fecha: dia, mensajes } });
@@ -869,7 +877,7 @@ async function leerMensajesEstado(c: Clave, a: any) {
     if (f.n) nombres.add(String(f.n));
     const M = f.md && typeof f.md === "object" ? f.md : {};
     // Mismas claves que la app (_bv2MensHtml): día|fuente|cliente|n, contando por cliente.
-    for (const fu of ["leads", "whatsapp", "onboarding"]) {
+    for (const fu of ["leads", "whatsapp", "onboarding", "reporte"]) {
       const p = M[fu]; if (!p || p.fecha !== dia) continue;
       const cuenta: Record<string, number> = {};
       for (const x of (p.mensajes || [])) {
@@ -988,7 +996,7 @@ Deno.serve(async (req) => {
     return ok({
       protocolVersion: (m.params && m.params.protocolVersion) || "2025-03-26",
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: "evolve-os-consulta", version: "1.5.0" },
+      serverInfo: { name: "evolve-os-consulta", version: "1.6.0" },
       instructions: "Consulta de Evolve OS, el tracker de The Flowing Code: llamadas grabadas del equipo con su transcripción, y la ficha de cada cliente. Para una llamada: primero buscar_llamadas, después leer_llamada con el id. Para feedback comercial de un cliente: sop_comercial (el SOP Anti-Fugazi B2B) y después leer_conversaciones (chats de sus leads) o buscar_llamadas + leer_llamada. Para las rutinas de mensajes: estado_anuncios antes de hablar de campañas, guardar_mensajes_dia (uno por cliente) y guardar_parte; al cierre, leer_mensajes_estado. Los mensajes son borradores: nada se le manda a nadie desde acá. Lo demás que se puede cargar es un pedido de cambio o error de la app (pedir_cambio_app), que queda para revisión.",
     });
   }
