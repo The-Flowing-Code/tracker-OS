@@ -112,7 +112,11 @@ los de monitoreo (`_atnOrdenar`, estable). Lo prueba `tests/atencion.test.js`.
 - `set_mensajes_dia` (049): esas mismas rutinas redactan los mensajes que hay
   que mandarles a los clientes ese día y los dejan en
   `maquina.mensajesDia.{leads,whatsapp}`; el buen día los muestra con un
-  botón para copiar. La app no manda nada.
+  botón para copiar. La app no manda nada. Fuentes: `leads`, `whatsapp`, `onboarding`
+  (052) y `reporte` (057, 20/11/2026): el reporte semanal que arma los viernes la rutina
+  `reporte-semanal-clientes` de TFC-OS, con `link` al reporte. La tarjeta del cliente muestra
+  un 📊 (`repIconoHtml`, js/bienvenida.js) ese día hasta que se marca Listo; el conector lo
+  guarda con `guardar_mensajes_dia` (evolve-mcp v1.6.0, fuente `reporte`).
 - `agregar_hechos` (051): las rutinas de revisión y Claude suman lo hecho de un
   cliente a `maquina.hechos` (id, texto, evidencia, fecha, taskId/ticket si es
   un ticket, origen 'rutina'|'claude', por). Solo service_role; agrega sin pisar

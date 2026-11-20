@@ -44528,8 +44528,10 @@ function p360Html(){
        menos del que habia y el nombre largo se metia abajo del boton. */
     // El 💬 de los mensajes para mandar hoy (Angie, 09/11/2026, pedido 19).
     var _menIco=(typeof mensIconoHtml==='function')?mensIconoHtml(d.c):'';
+    // El 📊 del reporte semanal: solo el viernes y hasta que se marca Listo (Angie, 20/11/2026).
+    var _repIco=(typeof repIconoHtml==='function')?repIconoHtml(d.c):'';
     var _facIco=factIconoHtml(d.c);
-    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0)+(_menIco?1:0)+(_facIco?1:0);
+    var _nb=_nAntes+(_capIco?1:0)+(_cobIco?1:0)+(_ofeIco?1:0)+(_onbIco?1:0)+(_embIco?1:0)+(_incIco?2:0)+(_menIco?1:0)+(_repIco?1:0)+(_facIco?1:0);
     // En Reparto la tarjeta lleva un renglon mas -lo que le debe esa persona-,
     // asi que su piso es una linea mas alto. Dentro de cada vista siguen
     // midiendo todas lo mismo, que es lo que hace legible una columna.
@@ -44556,7 +44558,7 @@ function p360Html(){
       +'<div class="p3kins">'
       // El menu va primero: con row-reverse queda en la punta de arriba a la
       // derecha, antes del calendario o el + (Angie, 27/10/2026).
-      +_capIco+_menIco+_facIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
+      +_capIco+_repIco+_menIco+_facIco+calBtn+masBtn+_cobIco+_ofeIco+_onbIco+_embIco+_incIco
       // Una tarjeta de prospecto se crea sola desde una llamada: una prueba, un
       // mail mal leido o alguien del equipo abren una que no va. Si no se puede
       // borrar, queda para siempre ocupando una columna.

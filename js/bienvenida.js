@@ -549,7 +549,10 @@ function _bv2MensLista(noche){
     if(!M) return;
     /* 'onboarding' (02/11/2026): el mensaje con el link de bienvenida que deja
        Claude al armar la página, para que Santi lo copie. */
-    ['leads','whatsapp','onboarding'].forEach(function(f){
+    /* 'reporte' (Angie, 20/11/2026): el reporte semanal de cada cliente, con su
+       mensaje y su link. Lo arma la rutina reporte-semanal-clientes los viernes;
+       Santi lo audita, lo manda y lo marca Listo. */
+    ['leads','whatsapp','onboarding','reporte'].forEach(function(f){
       if(!vale(M[f])) return;
       (M[f].mensajes||[]).forEach(function(x0){
         var x=x0.cliente ? x0 : Object.assign({}, x0, {cliente:c.name||''});
@@ -586,6 +589,7 @@ function _bv2MensHtml(noche){
     if(ed) bots='<button class="acc" data-bv2mok="'+i+'" title="Guardar el texto">Guardar</button><button class="acc" data-bv2mno="1" title="Descartar los cambios">Cancelar</button>';
     else if(m.listo) bots='<span class="acc" style="border-color:var(--ok);color:var(--ok)">Mandado '+esc(_bv2Hora(new Date(m.listo)))+'</span><button class="acc" data-bv2mlisto="'+i+'" title="Volver a pendiente">Deshacer</button>';
     else bots='<a class="acc" href="'+esc(_bv2WaLink(m.texto))+'" target="_blank" rel="noopener" data-bv2wa="'+i+'" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center">Enviar</a>'
+      +(x.link?'<a class="acc" href="'+esc(x.link)+'" target="_blank" rel="noopener" title="Abrir el reporte para auditarlo" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center">Ver reporte</a>':'')
       +'<button class="acc" data-bv2copy="'+i+'" title="Copiar el mensaje">Copiar</button>'
       +'<button class="acc" data-bv2med="'+i+'" title="Editar el texto">Editar</button>'
       +'<button class="acc" data-bv2mlisto="'+i+'" title="Ya lo mandé">Listo</button>'
@@ -967,13 +971,29 @@ function mensIconoHtml(c){
      todas las tarjetas. Cuenta solo lo que espera una respuesta: lo que el
      cliente escribió por WhatsApp y el link de bienvenida. Al abrirlo se ven
      todos sus mensajes, el informe también. */
-  var pend=_mensDe(c).filter(function(m){ return !m.listo && m.k.split('|')[1]!=='leads'; }).length;
+  var pend=_mensDe(c).filter(function(m){ var f=m.k.split('|')[1]; return !m.listo && f!=='leads' && f!=='reporte'; }).length;
   if(!pend) return '';
   var t=(pend===1?'Hay un mensaje':'Hay '+pend+' mensajes')+' para mandar hoy. Tocalo para verlo.';
   return '<span class="p3kmens" role="button" tabindex="0" title="'+esc(t)+'" aria-label="'+esc(t)+'" '
     +'onclick="event.stopPropagation();mensCliPop(this,'+c.id+')" '
     +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();mensCliPop(this,'+c.id+');}">'
     +'<span aria-hidden="true">💬</span>'+(pend>1?'<b>'+pend+'</b>':'')+'</span>';
+}
+/* ── El 📊 del reporte semanal (Angie, 20/11/2026) ─────────────────────────
+   «Un emoji que solo aparezca los viernes, que es cuando el reporte está hecho,
+   que es para mandarlo. Y si ya se mandó, que no figure más.» Sale cuando el
+   cliente tiene un mensaje de la fuente 'reporte' para hoy sin marcar Listo:
+   la rutina lo deja con la fecha del viernes, así que otro día no aparece.
+   Al tocarlo se abre la misma ventanita del 💬, con Ver reporte, Enviar y Listo;
+   con Listo el 📊 se va. */
+function repIconoHtml(c){
+  var pend=_mensDe(c).filter(function(m){ return !m.listo && m.k.split('|')[1]==='reporte'; }).length;
+  if(!pend) return '';
+  var t='El reporte semanal está listo para auditar y mandar. Tocalo para verlo.';
+  return '<span class="p3kmens" role="button" tabindex="0" title="'+esc(t)+'" aria-label="'+esc(t)+'" '
+    +'onclick="event.stopPropagation();mensCliPop(this,'+c.id+',\'reporte\')" '
+    +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();mensCliPop(this,'+c.id+',\'reporte\');}">'
+    +'<span aria-hidden="true">📊</span></span>';
 }
 var _MENS_POP=[];
 function mensCliCerrar(){
@@ -983,11 +1003,11 @@ function mensCliCerrar(){
 }
 function _mensFuera(e){ var p=document.getElementById('mens-pop'); if(p && !p.contains(e.target)) mensCliCerrar(); }
 function _mensTecla(e){ if(e.key==='Escape'){ e.stopPropagation(); mensCliCerrar(); } }
-function mensCliPop(ancla, clientId){
+function mensCliPop(ancla, clientId, soloFuente){
   var c=(DB.clients||[]).find(function(x){ return x.id===clientId; }); if(!c) return;
   mensCliCerrar();
   _MENS_CACHE.L=null;
-  _MENS_POP=_mensDe(c).filter(function(m){ return !m.listo; });
+  _MENS_POP=_mensDe(c).filter(function(m){ return !m.listo && (!soloFuente || m.k.split('|')[1]===soloFuente); });
   if(!_MENS_POP.length) return;
   var caja='margin-top:6px;padding:9px 11px;border-radius:9px;background:var(--bg3);white-space:pre-wrap;'
     +'font-size:12.5px;line-height:1.5;color:var(--text);max-height:220px;overflow:auto';
@@ -1005,6 +1025,7 @@ function mensCliPop(ancla, clientId){
         +'<div style="'+caja+'">'+esc(m.texto)+'</div>'
         +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px">'
           +'<a style="'+bt+'" href="'+esc(_bv2WaLink(m.texto))+'" target="_blank" rel="noopener" title="'+esc('Abrir WhatsApp con el mensaje escrito'+(x.donde?(' · elegí «'+x.donde+'»'):''))+'">Enviar</a>'
+          +(x.link?'<a style="'+bt+'" href="'+esc(x.link)+'" target="_blank" rel="noopener" title="Abrir el reporte para auditarlo">Ver reporte</a>':'')
           +'<button style="'+bt+'" onclick="mensCliCopiar('+i+')">Copiar</button>'
           +'<button style="'+bt+';border-color:var(--accent);color:var(--accent)" onclick="mensCliListo('+i+')" title="Ya lo mandé">Listo</button>'
         +'</div></div>';
