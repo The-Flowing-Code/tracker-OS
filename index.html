@@ -1093,7 +1093,7 @@ body.light .fx-fecha{color-scheme:light}
   font-family:var(--font)}
 /* Tarjeta limpia del tablero (20/11/2026): sin piso de alto, la mide su contenido. */
 .p3tk2.p3limpia{min-height:0;padding:11px 13px;border-radius:14px}
-.p3tk2.p3limpia .p3klin{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.p3tk2.p3limpia .p3klin{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Las columnas miden 132px, no los 230px de la grilla del mockup. Reservar el
    ancho de las insignias en TODA la tarjeta dejaba unos 40px para el nombre y
    seguia cortandolo. El hueco se reserva solo en la primera linea, con un
@@ -32024,7 +32024,7 @@ function _cliVentana(id, arma, que, herr){
     +'<div class="modal" id="cli-ventana" data-cli="'+c.id+'" data-que="'+(herr?'acerca':'materiales')+'" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
         +'<div style="flex:1;font-size:16px;font-weight:600;color:var(--strong)">'+esc(c.name||'')+'</div>'
-        +(herr&&typeof _genteBoton==='function'?('<span style="display:flex;gap:2px;align-items:center">'+_genteBoton(c.id)+_herrBoton(c.id)+'</span>'):'')
+        +(herr&&typeof _genteBoton==='function'?('<span style="display:flex;gap:2px;align-items:center">'+_genteBoton(c.id)+'</span>'):'') /* Herramientas se sacó de la ventana (Angie, 20/11/2026). */
         +'<button class="btn btn-sm" onclick="closeModal();selectClient('+c.id+')">Abrir la ficha</button>'
         +'<button class="btn btn-sm" onclick="closeModal()" aria-label="Cerrar">×</button>'
       +'</div>'
@@ -44292,6 +44292,33 @@ function p360LenteLinea(c, k){
   }
   return null;
 }
+/* El menú del filtro por producto del Panel 360 (20/11/2026). */
+function p360FiltroMenu(btn){
+  var e=_masMenu(), sel=S.p360||'';
+  var tit=function(t){ return '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:8px 12px 4px">'+t+'</div>'; };
+  var fila=function(on, l, n, fn){
+    return '<div class="mas-op" onclick="masCerrar();'+fn+'">'
+      +'<div class="mas-op-t" style="display:flex;justify-content:space-between;gap:10px">'
+        +'<span'+(on?' style="color:var(--accent)"':'')+'>'+esc(l)+'</span>'
+        +(n!=null?('<span style="opacity:.6;font-variant-numeric:tabular-nums">'+n+'</span>'):'')+'</div></div>';
+  };
+  var opt=S.p360Opt||'';
+  e.innerHTML=tit('Producto')
+    +(window._P3_FILTROS||[]).map(function(x){
+      return fila(x[0]===sel, x[1], x[2], 'p360Filtro(\''+String(x[0]).replace(/'/g,"\\'")+'\')');
+    }).join('')
+    // AA+ y En garantía, dentro de Optimización (Angie, 20/11/2026: «lo filtraría directamente desde ahí»).
+    +tit('Optimización')
+    +[['','Todos'],['aa','AA+'],['gar','En garantía']].map(function(x){
+      return fila(opt===x[0], x[1], null, 'S.p360Opt=\''+x[0]+'\';showTickets()');
+    }).join('');
+  e.style.display='block';
+  setTimeout(function(){ document.addEventListener('click', masCerrar, {once:true}); }, 0);
+  window.addEventListener('resize', masCerrar, {once:true});
+  var r=btn.getBoundingClientRect(), alto=e.offsetHeight||200;
+  e.style.left=Math.max(8, Math.min(r.left, window.innerWidth-268))+'px';
+  e.style.top=(window.innerHeight-r.bottom>alto+12 ? (r.bottom+6) : Math.max(8, r.top-alto-6))+'px';
+}
 function p360Html(){
   // Se recalculan una vez por repintado: son dos medianas sobre la cartera y
   // dejarlas cacheadas entre pintadas las dejaria viejas despues de un sync.
@@ -44359,10 +44386,17 @@ function p360Html(){
   // Los filtros y las vistas bajan a una isla flotante al pie, como en el
   // embudo: se tocan poco y ocupaban dos filas arriba del tablero, que es lo
   // que uno viene a mirar.
-  var filtrosIsla=pill('','Todos',datos.length)
-    +(Object.keys(porProd).length?'<span class="ebsep"></span>':'')
-    +Object.keys(porProd).sort().map(function(p){ return pill(p,p,porProd[p]); }).join('')
-    +(nSin?pill('__sin','Sin producto',nSin):'');
+  /* Un solo botón con el embudo (Angie, 20/11/2026): las pastillas de producto
+     pasan a un menú que se abre al tocarlo. El botón dice el filtro activo. */
+  window._P3_FILTROS=[['','Todos',datos.length]]
+    .concat(Object.keys(porProd).sort().map(function(p){ return [p,p,porProd[p]]; }))
+    .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
+  var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
+  var _optL={aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'';
+  var filtrosIsla='<button class="eb'+((sel||_optL)?' on':'')+'" onclick="event.stopPropagation();p360FiltroMenu(this)" '
+      +'title="Filtrar por producto" aria-haspopup="menu" style="display:inline-flex;align-items:center;gap:6px">'
+    +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>'
+    +esc(_fAct[1])+'<span style="opacity:.6"> \u00b7 '+_fAct[2]+'</span>'+(_optL?(' · '+esc(_optL)):'')+'</button>';
   /* El cartel "Los prospectos se ven con cualquier filtro: todavia no tienen
      producto" se saco el 06/10 a pedido. Avisaba que con un producto elegido
      las tarjetas de prospecto igual aparecen, porque no compraron nada todavia.
@@ -44396,6 +44430,25 @@ function p360Html(){
   /* Urgentes arriba de cada columna, despues los de monitoreo (03/11/2026).
      Se puede porque arrastrar una tarjeta solo la cambia de etapa: adentro de
      la columna no hay orden a mano que romper. El resto queda como venia. */
+  /* Optimización (Angie, 20/11/2026): Recurrente, Recurrente AA+ y En garantía
+     eran tres columnas de clientes que ya lanzaron y están en campaña; las
+     separaba la situación comercial, no una etapa del trabajo. Se dibujan como
+     una sola columna; cada cliente conserva su etapa real (la ruta no cambia)
+     y AA+ y En garantía pasan a filtros. Soltar una tarjeta acá la deja en
+     Recurrente. */
+  var _OPT_RE=/^(recurrente( aa\+)?|en garantia)$/;
+  var _optIdx=[]; cols.forEach(function(x,i){ if(_OPT_RE.test(_p360Norm(x.l).trim())) _optIdx.push(i); });
+  if(_optIdx.length>=2){
+    var _optF=(S.p360Opt||'');
+    var _optCards=[]; _optIdx.forEach(function(i){ _optCards=_optCards.concat(cols[i].cards); });
+    var _optEt=function(d){ return _p360Norm((d.et&&d.et.l)||'').trim(); };
+    if(_optF==='aa') _optCards=_optCards.filter(function(d){ return /aa\+/.test(_optEt(d)); });
+    if(_optF==='gar') _optCards=_optCards.filter(function(d){ return /garantia/.test(_optEt(d)); });
+    var _optDrop=cols[_optIdx[0]].l;
+    var _optCol={l:'Optimización', drop:_optDrop, cards:_optCards, opt:true};
+    cols=cols.filter(function(x,i){ return _optIdx.indexOf(i)<0; });
+    cols.splice(_optIdx[0], 0, _optCol);
+  }
   cols.forEach(function(x){ x.cards=_atnOrdenar(x.cards); });
   // «Ver por»: lo más importante de esa vista, arriba de cada columna.
   var _lente=p360LenteActual();
@@ -44846,7 +44899,8 @@ function p360Html(){
           +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();p360AbrirSuccess('+d.c.id+');}">'
           +esc(d.c.name||'')+'</span></div>'
         // Abajo del nombre, la persona de contacto (Angie, 20/11/2026).
-        +_p3kPersona(d.c)
+        // Siempre el renglón, aunque no haya contacto: así miden todas lo mismo (20/11/2026).
+        +(_p3kPersona(d.c)||'<div class="p3kper" aria-hidden="true">&nbsp;</div>')
         +(_lin?('<div style="margin-top:6px">'+_lin.html+'</div>'):'')
       +'</button>';
     }
@@ -45006,13 +45060,13 @@ function p360Html(){
     +'<div'+((vista==='etapas')?'':' hidden')+'>'
     +'<div class="p3scroll"><div class="p3cols">'
     +cols.map(function(col){
-      var lb=esc(col.l).replace(/'/g,"\\'");
-      var conSubs=(S.p360Col===col.l && _p360ConSubs(col.l));
+      var lb=esc(col.drop||col.l).replace(/'/g,"\\'");
+      var conSubs=(!col.opt && S.p360Col===col.l && _p360ConSubs(col.l));
       return '<div class="p3col'+(conSubs?' p3abierta':'')+'" data-et="'+esc(col.l)+'" '
         +'ondragover="p360SobreCol(event,this)" ondragleave="this.classList.remove(\'p3drop\')" '
         +'ondrop="p360Soltar(event,this,\''+lb+'\')">'
         +'<div class="p3cab'+(S.p360Col===col.l?' p3cabsel':'')+'" '
-          +'onclick="p360AbrirCol(\''+esc(col.l).replace(/'/g,"\\'")+'\')" '
+          +(col.opt?'':('onclick="p360AbrirCol(\''+esc(col.l).replace(/'/g,"\\'")+'\')" '))
           +'title="Ver por donde va cada uno dentro de '+esc(col.l)+'">'
           +'<span>'+esc(col.l)
             +(conSubs?'<em class="p3volver">\u2190 ver todas las columnas</em>':'')
