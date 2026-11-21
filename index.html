@@ -44342,6 +44342,10 @@ function p360FiltroMenu(btn){
     +tit('Embudo · últimos 7 días')
     +[['','Todos'],['leads','Recibiendo leads'],['agenda','Agendando'],['venta','Vendiendo (30 días)'],['quieto','Sin movimiento'],['bajo','El costo por resultado bajó'],['subio','El costo por resultado subió']].map(function(x){
       return fila((S.p360Mov||'')===x[0], x[1], null, 'S.p360Mov=\''+x[0]+'\';showTickets()');
+    }).join('')
+    +tit('Satisfacción')
+    +[['','Todos'],['bien','Bien'],['riesgo','En riesgo'],['sin','Sin llamadas']].map(function(x){
+      return fila((S.p360Sat||'')===x[0], x[1], null, 'S.p360Sat=\''+x[0]+'\';showTickets()');
     }).join('');
   e.style.display='block';
   setTimeout(function(){ document.addEventListener('click', masCerrar, {once:true}); }, 0);
@@ -44416,6 +44420,11 @@ function p360Html(){
   if(_movF){
     ver=ver.filter(function(d){ var m=p360Momento(d.c); return m && m[_movF]; });
   }
+  // Satisfacción (Angie, 20/11/2026): la misma lectura que la vista «Satisfacción».
+  var _satF=(S.p360Sat||'');
+  if(_satF){
+    ver=ver.filter(function(d){ return (typeof _lSat==='function') && _lSat(d.c).est===_satF; });
+  }
 
   // Las pastillas usan la gramatica de la isla del embudo: mismo alto, mismo
   // redondeo, el activo en verde. Antes tenian su propia clase .p3f.
@@ -44435,7 +44444,8 @@ function p360Html(){
     .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
   var _optL=[{aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'',
-    {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento',bajo:'Costo bajó',subio:'Costo subió'}[S.p360Mov||'']||'']
+    {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento',bajo:'Costo bajó',subio:'Costo subió'}[S.p360Mov||'']||'',
+    {bien:'Satisfechos',riesgo:'En riesgo',sin:'Sin llamadas'}[S.p360Sat||'']||'']
     .filter(Boolean).join(' · ');
   var filtrosIsla='<button class="eb'+((sel||_optL)?' on':'')+'" onclick="event.stopPropagation();p360FiltroMenu(this)" '
       +'title="Filtrar por producto" aria-haspopup="menu" style="display:inline-flex;align-items:center;gap:6px">'
