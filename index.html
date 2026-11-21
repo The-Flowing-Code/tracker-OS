@@ -45058,6 +45058,7 @@ function p360Html(){
   // La primera pregunta al abrir el panel es en que etapa esta cada uno; el
   // reparto —quien tiene que moverlo— se pregunta despues y queda segundo.
   var vista=(S.p360Vista||'etapas');
+  if(vista==='reparto'||vista==='faltan') vista='etapas';
   var faltan=_p360Faltan(datos, sinRuta);
   var nFaltan=faltan.citas.length+faltan.etapa.length+faltan.prod.length
     +(faltan.adivinadas||[]).filter(function(x){ return x.dudosa; }).length
@@ -45219,7 +45220,8 @@ function p360Html(){
         :(q?('<span style="font-size:11px;color:var(--text3);white-space:nowrap">'
              +ver.length+(ver.length===1?' resultado':' resultados')+'</span>'):''))
       +'<span class="ebsep"></span>'
-      +[['etapas','Por cliente'],['lista','Lista'],['reparto','Reparto'],['faltan','Datos que faltan']]
+      +/* Reparto y Datos que faltan se sacaron de la isla (Angie, 20/11/2026). */
+      [['etapas','Por cliente'],['lista','Lista']]
         .map(function(x){
           return '<button class="eb'+((vista===x[0])?' on':'')
             +'" onclick="p360Vista(\''+x[0]+'\')">'+x[1]
