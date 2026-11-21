@@ -44293,6 +44293,25 @@ function p360LenteLinea(c, k){
   return null;
 }
 /* El menú del filtro por producto del Panel 360 (20/11/2026). */
+/* En qué momento del embudo está un cliente, con GHL (20/11/2026): recibiendo
+   leads (entró alguno en 7 días), agendando (alguno pasó a una etapa de agenda
+   en 7 días), vendiendo (una venta ganada en 30 días) o quieto (nada de eso). */
+function p360Momento(c){
+  var g=c&&c.ghl, ops=(g&&Array.isArray(g.opportunities))?g.opportunities:[];
+  if(!ops.length) return null;
+  var rules=(typeof getGhlRules==='function')?getGhlRules(c):{};
+  var norm=function(x){ return (typeof _n==='function')?_n(x):String(x||'').toLowerCase().trim(); };
+  var ag=(rules.agendas||[]).concat(rules.asistencias||[]).map(norm);
+  var ahora=Date.now(), S7=7*864e5, S30=30*864e5, m={leads:false,agenda:false,venta:false};
+  ops.forEach(function(o){
+    var tc=Date.parse(o.createdAt||'')||0, tu=Date.parse(o.updatedAt||o.dateUpdated||o.lastStatusChangeAt||'')||0;
+    if(ahora-tc<=S7) m.leads=true;
+    if(ahora-tu<=S7 && ag.indexOf(norm(o.pipelineStage))>=0) m.agenda=true;
+    if(o.status==='won' && ahora-tu<=S30) m.venta=true;
+  });
+  m.quieto=!(m.leads||m.agenda||m.venta);
+  return m;
+}
 function p360FiltroMenu(btn){
   var e=_masMenu(), sel=S.p360||'';
   var tit=function(t){ return '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:8px 12px 4px">'+t+'</div>'; };
@@ -44311,6 +44330,11 @@ function p360FiltroMenu(btn){
     +tit('Optimización')
     +[['','Todos'],['aa','AA+'],['gar','En garantía']].map(function(x){
       return fila(opt===x[0], x[1], null, 'S.p360Opt=\''+x[0]+'\';showTickets()');
+    }).join('')
+    // El momento del embudo (Angie, 20/11/2026: «recibiendo leads, agendando, vendiendo»).
+    +tit('Embudo · últimos 7 días')
+    +[['','Todos'],['leads','Recibiendo leads'],['agenda','Agendando'],['venta','Vendiendo (30 días)'],['quieto','Sin movimiento']].map(function(x){
+      return fila((S.p360Mov||'')===x[0], x[1], null, 'S.p360Mov=\''+x[0]+'\';showTickets()');
     }).join('');
   e.style.display='block';
   setTimeout(function(){ document.addEventListener('click', masCerrar, {once:true}); }, 0);
@@ -44374,6 +44398,17 @@ function p360Html(){
                         (d.et&&d.et.l)||''].join(' ')).indexOf(q)>=0;
     });
   }
+  /* Los filtros del menú del embudo filtran TODO el tablero (Angie, 20/11/2026),
+     no solo una columna: AA+ y En garantía por su etapa, y el momento del
+     embudo por lo que pasó en GHL en los últimos 7 días (ventas, 30 días). */
+  var _optF=(S.p360Opt||''), _movF=(S.p360Mov||'');
+  if(_optF){
+    ver=ver.filter(function(d){ var e=_p360Norm((d.et&&d.et.l)||'');
+      return _optF==='aa'?/aa\+/.test(e):/garantia/.test(e); });
+  }
+  if(_movF){
+    ver=ver.filter(function(d){ var m=p360Momento(d.c); return m && m[_movF]; });
+  }
 
   // Las pastillas usan la gramatica de la isla del embudo: mismo alto, mismo
   // redondeo, el activo en verde. Antes tenian su propia clase .p3f.
@@ -44392,7 +44427,9 @@ function p360Html(){
     .concat(Object.keys(porProd).sort().map(function(p){ return [p,p,porProd[p]]; }))
     .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
-  var _optL={aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'';
+  var _optL=[{aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'',
+    {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento'}[S.p360Mov||'']||'']
+    .filter(Boolean).join(' · ');
   var filtrosIsla='<button class="eb'+((sel||_optL)?' on':'')+'" onclick="event.stopPropagation();p360FiltroMenu(this)" '
       +'title="Filtrar por producto" aria-haspopup="menu" style="display:inline-flex;align-items:center;gap:6px">'
     +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>'
@@ -44439,11 +44476,7 @@ function p360Html(){
   var _OPT_RE=/^(recurrente( aa\+)?|en garantia)$/;
   var _optIdx=[]; cols.forEach(function(x,i){ if(_OPT_RE.test(_p360Norm(x.l).trim())) _optIdx.push(i); });
   if(_optIdx.length>=2){
-    var _optF=(S.p360Opt||'');
     var _optCards=[]; _optIdx.forEach(function(i){ _optCards=_optCards.concat(cols[i].cards); });
-    var _optEt=function(d){ return _p360Norm((d.et&&d.et.l)||'').trim(); };
-    if(_optF==='aa') _optCards=_optCards.filter(function(d){ return /aa\+/.test(_optEt(d)); });
-    if(_optF==='gar') _optCards=_optCards.filter(function(d){ return /garantia/.test(_optEt(d)); });
     var _optDrop=cols[_optIdx[0]].l;
     var _optCol={l:'Optimización', drop:_optDrop, cards:_optCards, opt:true};
     cols=cols.filter(function(x,i){ return _optIdx.indexOf(i)<0; });
