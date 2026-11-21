@@ -31794,11 +31794,16 @@ function cliMenuIconoHtml(c, antes){
   var ci=(window._P3_CITA||{})[c.id]||null, pend=!!(ci&&ci.pend);
   var t=pend ? (ci.cuando+': falta decir qué pasó. Tocalo para cargarlo.')
              : 'Agendar una reunión, ver el embudo o el reporte';
+  // Un punto lima en el ⋮ cuando hay mensajes para mandar hoy (20/11/2026).
+  var _msj=(typeof _mensDe==='function') && _mensDe(c).some(function(m){ return !m.listo; });
+  if(_msj && !pend) t='Hay mensajes para mandar hoy. '+t;
   return '<span class="p3kcap p3kmenu'+(pend?' pend':'')+(n?(' con'+Math.min(n,2)):'')+'" role="button" tabindex="0" '
     +'title="'+esc(t)+'" aria-label="'+esc(t)+'" aria-haspopup="menu" '
     +'onclick="event.stopPropagation();cliMenu(this,'+c.id+')" '
     +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();cliMenu(this,'+c.id+');}">'
-    +'<span class="p3kmenub" aria-hidden="true">⋮</span></span>';
+    +'<span class="p3kmenub" aria-hidden="true">⋮</span>'
+    +(_msj?'<span aria-hidden="true" style="position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px rgba(200,255,71,.7)"></span>':'')
+    +'</span>';
 }
 function cliMenuCerrar(){
   var p=document.getElementById('cli-menu');
@@ -31885,6 +31890,21 @@ function cliMenu(ancla, clientId){
     +ir('cliMenuCerrar();materialesCliente('+clientId+')',
         _svg('<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/>'),'Materiales',
         'Embudos, creativos, documentos, accesos y marca')
+    /* Mensajes de hoy (Angie, 20/11/2026): el 💬 y el 📊 salieron de la tarjeta
+       limpia; acá se abren los mensajes para mandar hoy, el reporte semanal
+       incluido. Solo aparece si hay alguno sin marcar Listo. */
+    +(function(){
+      var ms=(typeof _mensDe==='function')?_mensDe(c).filter(function(m){ return !m.listo; }):[];
+      if(!ms.length) return '';
+      var rep=ms.some(function(m){ return m.k.split('|')[1]==='reporte'; });
+      return ir('var a=window._cliMenuAncla;cliMenuCerrar();mensCliPop(a,'+clientId+')',
+        _svg('<path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/>'),'Mensajes de hoy',
+        (ms.length===1?'1 mensaje para mandar':ms.length+' mensajes para mandar')+(rep?' · 📊 reporte semanal':''));
+    })()
+    // Líneas de conversión (20/11/2026): cada cambio y cómo rindió desde ahí.
+    +ir('cliMenuCerrar();lineasCliente('+clientId+')',
+        _svg('<path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><circle cx="18" cy="8" r="1.5"/>'),'Líneas de conversión',
+        'Cada cambio y cómo rindió desde ahí')
     /* Embudo en partes (Angie, 20/11/2026): cada fila muestra el embudo con su
        parte llena, y la parte rota va en rojo. Cuál está rota sale de
        `c.embudoRoto` ({parte, tono, motivo}): lo calcula cada mañana la rutina
@@ -32018,14 +32038,14 @@ function _acercaPulsoHtml(c){
 /* «Materiales» (Angie, 20/11/2026): embudos y landings, creativos, material,
    documentos, accesos y marca, el mismo bloque de la ficha (Success · Contexto). */
 function materialesCliente(id){ _cliVentana(id, _ctxResumenHtml, 'los materiales'); }
-function _cliVentana(id, arma, que, herr){
+function _cliVentana(id, arma, que, herr, tipo){
   var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
   if(!c) return;
   var cuerpo='';
   try{ cuerpo=arma(c); }catch(e){ cuerpo='<div style="font-size:12.5px;color:var(--text3)">No pude armar '+que+' de este cliente.</div>'; }
   document.getElementById('modal-root').innerHTML=
     '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
-    +'<div class="modal" id="cli-ventana" data-cli="'+c.id+'" data-que="'+(herr?'acerca':'materiales')+'" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
+    +'<div class="modal" id="cli-ventana" data-cli="'+c.id+'" data-que="'+(tipo||(herr?'acerca':'materiales'))+'" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
         +'<div style="flex:1;font-size:16px;font-weight:600;color:var(--strong)">'+esc(c.name||'')+'</div>'
         +(herr&&typeof _genteBoton==='function'?('<span style="display:flex;gap:2px;align-items:center">'+_genteBoton(c.id)+'</span>'):'') /* Herramientas se sacó de la ventana (Angie, 20/11/2026). */
@@ -32182,10 +32202,102 @@ function _garantiaHtml(c){
 /* La ventana se repinta cuando algo de adentro guarda (editar «Acerca del
    cliente», leerlo con IA, cargar material): esas acciones llaman a renderTab,
    que repinta la ficha de atrás pero no la ventana. Se conserva el scroll. */
+/* ── Líneas de conversión (Ashtyn y Angie, llamada del 20/11/2026) ─────────
+   Cada día con cambios en la cuenta (Meta, GHL o cargados a mano) abre una
+   línea: A, B, C… Para cada una, QUÉ se cambió, con el detalle («se apagó el
+   anuncio X», no solo «Anuncios»), y cómo rindió desde ese día hasta la línea
+   siguiente: gasto de Meta, registros, agendas y sus costos. Así se mide desde
+   el último cambio sin abrir el reporte. Registros y agendas salen de GHL por
+   fecha de entrada; el gasto, de Meta por día (se pide una vez por ventana). */
+var _LIN_GASTO={}; // idCliente -> {dias:{AAAA-MM-DD:spend}, at} o {error}
+function _linDia(f){ return String(f||'').slice(0,10); }
+async function _linPedirGasto(c){
+  var k=c.id; if(_LIN_GASTO[k] && (_LIN_GASTO[k].pidiendo || Date.now()-_LIN_GASTO[k].at<30*60000)) return;
+  _LIN_GASTO[k]={pidiendo:true, at:Date.now()};
+  try{
+    var hasta=new Date(), desde=new Date(Date.now()-120*864e5);
+    var rango=JSON.stringify({since:isoDate(desde), until:isoDate(hasta)});
+    var url='https://graph.facebook.com/v25.0/act_'+c.metaAccountId+'/insights?fields=spend&level=account&time_increment=1&limit=200'
+      +'&time_range='+encodeURIComponent(rango)+'&access_token='+c.metaToken;
+    var dias={}, r=await fetch(url), j=await r.json();
+    if(j.error) throw new Error(j.error.message||'Meta');
+    (j.data||[]).forEach(function(x){ dias[x.date_start]=Number(x.spend)||0; });
+    _LIN_GASTO[k]={dias:dias, at:Date.now()};
+  }catch(e){ _LIN_GASTO[k]={error:String(e&&e.message||e), at:Date.now()}; }
+  try{ var v=document.getElementById('cli-ventana'); if(v && v.dataset.que==='lineas' && +v.dataset.cli===c.id) _cliVentanaRefrescar(); }catch(e){}
+}
+function _linLineas(c){
+  var todos=((c.cambiosDetectados&&c.cambiosDetectados.items)||[])
+    .concat(Array.isArray(c.cambiosManuales)?c.cambiosManuales:[])
+    .filter(function(x){ return x&&x.fecha; });
+  var porDia={};
+  todos.forEach(function(x){ var d=_linDia(x.fecha); (porDia[d]=porDia[d]||[]).push(x); });
+  var dias=Object.keys(porDia).sort();
+  var L='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  return dias.map(function(d,i){
+    var it=porDia[d].sort(function(a,b){ return String(a.fecha).localeCompare(String(b.fecha)); });
+    var letra=i<26?L[i]:(L[Math.floor(i/26)-1]+L[i%26]);
+    return {letra:letra, desde:d, hasta:dias[i+1]||null, items:it};
+  });
+}
+function _linTramo(c, ln){
+  var hoy=isoDate(new Date()), fin=ln.hasta||hoy;
+  var enT=function(f){ var d=_linDia(f); return d>=ln.desde && (ln.hasta?d<ln.hasta:d<=hoy); };
+  var ops=((c.ghl&&c.ghl.opportunities)||[]).filter(function(o){ return !/\btest|prueba/i.test(String(o.contactName||o.name||'')) && enT(o.createdAt); });
+  var rules=(typeof getGhlRules==='function')?getGhlRules(c):{};
+  var norm=function(x){ return (typeof _n==='function')?_n(x):String(x||'').toLowerCase().trim(); };
+  var ag=(rules.agendas||[]).concat(rules.asistencias||[], rules.llamadaEnVivo||[], rules.presentaciones||[]).map(norm);
+  var agendas=ops.filter(function(o){ return ag.indexOf(norm(o.pipelineStage))>=0 || o.status==='won'; }).length;
+  var G=_LIN_GASTO[c.id], gasto=null;
+  if(G && G.dias){ gasto=0; Object.keys(G.dias).forEach(function(d){ if(d>=ln.desde && (ln.hasta?d<ln.hasta:d<=hoy)) gasto+=G.dias[d]; }); }
+  var dd=Math.max(1, Math.round((new Date(fin)-new Date(ln.desde))/864e5)+(ln.hasta?0:1));
+  return {dias:dd, gasto:gasto, reg:ops.length, agendas:agendas,
+          cpr:(gasto!=null&&ops.length)?gasto/ops.length:null, cpa:(gasto!=null&&agendas)?gasto/agendas:null};
+}
+function _linPlata(n, mon){ if(n==null) return '—'; return (mon||'USD')+' '+(n>=100?Math.round(n).toLocaleString('es-AR'):n.toLocaleString('es-AR',{maximumFractionDigits:2})); }
+function lineasHtml(c){
+  if(c.metaToken && c.metaAccountId) _linPedirGasto(c);
+  var G=_LIN_GASTO[c.id], mon=c.metaCurrency||'USD';
+  var lineas=_linLineas(c).reverse().slice(0,12);
+  if(!lineas.length) return '<div style="font-size:13px;color:var(--text3);padding:20px 0">Todavía no hay cambios registrados en la cuenta de este cliente. Aparecen solos cuando la rutina de campañas detecta uno en Meta o GHL, o se cargan con «Registrar cambio».</div>';
+  var avisoGasto=!c.metaToken||!c.metaAccountId?'Sin Meta conectado: no hay gasto para calcular costos.'
+    :(G&&G.error)?('No pude traer el gasto de Meta: '+esc(G.error)):(G&&G.pidiendo&&!G.dias)?'Trayendo el gasto de Meta…':'';
+  var flecha=function(a,b,menosEsMejor){ if(a==null||b==null||!b) return ''; var r=a/b; if(Math.abs(r-1)<0.1) return '';
+    var bien=menosEsMejor?r<1:r>1; return ' <span style="font-size:11px;color:'+(bien?'var(--accent)':'var(--redx)')+'">'+(r>1?'↑':'↓')+Math.round(Math.abs(r-1)*100)+'%</span>'; };
+  var tramos=lineas.map(function(ln){ return _linTramo(c, ln); });
+  var ult=lineas[0], tu=tramos[0];
+  var celda=function(t,v,extra){ return '<div style="min-width:90px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">'+t+'</div><div style="font-size:15px;font-weight:600;color:var(--strong);font-variant-numeric:tabular-nums">'+v+(extra||'')+'</div></div>'; };
+  var cab='<div style="border:1px solid rgba(200,255,71,.35);background:rgba(200,255,71,.05);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:16px">'
+    +'<div style="font-size:12px;color:var(--text2);margin-bottom:10px">Desde el último cambio · <b style="color:var(--accent)">Línea '+ult.letra+'</b>, '+esc(ult.desde.split('-').reverse().join('/'))+' · hace '+tu.dias+' día'+(tu.dias===1?'':'s')+'</div>'
+    +'<div style="display:flex;gap:18px;flex-wrap:wrap">'+celda('Gasto',_linPlata(tu.gasto,mon))+celda('Registros',tu.reg)+celda('Costo por registro',_linPlata(tu.cpr,mon))+celda('Agendas',tu.agendas)+celda('Costo por agenda',_linPlata(tu.cpa,mon))+'</div>'
+    +(avisoGasto?('<div style="font-size:11.5px;color:var(--amberx);margin-top:8px">'+avisoGasto+'</div>'):'')+'</div>';
+  var filas=lineas.map(function(ln,i){
+    var t=tramos[i], prev=tramos[i+1]||null;
+    var quien=function(x){ return x.lado==='cliente'?' <span style="color:var(--amberx)">· lo hizo el cliente</span>':(x.lado==='equipo'?' <span style="color:var(--text3)">· equipo</span>':''); };
+    return '<div style="display:grid;grid-template-columns:54px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid var(--border)">'
+      +'<div><div style="font-size:22px;font-weight:700;color:var(--accent);line-height:1">'+ln.letra+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">'+esc(ln.desde.slice(8,10)+'/'+ln.desde.slice(5,7))+'</div></div>'
+      +'<div style="min-width:0">'
+        +'<ul style="margin:0 0 10px;padding-left:16px;display:flex;flex-direction:column;gap:3px">'+ln.items.map(function(x){ return '<li style="font-size:12.5px;color:var(--text2);line-height:1.45">'+esc(String(x.texto||'Cambio').slice(0,160))+quien(x)+'</li>'; }).join('')+'</ul>'
+        +'<div style="display:flex;gap:18px;flex-wrap:wrap">'
+          +celda(ln.hasta?(t.dias+' días'):('hace '+t.dias+' d'), ln.hasta?('hasta '+ln.hasta.slice(8,10)+'/'+ln.hasta.slice(5,7)):'en curso')
+          +celda('Gasto',_linPlata(t.gasto,mon))
+          +celda('Registros',t.reg)
+          +celda('Costo por registro',_linPlata(t.cpr,mon), prev?flecha(t.cpr,prev.cpr,true):'')
+          +celda('Agendas',t.agendas)
+          +celda('Costo por agenda',_linPlata(t.cpa,mon), prev?flecha(t.cpa,prev.cpa,true):'')
+        +'</div>'
+      +'</div></div>';
+  }).join('');
+  return cab+'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Cada cambio y cómo rindió hasta el siguiente</div>'+filas
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">'
+      +'<span style="font-size:11px;color:var(--text3)">Registros y agendas: los que entraron en cada tramo, por GHL. La flecha compara con la línea anterior.</span>'
+      +'<button class="btn btn-sm" onclick="cambioRegistrarModal('+c.id+')">Registrar cambio</button></div>';
+}
+function lineasCliente(id){ _cliVentana(id, lineasHtml, 'las líneas de conversión', false, 'lineas'); }
 function _cliVentanaRefrescar(){
   var v=document.getElementById('cli-ventana'); if(!v) return;
   var id=+v.dataset.cli, top=v.scrollTop, que=v.dataset.que;
-  if(que==='acerca') acercaCliente(id); else materialesCliente(id);
+  if(que==='acerca') acercaCliente(id); else if(que==='lineas') lineasCliente(id); else materialesCliente(id);
   var n=document.getElementById('cli-ventana'); if(n) n.scrollTop=top;
 }
 (function(){
