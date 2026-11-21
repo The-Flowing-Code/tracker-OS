@@ -108,6 +108,21 @@ async function mensPedirGasto(c, M){
   }, 400);
 }
 
+// Los gastos de un mes, del estado de resultados (DB.eerr['AAAA-MM']).
+function _mensCaja(M){
+  var D=(typeof DB!=='undefined' && DB.eerr && typeof DB.eerr==='object')?DB.eerr:{};
+  var d=D[M.ym]||null, cats=(typeof EERR_CATS!=='undefined')?EERR_CATS:[];
+  var hay=false, gas=0;
+  cats.forEach(function(c){ var v=d?d[c.k]:null; if(v!==''&&v!=null){ hay=true; gas+=Number(v)||0; } });
+  return {hay:hay, gas:hay?gas:null, txt:hay?_mensUsd(gas):'<span style="color:var(--text3);font-weight:400">sin gastos cargados</span>'};
+}
+function _mensNeto(R, M){
+  var g=_mensCaja(M);
+  if(!g.hay) return '—';
+  var n=(R.cobrado||0)-g.gas;
+  return '<span style="color:'+(n>=0?'var(--accent)':'var(--redx)')+'">'+(n<0?'−':'')+_mensUsd(Math.abs(n))+'</span>';
+}
+
 // Los numeros de un mes. `todos` incluye archivados (altas y abandono);
 // `activos` son los clientes de los que se miran las campañas.
 function mensCalcular(M, todos, activos){
@@ -235,6 +250,14 @@ function dashMensualHtml(activos){
     +fila('Tasa de abandono', _mensPct(A.tasaBaja), _mensPct(B.tasaBaja), _mensCambio(A.tasaBaja,B.tasaBaja,true), 'sobre los activos al empezar el mes ('+A.alInicio+' y '+B.alInicio+')', _mensPct(C.tasaBaja))
     +fila('Días hasta abandonar', _mensDiasTxt(A.diasBaja), _mensDiasTxt(B.diasBaja), '', 'del alta al archivo', _mensDiasTxt(C.diasBaja))
     +fila('Clientes que renovaron', '—', '—', '', 'la app todavía no guarda las renovaciones')
+    /* Flujo de caja (Angie, 20/11/2026): lo que entró (los pagos cobrados ese
+       mes) menos lo que salió (los gastos cargados en el estado de resultados
+       de ese mes). Sin gastos cargados, el neto no se muestra: daría el
+       cobrado entero como si no hubiera costos. */
+    +sec('Flujo de caja')
+    +fila('Entró', _mensUsd(A.cobrado), _mensUsd(B.cobrado), _mensCambio(A.cobrado,B.cobrado), 'pagos cobrados en el mes', _mensUsd(C.cobrado))
+    +fila('Salió', _mensCaja(MS[0]).txt, _mensCaja(MS[1]).txt, _mensCambio(_mensCaja(MS[0]).gas,_mensCaja(MS[1]).gas,true), 'gastos cargados en el estado de resultados (Finanzas)', _mensCaja(MS[2]).txt)
+    +fila('Flujo neto', _mensNeto(A,MS[0]), _mensNeto(B,MS[1]), '', 'entró menos salió; sin gastos cargados no se calcula', _mensNeto(C,MS[2]))
     +sec('Tiempo en cada etapa')
     +A.pasos.map(function(p,i){ var q=B.pasos[i], r=C.pasos[i];
         return fila(p.nombre, _mensDiasTxt(p.prom), _mensDiasTxt(q.prom), _mensCambio(p.prom,q.prom,true), 'de los que terminaron el paso ese mes ('+p.n+' y '+q.n+')', _mensDiasTxt(r.prom)); }).join('')

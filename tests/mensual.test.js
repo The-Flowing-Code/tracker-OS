@@ -10,7 +10,7 @@ import { cargar } from './cargar.js';
 const FUNCS = ['esc', '_n', 'isoDate', 'MENS_TEST', 'MENS_AGEND', 'MENS_ASIST', 'MENS_NOASIST', 'MENS_COMPRO',
   'MENS_NOMBRES', 'MENS_PASOS', 'MENS_GASTO', 'MENS_PIDIENDO', '_mensRepintar', 'mensMeses', '_mensFecha', '_mensEn',
   '_mensDia', '_mensDias', '_mensProm', '_mensReglas', 'mensClasificar', '_mensCliente', '_mensEsPrueba', 'mensGasto',
-  'mensCalcular', '_mensUsd', '_mensDiasTxt', '_mensPct', '_mensCambio', 'dashMensualHtml'];
+  'mensCalcular', '_mensCaja', '_mensNeto', '_mensUsd', '_mensDiasTxt', '_mensPct', '_mensCambio', 'dashMensualHtml'];
 
 const HOY = new Date(2026, 10, 4, 12);
 const op = (fecha, etapa, extra = {}) => ({ createdAt: fecha + 'T12:00:00Z', pipelineStage: etapa, status: 'open', contactName: 'Lead', ...extra });
@@ -74,6 +74,7 @@ describe('mes contra mes', () => {
     const html = a.dashMensualHtml([clienteA]);
     expect(html).toContain('mes contra mes');
     expect(html).toContain('Clientes que abandonaron');
+    expect(html).toContain('Flujo de caja');
     expect(html).toContain('Cliente B');
   });
 

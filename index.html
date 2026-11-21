@@ -20084,8 +20084,10 @@ function showTickets(){
        control que se toca todo el tiempo. */
     +((_torre==='calendario'&&typeof _calVistasHtml==='function')
       ? _calVistasHtml()
-      : ('<span style="font-size:11px;color:var(--text3)">'+_tkUltimaAct(tickets)+'</span>'
-    +'<button class="btn btn-sm btn-primary" onclick="actualizarTodo()" title="Sincroniza llamadas de Fathom y escanea conversaciones de WhatsApp">Actualizar</button>'
+      /* «actualizado hace X» y el botón Actualizar se sacaron (Angie, 20/11/2026):
+         el texto contaba el último ticket tocado, no la última sincronización, y
+         confundía. Fathom y la agenda se sincronizan solos; `actualizarTodo` queda. */
+      : (''
     +'<button id="tk-bell" class="btn btn-sm" style="border:none;padding:4px 8px;position:relative;color:var(--text3);display:none" aria-label="Avisos de esta pantalla" onclick="convAbrirDesdeBell()" title="Avisos de esta pantalla"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3a6 6 0 016 6v3l2 4H4l2-4V9a6 6 0 016-6zm-2 15a2 2 0 004 0"/></svg></button>'
     // El menu cambia segun la seccion: en Tickets estan las acciones de tickets,
     // en el resto solo la configuracion de agencia.
@@ -44215,6 +44217,7 @@ function dashboardHtml(){
    claude.ai/artifact/U3Y5U7Fjs9gu5YVzDYNe8X. */
 var P360_LENTES=[['','Etapa'],['leads','Movimiento de leads'],['bloq','Bloqueante'],['sat','Satisfacción'],['plata','Lo que más nos rindió']];
 function p360LenteActual(){
+  return ''; // «Ver por» sin selector (20/11/2026): el tablero siempre en Etapa.
   if(S.p360Lente===undefined){ try{ S.p360Lente=localStorage.getItem('evold-p360-lente')||''; }catch(e){ S.p360Lente=''; } }
   return P360_LENTES.some(function(x){ return x[0]===S.p360Lente; })?S.p360Lente:'';
 }
@@ -44378,8 +44381,14 @@ function p360Html(){
   // El filtro cuenta sobre el total, no sobre lo ya filtrado: si no, los
   // numeros de las pastillas cambian al tocarlas y no se puede comparar.
   var porProd={};
-  var nSin=0;
+  var nSin=0, _nTot=0;
+  /* Los números del menú cuentan lo que el tablero puede mostrar (Angie,
+     20/11/2026: «no funcionan bien los filtros»): sin las etapas de venta
+     cuando están ocultas. Antes decía «Todos · 59» con 30 tarjetas a la vista. */
+  var _ocultaVenta=(typeof p360SinVenta==='function' && p360SinVenta() && !S.p360Q);
   datos.forEach(function(d){
+    if(_ocultaVenta && d.et && typeof p360EsVenta==='function' && p360EsVenta(d.et.l)) return;
+    _nTot++;
     if(d.prod) porProd[d.prod]=(porProd[d.prod]||0)+1; else nSin++;
   });
   var sel=S.p360||'';
@@ -44439,7 +44448,7 @@ function p360Html(){
   // que uno viene a mirar.
   /* Un solo botón con el embudo (Angie, 20/11/2026): las pastillas de producto
      pasan a un menú que se abre al tocarlo. El botón dice el filtro activo. */
-  window._P3_FILTROS=[['','Todos',datos.length]]
+  window._P3_FILTROS=[['','Todos',_nTot]]
     .concat(Object.keys(porProd).sort().map(function(p){ return [p,p,porProd[p]]; }))
     .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
@@ -45091,13 +45100,7 @@ function p360Html(){
     // tablero para decir algo que se entiende mirandolo. LEAD queda definido
     // por si alguna vuelve, en un tooltip o en la isla.
     +filtros
-    // «Ver por» (20/11/2026), solo en el tablero por cliente.
-    +((vista==='etapas')?('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px">'
-      +'<span style="font-size:11px;color:var(--text3)">Ver por</span>'
-      +P360_LENTES.map(function(x){ var on=(x[0]===_lente);
-        return '<button class="btn btn-sm" onclick="p360Lente(\''+x[0]+'\')" style="border-radius:99px;font-size:11.5px;padding:3px 11px'
-          +(on?';background:var(--accent);color:#0B0D12;border-color:var(--accent)':'')+'">'+esc(x[1])+'</button>'; }).join('')
-      +'</div>'):'')
+    // «Ver por» se sacó (Angie, 20/11/2026: «esto eliminalo»). Las vistas siguen en P360_LENTES por si vuelven.
     // El bloque de procedimientos frenados se saco del tablero: es de la agencia
     // y no de un cliente, asi que no ayudaba a leer las columnas. Los SOP siguen
     // en su pantalla y el avance se ve en el chip de cada tarea.
