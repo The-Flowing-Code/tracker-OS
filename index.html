@@ -44310,6 +44310,13 @@ function p360Momento(c){
     if(o.status==='won' && ahora-tu<=S30) m.venta=true;
   });
   m.quieto=!(m.leads||m.agenda||m.venta);
+  /* El costo por resultado de Meta, contra la medición anterior (metaPulso):
+     bajó o subió más de un 10 % (Angie, 20/11/2026). */
+  var p=c.metaPulso, a=p&&p.anterior;
+  if(p&&!p.error&&a&&p.resultados>0&&a.resultados>0){
+    var hoy=p.gasto/p.resultados, antes=a.gasto/a.resultados;
+    if(antes>0){ m.bajo=hoy<antes*0.9; m.subio=hoy>antes*1.1; }
+  }
   return m;
 }
 function p360FiltroMenu(btn){
@@ -44333,7 +44340,7 @@ function p360FiltroMenu(btn){
     }).join('')
     // El momento del embudo (Angie, 20/11/2026: «recibiendo leads, agendando, vendiendo»).
     +tit('Embudo · últimos 7 días')
-    +[['','Todos'],['leads','Recibiendo leads'],['agenda','Agendando'],['venta','Vendiendo (30 días)'],['quieto','Sin movimiento']].map(function(x){
+    +[['','Todos'],['leads','Recibiendo leads'],['agenda','Agendando'],['venta','Vendiendo (30 días)'],['quieto','Sin movimiento'],['bajo','El costo por resultado bajó'],['subio','El costo por resultado subió']].map(function(x){
       return fila((S.p360Mov||'')===x[0], x[1], null, 'S.p360Mov=\''+x[0]+'\';showTickets()');
     }).join('');
   e.style.display='block';
@@ -44428,7 +44435,7 @@ function p360Html(){
     .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
   var _optL=[{aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'',
-    {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento'}[S.p360Mov||'']||'']
+    {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento',bajo:'Costo bajó',subio:'Costo subió'}[S.p360Mov||'']||'']
     .filter(Boolean).join(' · ');
   var filtrosIsla='<button class="eb'+((sel||_optL)?' on':'')+'" onclick="event.stopPropagation();p360FiltroMenu(this)" '
       +'title="Filtrar por producto" aria-haspopup="menu" style="display:inline-flex;align-items:center;gap:6px">'
