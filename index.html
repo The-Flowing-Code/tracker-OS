@@ -640,7 +640,7 @@ input[type=checkbox].sw:checked::after{transform:translateX(13px);background:var
 
 /* El menu del + . Va en body y no dentro de la seccion: adentro lo recortaba
    el overflow de la ficha y quedaba la mitad tapada. */
-#mas-menu{display:none;position:fixed;z-index:120;width:260px;background:var(--bg2);
+#mas-menu{display:none;position:fixed;z-index:1100;width:260px;background:var(--bg2);
   border:1px solid var(--border2);border-radius:var(--radius-lg);padding:5px;
   box-shadow:0 18px 50px rgba(0,0,0,0.55)}
 .mas-op{padding:8px 10px;border-radius:var(--radius);cursor:pointer}
@@ -30774,90 +30774,7 @@ function renderTab(){
         <div style="height:0.5px;background:var(--border);margin:18px 0 16px"></div>
 
 
-        ${contractLoaded && minDaily!==null ? `
-        <div style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px">Condiciones de garantia</div>
-        ${contract.origen==='llamada'?`
-        <div style="margin-bottom:10px;padding:9px 12px;border-radius:var(--radius-md);border:1px solid rgba(224,168,60,.3);background:rgba(224,168,60,.06);font-size:11.5px;color:var(--amberx);line-height:1.55">
-          Estas condiciones salen de lo que se dijo en la llamada de venta, no de un contrato firmado. Sirven para medir, no para reclamar.
-          ${(contract.falta||[]).length?`<span style="display:block;color:var(--text3);margin-top:3px">Sin hablar todavia: ${esc((contract.falta||[]).join(' · '))}</span>`:''}
-          ${contract.enPesos?`<span style="display:block;color:var(--text3);margin-top:3px">Se hablo en pesos (${esc(contract.enPesos)}): no lo converti, cargá el valor en dolares a mano.</span>`:''}
-        </div>`:''}
-        <div class="st-grid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="st-card ${dailyStatus}">
-            <div class="st-top">
-              <div class="st-name">Inversion diaria en pauta</div>
-              <span class="st-badge ${dailyStatus}">${stLabel(dailyStatus)}</span>
-            </div>
-            <div class="st-val">${dailySpend!==null?'$'+dailySpend:'-'}<span>/dia</span></div>
-            <div class="st-target">Minimo contractual: <strong>$${minDaily}/dia</strong></div>
-            <div class="st-bar"><div class="st-fill ${dailyStatus}" style="width:${stPct(dailySpend,minDaily)}%"></div></div>
-          </div>
-          <div class="st-card ${ocsMonthStatus}">
-            <div class="st-top">
-              <div class="st-name">OCs este mes</div>
-              <span class="st-badge ${ocsMonthStatus}">${stLabel(ocsMonthStatus)}</span>
-            </div>
-            <div class="st-val">${ocsMonth}<span>/${minOCsMonth}</span></div>
-            <div class="st-target">Garantia mensual: <strong>${minOCsMonth} OCs minimo</strong></div>
-            <div class="st-bar"><div class="st-fill ${ocsMonthStatus}" style="width:${stPct(ocsMonth,minOCsMonth)}%"></div></div>
-          </div>
-          <div class="st-card ${ocsTotalStatus}">
-            <div class="st-top">
-              <div class="st-name">OCs acumuladas (${contractDays}d)</div>
-              <span class="st-badge ${ocsTotalStatus}">${stLabel(ocsTotalStatus)}</span>
-            </div>
-            <div class="st-val">${ocs}<span>/${totalOCs}</span></div>
-            <div class="st-target">Garantia total: <strong>${totalOCs} OCs en ${contractDays} dias</strong></div>
-            <div class="st-bar"><div class="st-fill ${ocsTotalStatus}" style="width:${stPct(ocs,totalOCs)}%"></div></div>
-          </div>
-          <div class="st-card ${cplStatus}">
-            <div class="st-top">
-              <div class="st-name">Costo por OC</div>
-              <span class="st-badge ${cplStatus}">${{ok:'Por objetivo',warn:'Levemente alto',danger:'Por encima',na:'Sin datos'}[cplStatus]}</span>
-            </div>
-            <div class="st-val">${cplReal!==null?'$'+cplReal:'-'}<span> real</span></div>
-            <div class="st-target">Esperado por contrato: <strong>${cplEsperado!==null?'$'+cplEsperado:'-'}</strong>
-              ${cplReal&&cplEsperado?'<span style="margin-left:6px;font-size:11px;color:'+(cplReal<=cplEsperado?'var(--accent)':'var(--redx)')+'">'+(cplReal<=cplEsperado?'? '+(Math.round((1-cplReal/cplEsperado)*100))+'% mejor':'? '+(Math.round((cplReal/cplEsperado-1)*100))+'% mas caro')+'</span>':''}
-            </div>
-            <div class="st-bar"><div class="st-fill ${cplStatus}" style="width:${cplReal&&cplEsperado?Math.min(Math.round(cplEsperado/cplReal*100),100):0}%"></div></div>
-          </div>
-        </div>
-        <div class="st-guarantee">
-          <div class="st-g-top">
-            <div style="font-size:13px;font-weight:500;color:var(--strong)">Progreso hacia garantia de ${contractDays} dias</div>
-            <div style="font-size:13px;font-weight:500;color:${guarColor}">${ocs} / ${totalOCs} OCs <span style="font-size:11px;font-weight:400;color:var(--text3)">- dia ${daysActive2} de ${contractDays}</span></div>
-          </div>
-          <div class="st-g-bar"><div class="st-g-fill" style="width:${guarPct}%;background:${guarColor}"></div></div>
-          <div class="st-g-labels">
-            <span>0 OCs</span>
-            <span style="color:${guarColor};font-weight:500">${ocsLeft>0?'Faltan '+ocsLeft+' OCs'+(daysLeft>0?' en '+daysLeft+' dias':''):'?Garantia cumplida!'}</span>
-            <span>${totalOCs} OCs</span>
-          </div>
-        </div>` : (contractLoaded && contract._analyzing) ? `
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
-          <div style="font-size:13px;color:var(--text2)">? Analizando contrato con IA...</div>
-        </div>` : ''}
-
-        ${contractLoaded?`
-        <div style="margin-top:16px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg)">
-          <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:8px">Condiciones extraidas del contrato <span style="color:var(--text3);font-weight:400">(editables)</span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Inversion min. diaria ($)</div>
-              <input type="number" value="${minDaily||''}" placeholder="-" onchange="updateContractField(${c.id},'minDailyBudget',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">OCs garantizadas/mes</div>
-              <input type="number" value="${minOCsMonth||''}" placeholder="-" onchange="updateContractField(${c.id},'minOCsMonth',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">OCs totales garantizadas</div>
-              <input type="number" value="${totalOCs||''}" placeholder="-" onchange="updateContractField(${c.id},'totalOCs',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Fecha firma</div>
-              <input type="date" value="${contract.startDate||''}" onchange="updateContractField(${c.id},'startDate',this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font);color-scheme:dark"></div>
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Duracion (dias)</div>
-              <input type="number" value="${contractDays||''}" placeholder="-" onchange="updateContractField(${c.id},'durationDays',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
-            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Fecha vencimiento</div>
-              <input type="date" value="${contract.endDate||''}" onchange="updateContractField(${c.id},'endDate',this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font);color-scheme:dark"></div>
-          </div>
-        </div>`:''}
+        ${_garantiaHtml(c)}
 
         </div>
         </div>
@@ -32022,12 +31939,14 @@ function _embIco(parte, roto, tono){
    sin salir del tablero. */
 function acercaCliente(id){
   _cliVentana(id, function(c){
-    return _queHaceHtml(c)
+    return ((typeof _llSinVerHtml==='function')?_llSinVerHtml(c):'')
+      +_queHaceHtml(c)
       +'<div style="margin-top:18px">'+_acercaPulsoHtml(c)+'</div>'
       +'<div style="margin-top:18px"><div style="font-size:10px;font-weight:500;color:var(--text3);'
         +'text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Llamadas - Fathom</div>'
-        +((typeof fathomCallsHTML==='function')?fathomCallsHTML(c):'')+'</div>';
-  }, 'el contexto');
+        +((typeof fathomCallsHTML==='function')?fathomCallsHTML(c):'')+'</div>'
+      +'<div style="margin-top:18px">'+_garantiaHtml(c)+'</div>';
+  }, 'el contexto', true);
 }
 /* Satisfacción, cambios y tiempo del equipo de UN cliente (Angie, 20/11/2026),
    con lo que la app ya mide: el estado de cada llamada de Fathom y el «Ánimo»
@@ -32092,22 +32011,182 @@ function _acercaPulsoHtml(c){
 /* «Materiales» (Angie, 20/11/2026): embudos y landings, creativos, material,
    documentos, accesos y marca, el mismo bloque de la ficha (Success · Contexto). */
 function materialesCliente(id){ _cliVentana(id, _ctxResumenHtml, 'los materiales'); }
-function _cliVentana(id, arma, que){
+function _cliVentana(id, arma, que, herr){
   var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
   if(!c) return;
   var cuerpo='';
   try{ cuerpo=arma(c); }catch(e){ cuerpo='<div style="font-size:12.5px;color:var(--text3)">No pude armar '+que+' de este cliente.</div>'; }
   document.getElementById('modal-root').innerHTML=
     '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
-    +'<div class="modal" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
+    +'<div class="modal" id="cli-ventana" data-cli="'+c.id+'" data-que="'+(herr?'acerca':'materiales')+'" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
         +'<div style="flex:1;font-size:16px;font-weight:600;color:var(--strong)">'+esc(c.name||'')+'</div>'
+        +(herr&&typeof _genteBoton==='function'?('<span style="display:flex;gap:2px;align-items:center">'+_genteBoton(c.id)+_herrBoton(c.id)+'</span>'):'')
         +'<button class="btn btn-sm" onclick="closeModal();selectClient('+c.id+')">Abrir la ficha</button>'
         +'<button class="btn btn-sm" onclick="closeModal()" aria-label="Cerrar">×</button>'
       +'</div>'
       +cuerpo
     +'</div></div>';
 }
+/* Condiciones de garantía de un cliente, fuera del Success tracker (Angie,
+   20/11/2026): se usan en la ventana «Acerca del cliente». Mismo cálculo y
+   mismo armado que tenía la pestaña. */
+function _garantiaHtml(c){
+  try{
+      const contract = c.contract||{};
+      // Tambien cuenta como cargado cuando las condiciones salieron de la llamada
+      // de venta: el punto de sacarlas de ahi es justamente que no hay archivo
+      // subido, y exigirlo dejaba los campos llenos y la pantalla vacia. El
+      // cartel de arriba del panel dice de donde salen.
+      const contractLoaded = !!(contract.driveUrl||contract.fileName||contract.origen==='llamada');
+      // OCs = SQL (reuniones calificadas), NO registros
+      const ocs = c.conversionLines.reduce((s,l)=>{
+        const v = l.metrics?.sql;
+        return s + (v!==null&&v!==undefined ? Number(v) : 0);
+      }, 0);
+      const activeLine4oc = getActiveLine(c.conversionLines);
+      const sqlActive = activeLine4oc?.metrics?.sql;
+      const ocsMonth = (sqlActive!==null&&sqlActive!==undefined) ? Number(sqlActive) : 0;
+      const adSpent = (activeLine4oc||{}).metrics?.adSpent||0;
+      const daysActive2 = days(contract.startDate, null)||0;
+      const minDaily = contract.minDailyBudget||null;
+      const minOCsMonth = contract.minOCsMonth||null;
+      const totalOCs = contract.totalOCs||null;
+      const contractDays = contract.durationDays||90;
+  
+      // Pauta diaria real = ad spent total de todos los bloques / dias totales desde inicio
+      const totalAdSpent = c.conversionLines.reduce((s,l)=>s+(l.metrics?.adSpent||0),0);
+      const firstLine = c.conversionLines[0];
+      const totalDays = days(firstLine?.dateStart, null)||1;
+      const dailySpend = totalAdSpent && totalDays ? Math.round((totalAdSpent/totalDays)*100)/100 : null;
+  
+      // CPL esperado = inversion minima mensual / OCs garantizadas por mes
+      const cplEsperado = (minDaily && minOCsMonth && minOCsMonth>0)
+        ? Math.round(minDaily*30/minOCsMonth*100)/100 : null;
+      // CPL real = inversion total en pauta / SQL totales
+      const cplReal = (totalAdSpent && ocs && ocs>0)
+        ? Math.round(totalAdSpent/ocs*100)/100 : null;
+      const cplStatus = (!cplReal||!cplEsperado)?'na':(cplReal<=cplEsperado?'ok':cplReal<=cplEsperado*1.3?'warn':'danger');
+  
+      function stStatus(val, min, higherIsBetter=true){
+        if(val===null) return 'na';
+        return higherIsBetter ? (val>=min?'ok':val>=min*0.7?'warn':'danger') : (val<=min?'ok':val<=min*1.3?'warn':'danger');
+      }
+      function stLabel(s){ return {ok:'Cumple',warn:'En riesgo',danger:'Por debajo',na:'Sin datos'}[s]; }
+      function stPct(val,min,cap=150){ if(val===null||!min) return 0; return Math.min(Math.round(val/min*100),cap); }
+  
+      const dailyStatus = minDaily!==null ? stStatus(dailySpend, minDaily) : 'na';
+      const ocsMonthStatus = minOCsMonth!==null ? stStatus(ocsMonth, minOCsMonth) : 'na';
+      const ocsTotalStatus = totalOCs!==null ? stStatus(ocs, totalOCs) : 'na';
+  
+      // Progress guarantee bar
+      const guarPct = totalOCs ? Math.min(Math.round(ocs/totalOCs*100),100) : 0;
+      const daysLeft = contractDays - daysActive2;
+      const ocsLeft = totalOCs ? Math.max(totalOCs - ocs, 0) : 0;
+      const guarColor = guarPct>=80?'#C8FF47':guarPct>=50?'#BA7517':'#D85A30';
+    return `
+        ${contractLoaded && minDaily!==null ? `
+        <div style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px">Condiciones de garantia</div>
+        ${contract.origen==='llamada'?`
+        <div style="margin-bottom:10px;padding:9px 12px;border-radius:var(--radius-md);border:1px solid rgba(224,168,60,.3);background:rgba(224,168,60,.06);font-size:11.5px;color:var(--amberx);line-height:1.55">
+          Estas condiciones salen de lo que se dijo en la llamada de venta, no de un contrato firmado. Sirven para medir, no para reclamar.
+          ${(contract.falta||[]).length?`<span style="display:block;color:var(--text3);margin-top:3px">Sin hablar todavia: ${esc((contract.falta||[]).join(' · '))}</span>`:''}
+          ${contract.enPesos?`<span style="display:block;color:var(--text3);margin-top:3px">Se hablo en pesos (${esc(contract.enPesos)}): no lo converti, cargá el valor en dolares a mano.</span>`:''}
+        </div>`:''}
+        <div class="st-grid" style="grid-template-columns:repeat(2,1fr)">
+          <div class="st-card ${dailyStatus}">
+            <div class="st-top">
+              <div class="st-name">Inversion diaria en pauta</div>
+              <span class="st-badge ${dailyStatus}">${stLabel(dailyStatus)}</span>
+            </div>
+            <div class="st-val">${dailySpend!==null?'$'+dailySpend:'-'}<span>/dia</span></div>
+            <div class="st-target">Minimo contractual: <strong>$${minDaily}/dia</strong></div>
+            <div class="st-bar"><div class="st-fill ${dailyStatus}" style="width:${stPct(dailySpend,minDaily)}%"></div></div>
+          </div>
+          <div class="st-card ${ocsMonthStatus}">
+            <div class="st-top">
+              <div class="st-name">OCs este mes</div>
+              <span class="st-badge ${ocsMonthStatus}">${stLabel(ocsMonthStatus)}</span>
+            </div>
+            <div class="st-val">${ocsMonth}<span>/${minOCsMonth}</span></div>
+            <div class="st-target">Garantia mensual: <strong>${minOCsMonth} OCs minimo</strong></div>
+            <div class="st-bar"><div class="st-fill ${ocsMonthStatus}" style="width:${stPct(ocsMonth,minOCsMonth)}%"></div></div>
+          </div>
+          <div class="st-card ${ocsTotalStatus}">
+            <div class="st-top">
+              <div class="st-name">OCs acumuladas (${contractDays}d)</div>
+              <span class="st-badge ${ocsTotalStatus}">${stLabel(ocsTotalStatus)}</span>
+            </div>
+            <div class="st-val">${ocs}<span>/${totalOCs}</span></div>
+            <div class="st-target">Garantia total: <strong>${totalOCs} OCs en ${contractDays} dias</strong></div>
+            <div class="st-bar"><div class="st-fill ${ocsTotalStatus}" style="width:${stPct(ocs,totalOCs)}%"></div></div>
+          </div>
+          <div class="st-card ${cplStatus}">
+            <div class="st-top">
+              <div class="st-name">Costo por OC</div>
+              <span class="st-badge ${cplStatus}">${{ok:'Por objetivo',warn:'Levemente alto',danger:'Por encima',na:'Sin datos'}[cplStatus]}</span>
+            </div>
+            <div class="st-val">${cplReal!==null?'$'+cplReal:'-'}<span> real</span></div>
+            <div class="st-target">Esperado por contrato: <strong>${cplEsperado!==null?'$'+cplEsperado:'-'}</strong>
+              ${cplReal&&cplEsperado?'<span style="margin-left:6px;font-size:11px;color:'+(cplReal<=cplEsperado?'var(--accent)':'var(--redx)')+'">'+(cplReal<=cplEsperado?'? '+(Math.round((1-cplReal/cplEsperado)*100))+'% mejor':'? '+(Math.round((cplReal/cplEsperado-1)*100))+'% mas caro')+'</span>':''}
+            </div>
+            <div class="st-bar"><div class="st-fill ${cplStatus}" style="width:${cplReal&&cplEsperado?Math.min(Math.round(cplEsperado/cplReal*100),100):0}%"></div></div>
+          </div>
+        </div>
+        <div class="st-guarantee">
+          <div class="st-g-top">
+            <div style="font-size:13px;font-weight:500;color:var(--strong)">Progreso hacia garantia de ${contractDays} dias</div>
+            <div style="font-size:13px;font-weight:500;color:${guarColor}">${ocs} / ${totalOCs} OCs <span style="font-size:11px;font-weight:400;color:var(--text3)">- dia ${daysActive2} de ${contractDays}</span></div>
+          </div>
+          <div class="st-g-bar"><div class="st-g-fill" style="width:${guarPct}%;background:${guarColor}"></div></div>
+          <div class="st-g-labels">
+            <span>0 OCs</span>
+            <span style="color:${guarColor};font-weight:500">${ocsLeft>0?'Faltan '+ocsLeft+' OCs'+(daysLeft>0?' en '+daysLeft+' dias':''):'?Garantia cumplida!'}</span>
+            <span>${totalOCs} OCs</span>
+          </div>
+        </div>` : (contractLoaded && contract._analyzing) ? `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:13px;color:var(--text2)">? Analizando contrato con IA...</div>
+        </div>` : ''}
+
+        ${contractLoaded?`
+        <div style="margin-top:16px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg)">
+          <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:8px">Condiciones extraidas del contrato <span style="color:var(--text3);font-weight:400">(editables)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Inversion min. diaria ($)</div>
+              <input type="number" value="${minDaily||''}" placeholder="-" onchange="updateContractField(${c.id},'minDailyBudget',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">OCs garantizadas/mes</div>
+              <input type="number" value="${minOCsMonth||''}" placeholder="-" onchange="updateContractField(${c.id},'minOCsMonth',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">OCs totales garantizadas</div>
+              <input type="number" value="${totalOCs||''}" placeholder="-" onchange="updateContractField(${c.id},'totalOCs',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Fecha firma</div>
+              <input type="date" value="${contract.startDate||''}" onchange="updateContractField(${c.id},'startDate',this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font);color-scheme:dark"></div>
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Duracion (dias)</div>
+              <input type="number" value="${contractDays||''}" placeholder="-" onchange="updateContractField(${c.id},'durationDays',+this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font)"></div>
+            <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px">Fecha vencimiento</div>
+              <input type="date" value="${contract.endDate||''}" onchange="updateContractField(${c.id},'endDate',this.value)" style="width:100%;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--bg3);color:var(--strong);font-family:var(--font);color-scheme:dark"></div>
+          </div>
+        </div>`:''}
+`;
+  }catch(e){ console.warn('garantia:',e); return ''; }
+}
+/* La ventana se repinta cuando algo de adentro guarda (editar «Acerca del
+   cliente», leerlo con IA, cargar material): esas acciones llaman a renderTab,
+   que repinta la ficha de atrás pero no la ventana. Se conserva el scroll. */
+function _cliVentanaRefrescar(){
+  var v=document.getElementById('cli-ventana'); if(!v) return;
+  var id=+v.dataset.cli, top=v.scrollTop, que=v.dataset.que;
+  if(que==='acerca') acercaCliente(id); else materialesCliente(id);
+  var n=document.getElementById('cli-ventana'); if(n) n.scrollTop=top;
+}
+(function(){
+  if(typeof renderTab!=='function' || renderTab._conVentana) return;
+  var orig=renderTab;
+  renderTab=function(){ var r=orig.apply(this, arguments); try{ _cliVentanaRefrescar(); }catch(e){} return r; };
+  renderTab._conVentana=true;
+})();
 function cliMenuIr(clientId, hoja){
   cliMenuCerrar();
   selectClient(clientId);
@@ -44126,6 +44205,90 @@ function dashboardHtml(){
     +'<div style="height:40px"></div></div></div>';
 }
 
+/* ── «Ver por» del Panel 360 (Angie, 20/11/2026) ─────────────────────────
+   Según la vista, la línea de abajo de cada tarjeta y el orden dentro de cada
+   columna cambian: movimiento de leads, bloqueante, satisfacción o lo que más
+   nos rindió. «Etapa» es el tablero de siempre. Mockup aprobado:
+   claude.ai/artifact/U3Y5U7Fjs9gu5YVzDYNe8X. */
+var P360_LENTES=[['','Etapa'],['leads','Movimiento de leads'],['bloq','Bloqueante'],['sat','Satisfacción'],['plata','Lo que más nos rindió']];
+function p360LenteActual(){
+  if(S.p360Lente===undefined){ try{ S.p360Lente=localStorage.getItem('evold-p360-lente')||''; }catch(e){ S.p360Lente=''; } }
+  return P360_LENTES.some(function(x){ return x[0]===S.p360Lente; })?S.p360Lente:'';
+}
+function p360Lente(k){
+  S.p360Lente=k||'';
+  try{ localStorage.setItem('evold-p360-lente', S.p360Lente); }catch(e){}
+  showTickets();
+}
+var _LNEG=/molest|queja|desconf|preocup|sobrecarg|zombie|confundid|incómod|critic|crític/i;
+function _lPuntos(c){ var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null; return (cx&&cx.puntos)||[]; }
+function _lPunto(c, re){ return String(_lPuntos(c).filter(function(t){ return re.test(String(t)); })[0]||''); }
+function _lLeads(c){
+  var g=c&&c.ghl, ops=(g&&Array.isArray(g.opportunities))?g.opportunities:[];
+  if(!ops.length) return null;
+  var rules=(typeof getGhlRules==='function')?getGhlRules(c):{};
+  var norm=function(x){ return (typeof _n==='function')?_n(x):String(x||'').toLowerCase().trim(); };
+  var ag=(rules.agendas||[]).map(norm);
+  var ahora=Date.now(), S7=7*864e5, r7=0, rAnt=0, a7=0;
+  ops.forEach(function(o){
+    var tc=Date.parse(o.createdAt||'')||0, tu=Date.parse(o.updatedAt||o.dateUpdated||'')||0;
+    if(ahora-tc<=S7) r7++; else if(ahora-tc<=2*S7) rAnt++;
+    if(ahora-tu<=S7 && ag.indexOf(norm(o.pipelineStage))>=0) a7++;
+  });
+  return {r7:r7, rAnt:rAnt, a7:a7};
+}
+function _lSat(c){
+  var calls=c.fathomCalls||[], ok=calls.filter(function(x){ return x&&x.sentiment==='satisfecho'; }).length;
+  var animo=_lPunto(c, /^\s*Ánimo:/i).replace(/^\s*Ánimo:\s*/i,'');
+  var est=!calls.length?'sin':((ok<calls.length||_LNEG.test(animo))?'riesgo':'bien');
+  return {est:est, ok:ok, n:calls.length, animo:animo};
+}
+function _lBloq(c){
+  var t=_lPunto(c, /^\s*Trabado:/i).replace(/^\s*Trabado:\s*/i,'');
+  return {t:t, quien:!t?'':(/nosotros|nuestro|le debemos|lo destrabamos|lo destraba (angie|santi|ashtyn|el equipo)/i.test(t)?'nos':'cli')};
+}
+function _lPlata(c){
+  var pg=Array.isArray(c.pagos)?c.pagos:[], cob=0, pend=0;
+  pg.forEach(function(p){ var m=Number(p&&p.monto)||0; if(p&&p.pagadoAt) cob+=m; else pend+=m; });
+  return {cob:cob, pend:pend, fee:Number(c.monthlyFee)||0};
+}
+function _lUsd(n){ return 'USD '+Math.round(n||0).toLocaleString('es-AR'); }
+function p360LenteValor(c, k){
+  if(k==='leads'){ var l=_lLeads(c); return l?(l.r7*10+l.a7):-1; }
+  if(k==='bloq'){ var b=_lBloq(c); return b.quien==='nos'?2:b.quien==='cli'?1:0; }
+  if(k==='sat'){ var s=_lSat(c).est; return s==='riesgo'?2:s==='bien'?1:0; }
+  if(k==='plata'){ var p=_lPlata(c); return p.cob+p.fee*6; }
+  return 0;
+}
+/* La línea de la tarjeta y el color del borde según la vista. */
+function p360LenteLinea(c, k){
+  var pill=function(t,col,bg){ return '<span style="font-size:10.5px;font-weight:600;border-radius:99px;padding:1px 7px;margin-right:6px;white-space:nowrap;color:'+col+';background:'+bg+'">'+esc(t)+'</span>'; };
+  var R='var(--redx)', A='var(--amberx)', OK='var(--accent)';
+  var rojoBg='rgba(240,96,60,.15)', ambBg='rgba(240,138,40,.15)', okBg='rgba(200,255,71,.12)', mutBg='var(--bg3)';
+  var lin=function(html, tit){ return '<span class="p3klin" style="color:var(--text2)"'+(tit?(' title="'+esc(tit)+'"'):'')+'>'+html+'</span>'; };
+  if(k==='leads'){
+    var l=_lLeads(c), er=c.embudoRoto||{};
+    if(!l) return {edge:'', html:lin(pill('Sin datos de GHL','var(--text3)',mutBg))};
+    var d=l.r7-l.rAnt, dt=d>0?('<span style="color:'+OK+'">+'+d+'</span>'):d<0?('<span style="color:'+R+'">'+d+'</span>'):'=';
+    var roto=er.parte?pill(er.motivo||'Acá se encarece el costo', er.tono==='ambar'?A:R, er.tono==='ambar'?ambBg:rojoBg):'';
+    return {edge:er.parte?(er.tono==='ambar'?A:R):'', html:lin(roto+'<b style="color:var(--strong)">'+l.r7+'</b> leads en 7 d ('+dt+') · '+l.a7+' agendas', er.detalle||'')};
+  }
+  if(k==='bloq'){
+    var b=_lBloq(c);
+    if(!b.t) return {edge:'', html:lin(pill('Nada trabado',OK,okBg))};
+    return {edge:b.quien==='nos'?R:A, html:lin(pill(b.quien==='nos'?'Depende de nosotros':'Depende del cliente', b.quien==='nos'?R:A, b.quien==='nos'?rojoBg:ambBg)+esc(b.t), b.t)};
+  }
+  if(k==='sat'){
+    var s=_lSat(c);
+    var p=s.est==='riesgo'?pill('En riesgo',R,rojoBg):s.est==='bien'?pill('Bien',OK,okBg):pill('Sin llamadas','var(--text3)',mutBg);
+    return {edge:s.est==='riesgo'?R:'', html:lin(p+esc(s.animo||(s.n?(s.ok+' de '+s.n+' llamadas sin alertas'):'')), s.animo)};
+  }
+  if(k==='plata'){
+    var pl=_lPlata(c);
+    return {edge:'', html:lin('<b style="color:var(--accent)">'+_lUsd(pl.cob)+'</b> cobrados'+(pl.fee?(' · fee '+_lUsd(pl.fee)+'/mes'):'')+(pl.pend?(' · <span style="color:'+A+'">falta '+_lUsd(pl.pend)+'</span>'):''))};
+  }
+  return null;
+}
 function p360Html(){
   // Se recalculan una vez por repintado: son dos medianas sobre la cartera y
   // dejarlas cacheadas entre pintadas las dejaria viejas despues de un sync.
@@ -44231,6 +44394,10 @@ function p360Html(){
      Se puede porque arrastrar una tarjeta solo la cambia de etapa: adentro de
      la columna no hay orden a mano que romper. El resto queda como venia. */
   cols.forEach(function(x){ x.cards=_atnOrdenar(x.cards); });
+  // «Ver por»: lo más importante de esa vista, arriba de cada columna.
+  var _lente=p360LenteActual();
+  if(_lente) cols.forEach(function(x){ x.cards=x.cards.map(function(d,i){ return {d:d,i:i,v:p360LenteValor(d.c,_lente)}; })
+    .sort(function(a,b){ return (b.v-a.v)||(a.i-b.i); }).map(function(o){ return o.d; }); });
 
   /* ── "Recurrente" vuelve a ser una columna (06/10) ──────────────────
 
@@ -44658,6 +44825,7 @@ function p360Html(){
     if(lineaOferta) lineas=lineaOferta+lineas;
     if(extra) lineas=extra+lineas;
     var _emb=_embMovidoHtml(d.c);
+    var _lin=_lente?p360LenteLinea(d.c,_lente):null;
     // Cuantas insignias hay arriba a la derecha, para reservarles el lugar.
     var _nAntes=((calBtn||masBtn)?1:0)+(esProspecto(d.c)?1:0);
     // El birrete de la capacitacion se saco de la tarjeta (27/10/2026): no se
@@ -44695,6 +44863,7 @@ function p360Html(){
     // nombre aunque la tarjeta sea ancha (ver .p3kins en el CSS).
     return '<button class="p3tk2'+(extra?' p3tk2r':'')+(S.p360Abierto===d.c.id?' sel':'')
         +(_nb>=4?' muchas':'')+'" '
+        +((_lin&&_lin.edge)?('style="box-shadow:inset 3px 0 0 '+_lin.edge+'" '):'')
         +'draggable="true" ondragstart="p360Arrastrar(event,'+d.c.id+')" '
         +'ondragend="p360FinArrastre()" '
         +'onclick="p360Abrir('+d.c.id+')" '
@@ -44753,7 +44922,7 @@ function p360Html(){
       // viva en `_saludHtml` y se vuelve a poner cambiando esta linea.
       // Va primero: con un solo renglon visible, lo que se movio en el embudo le
       // gana a «51 d prendidas» (Angie, 04/11/2026).
-      +_emb+lineas
+      +(_lin?_lin.html:(_emb+lineas))
         +'</button>';
   };
   var vacias=cols.filter(function(x){ return !x.cards.length; }).length;
@@ -44793,6 +44962,13 @@ function p360Html(){
     // tablero para decir algo que se entiende mirandolo. LEAD queda definido
     // por si alguna vuelve, en un tooltip o en la isla.
     +filtros
+    // «Ver por» (20/11/2026), solo en el tablero por cliente.
+    +((vista==='etapas')?('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px">'
+      +'<span style="font-size:11px;color:var(--text3)">Ver por</span>'
+      +P360_LENTES.map(function(x){ var on=(x[0]===_lente);
+        return '<button class="btn btn-sm" onclick="p360Lente(\''+x[0]+'\')" style="border-radius:99px;font-size:11.5px;padding:3px 11px'
+          +(on?';background:var(--accent);color:#0B0D12;border-color:var(--accent)':'')+'">'+esc(x[1])+'</button>'; }).join('')
+      +'</div>'):'')
     // El bloque de procedimientos frenados se saco del tablero: es de la agencia
     // y no de un cliente, asi que no ayudaba a leer las columnas. Los SOP siguen
     // en su pantalla y el avance se ve en el chip de cada tarea.
