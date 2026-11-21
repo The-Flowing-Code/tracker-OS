@@ -44845,6 +44845,8 @@ function p360Html(){
           +'onclick="event.stopPropagation();p360AbrirSuccess('+d.c.id+')" '
           +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();p360AbrirSuccess('+d.c.id+');}">'
           +esc(d.c.name||'')+'</span></div>'
+        // Abajo del nombre, la persona de contacto (Angie, 20/11/2026).
+        +_p3kPersona(d.c)
         +(_lin?('<div style="margin-top:6px">'+_lin.html+'</div>'):'')
       +'</button>';
     }
