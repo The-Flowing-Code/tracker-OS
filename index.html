@@ -7271,16 +7271,21 @@ function toggleRecurrente(clientId){
   renderSidebar();
 }
 
-function selectClient(id){if(typeof stopActPoll==='function')stopActPoll();var _ts=document.getElementById('torre-sub');if(_ts)_ts.classList.remove('on');if(typeof mpStopPoll==='function')mpStopPoll();S.clientId=id;S.view='client';S.clientView='ficha';S.tab='success';renderSidebar();renderClient();collapseSidebar();}
-function openClientTab(tabKey){S.tab=tabKey;S.clientView='full';renderClient();}
+function selectClient(id){if(typeof stopActPoll==='function')stopActPoll();var _ts=document.getElementById('torre-sub');if(_ts)_ts.classList.remove('on');if(typeof mpStopPoll==='function')mpStopPoll();S.clientId=id;S.view='client';S.clientView='ficha';S.tab='embudo';renderSidebar();renderClient();collapseSidebar();}
+function openClientTab(tabKey){
+  if(tabKey==='success'){ var _id=S.clientId; S.tab='embudo'; S.clientView='full'; renderClient(); if(_id&&typeof acercaCliente==='function') acercaCliente(_id); return; }
+  S.tab=tabKey;S.clientView='full';renderClient();
+}
 function backToFicha(){S.clientView='ficha';renderClient();}
 function setMetricsView(v){S.metricsView=v;renderClient();}
 
 // 'lineas' salio del hub: el historico semanal de Ads & Guiones lo reemplaza.
 // La estructura conversionLines sigue existiendo por debajo como contenedor del
 // arbol de campanas de Meta (ver syncMetaAds), no como una vista que se navega.
+/* Success tracker se sacó (Angie, 20/11/2026): lo que tenía se abre desde el
+   menú de la tarjeta, en «Acerca del cliente» y «Materiales». El código de la
+   pestaña queda; si alguien pide 'success', se abre «Acerca del cliente». */
 const CLIENT_TABS=[
-  {k:'success', l:'Success tracker', icon:'M4 20V10M10 20V4M16 20v-7M22 20H2'},
   {k:'embudo', l:'Embudo de Ventas', icon:'M4 4h16l-6 8v6l-4 2v-8z'},
   {k:'integraciones', l:'Integraciones', icon:'M9 7V2m6 5V2M7 7h10v4a5 5 0 01-10 0V7zm5 9v6'},
 ];
@@ -7294,7 +7299,7 @@ function renderClientFicha(c){
   // Success tracker va destacado: es a donde se entra casi siempre, y en una
   // isla de tres destinos iguales hay que leer los tres para elegir.
   const pillsHtml=CLIENT_TABS.map(function(t){
-    var fuerte=(t.k==='success');
+    var fuerte=(t.k==='embudo');
     return '<button class="fic-nav'+(fuerte?' fic-nav-fuerte':'')+'" '
       +'onclick="openClientTab(\''+t.k+'\')">'+esc(t.l)+'</button>';
   }).join('');
@@ -7334,7 +7339,7 @@ function renderClient(){
   // ficha y las pestañas van arriba. Queda solo para un archivado, que avisa.
   if(S.clientView!=='full'){
     if(c.archived){ renderClientFicha(c); return; }
-    S.clientView='full'; if(!S.tab) S.tab='success';
+    S.clientView='full'; if(!S.tab||S.tab==='success') S.tab='embudo';
   }
   const al=getActiveLine(c.conversionLines);
   const m=al?.metrics||{};
@@ -7443,7 +7448,7 @@ function renderClient(){
   renderTab();
 }
 
-function switchTab(t){S.tab=t;document.querySelectorAll('.tab').forEach(el=>{el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith({lineas:'lineas de',live:'tiempo',success:'su',ads:'ad',diagnostico:'di',ventas:'co',tareas:'ta'}[t]))});renderTab();}
+function switchTab(t){if(t==='success'){openClientTab('success');return;}S.tab=t;document.querySelectorAll('.tab').forEach(el=>{el.classList.toggle('active',el.textContent.trim().toLowerCase().startsWith({lineas:'lineas de',live:'tiempo',success:'su',ads:'ad',diagnostico:'di',ventas:'co',tareas:'ta'}[t]))});renderTab();}
 
 function buildTimelineHtml(c){
   const lines=c.conversionLines||[];
@@ -30598,7 +30603,7 @@ function renderTab(){
   }
   // Alarmas vive arriba de Informes; las tareas del cliente, en Success tracker.
   if(S.tab==='alarmas'){ S._hoja='informes'; S.tab='embudo'; }
-  if(S.tab==='tareas') S.tab='success';
+  if(S.tab==='tareas'||S.tab==='success') S.tab='embudo';
 
   if(S.tab==='lineas'){
     const ROWS=buildMetricRows(c,{live:false});
@@ -32060,22 +32065,27 @@ function _acercaPulsoHtml(c){
     +'<div style="'+chico+'">'+(mes.length?((mes.length-delCli)+' nuestros · '+delCli+' del cliente'):'Ninguno en el último mes')+' · '+todos.length+' en total</div>'
     +(ult?('<div style="'+chico+';color:var(--text2)">Último, '+esc(String(ult.fecha).slice(8,10)+'/'+String(ult.fecha).slice(5,7))+': '+esc(String(ult.texto||'').slice(0,80))+'</div>'):'')
     +'</div>';
-  // Tiempo del equipo en ejecución
-  var min=0, n=0, porTipo={};
+  // Tiempo del equipo: las llamadas y las tareas van separadas (Angie, 20/11/2026:
+  // «una cosa es hora en llamada y otra en tareas»). Las horas en tareas no se
+  // miden todavía; se muestra cuántas se cerraron y cuántas quedan abiertas.
+  var min=0, n=0;
   calls.forEach(function(l){
     var m=(typeof _tqMinutos==='function')?_tqMinutos(l&&l.duration):0; if(!m) return;
     min+=m; n++;
-    var t=(typeof tqTipoLlamada==='function')?tqTipoLlamada(l.title):'sin_clasificar';
-    porTipo[t]=(porTipo[t]||0)+m;
   });
   var hs=function(m){ m=Math.round(m); return m>=60?(Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')):(m+' min'); };
-  var nombres={estrategia:'estrategia',optimizacion:'optimización',implementacion:'implementación',sistemas:'sistemas',sin_clasificar:'sin clasificar'};
-  var reparto=Object.keys(porTipo).sort(function(a,b){ return porTipo[b]-porTipo[a]; })
-    .map(function(k){ return hs(porTipo[k])+' '+(nombres[k]||k); }).join(' · ');
+  var tareas=(c.tasks||[]).filter(function(t){ return t&&!t.archived; });
+  var cerr30=tareas.filter(function(t){ return t.done&&String(t.doneAt||'').slice(0,10)>=hace30; }).length;
+  var abiertas=tareas.filter(function(t){ return !t.done; }).length;
+  var fila=function(tit, val, nota){
+    return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--border)">'
+      +'<span style="font-size:12px;color:var(--text2)">'+tit+'</span>'
+      +'<span style="text-align:right"><b style="font-size:15px;font-weight:600;color:var(--strong);font-variant-numeric:tabular-nums">'+val+'</b>'
+      +'<span style="display:block;font-size:11px;color:var(--text3)">'+nota+'</span></span></div>';
+  };
   var tq='<div style="'+caja+'"><div style="'+rot+'">Tiempo del equipo en ejecución</div>'
-    +'<div style="'+big+'">'+(min?hs(min):'—')+'</div>'
-    +'<div style="'+chico+'">'+(n?(n+' llamadas grabadas'+(reparto?(': '+reparto):'')):'Sin llamadas grabadas')+'</div>'
-    +'<div style="'+chico+'">El tiempo con Claude todavía no se mide por cliente.</div>'
+    +fila('En llamadas', min?hs(min):'—', n?(n+' llamadas grabadas'):'sin llamadas grabadas')
+    +fila('En tareas', 'Sin medir', cerr30+' cerradas en 30 días · '+abiertas+' abiertas')
     +'</div>';
   return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+sat+camb+tq+'</div>';
 }
@@ -32092,7 +32102,7 @@ function _cliVentana(id, arma, que){
     +'<div class="modal" style="width:min(1100px,94vw);max-width:none;max-height:88vh;overflow:auto;padding:20px 22px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
         +'<div style="flex:1;font-size:16px;font-weight:600;color:var(--strong)">'+esc(c.name||'')+'</div>'
-        +'<button class="btn btn-sm" onclick="closeModal();selectClient('+c.id+');S._shHoja=\'contexto\';openClientTab(\'success\')">Abrir la ficha</button>'
+        +'<button class="btn btn-sm" onclick="closeModal();selectClient('+c.id+')">Abrir la ficha</button>'
         +'<button class="btn btn-sm" onclick="closeModal()" aria-label="Cerrar">×</button>'
       +'</div>'
       +cuerpo
@@ -54748,10 +54758,9 @@ function lpVideoCopiar(clientId, i){
 // desde aca hay que cambiar de pestana ademas de hoja. Con setHojaSuccess solo,
 // el link no hacia absolutamente nada.
 function irAMaterial(clientId){
-  S._shHoja='material';
-  if(clientId && S.clientId!==clientId) S.clientId=clientId;
-  if(typeof openClientTab==='function') openClientTab('success');
-  else { S.tab='success'; renderClient(); }
+  // Sin Success tracker (20/11/2026): Material se abre en la ventana «Materiales».
+  var id=clientId||S.clientId;
+  if(id && typeof materialesCliente==='function') materialesCliente(id);
 }
 async function lpVideoIdeas(clientId){
   var c=DB.clients.find(function(x){return x.id===clientId;});
