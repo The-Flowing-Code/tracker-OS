@@ -31818,6 +31818,8 @@ function _cliMenuFuera(e){
 }
 function _cliMenuTecla(e){ if(e.key==='Escape'){ e.stopPropagation(); cliMenuCerrar(); } }
 function cliMenu(ancla, clientId){
+  // El ⋮ abre la ficha lateral (21/11/2026); el menú de abajo queda por si vuelve.
+  if(typeof fichaCliente==='function'){ window._cliMenuAncla=ancla; return fichaCliente(clientId,'resumen'); }
   var c=(DB.clients||[]).find(function(x){ return x.id===clientId; });
   if(!c) return;
   var abierto=document.getElementById('cli-menu');
@@ -31965,6 +31967,7 @@ function _embIco(parte, roto, tono){
    mismo bloque de la ficha (Success · Contexto), en una ventana, para leerlo
    sin salir del tablero. */
 function acercaCliente(id){
+  return fichaCliente(id,'resumen'); // ficha lateral (21/11/2026)
   _cliVentana(id, function(c){
     return ((typeof _llSinVerHtml==='function')?_llSinVerHtml(c):'')
       +_queHaceHtml(c)
@@ -32037,7 +32040,7 @@ function _acercaPulsoHtml(c){
 }
 /* «Materiales» (Angie, 20/11/2026): embudos y landings, creativos, material,
    documentos, accesos y marca, el mismo bloque de la ficha (Success · Contexto). */
-function materialesCliente(id){ _cliVentana(id, _ctxResumenHtml, 'los materiales'); }
+function materialesCliente(id){ fichaCliente(id,'materiales'); }
 function _cliVentana(id, arma, que, herr, tipo){
   var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
   if(!c) return;
@@ -32293,10 +32296,113 @@ function lineasHtml(c){
       +'<span style="font-size:11px;color:var(--text3)">Registros y agendas: los que entraron en cada tramo, por GHL. La flecha compara con la línea anterior.</span>'
       +'<button class="btn btn-sm" onclick="cambioRegistrarModal('+c.id+')">Registrar cambio</button></div>';
 }
-function lineasCliente(id){ _cliVentana(id, lineasHtml, 'las líneas de conversión', false, 'lineas'); }
+function lineasCliente(id){ fichaCliente(id,'lineas'); }
+/* ── La ficha lateral del cliente (Angie, 21/11/2026, opción 1 de
+   claude.ai/artifact/BBbpVH2AtU611YhRksJ4Fh) ─────────────────────────────
+   Reemplaza al menú ⋮ y a las ventanas sueltas: entra por la derecha sin tapar
+   el tablero y trae todo lo que tenía el menú en seis pestañas. Arriba lo de
+   todos los días (agendar y mensajes de hoy); integraciones, archivar y
+   eliminar, en el «⋯». Las pestañas reusan lo que ya existía: _queHaceHtml,
+   _acercaPulsoHtml, _garantiaHtml, lineasHtml, fathomCallsHTML,
+   _ctxResumenHtml y successTareasHtml. */
+var FICHA_TABS=[['resumen','Resumen'],['embudo','Embudo'],['lineas','Líneas'],['llamadas','Llamadas'],['materiales','Materiales'],['tareas','Tareas']];
+function _fichaCss(){
+  if(document.getElementById('ficha-css')) return;
+  var st=document.createElement('style'); st.id='ficha-css';
+  st.textContent='.fl-velo{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:990;animation:flIn .18s ease}'
+    +'.fl{position:fixed;top:0;right:0;bottom:0;width:min(720px,100vw);z-index:995;background:var(--bg);border-left:1px solid var(--border);'
+    +'box-shadow:-30px 0 60px rgba(0,0,0,.5);display:flex;flex-direction:column;animation:flDe .22s ease;padding-right:env(safe-area-inset-right,0px)}'
+    +'@keyframes flIn{from{opacity:0}}@keyframes flDe{from{transform:translateX(40px);opacity:0}}'
+    +'@media (prefers-reduced-motion:reduce){.fl,.fl-velo{animation:none}}'
+    +'.fl-cab{padding:20px 22px 12px;position:relative;display:flex;flex-direction:column;gap:5px}'
+    +'.fl-eb{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}'
+    +'.fl-cab h3{margin:0;font-size:26px;font-weight:800;letter-spacing:-.6px;color:var(--strong)}'
+    +'.fl-x{position:absolute;top:16px;right:18px;width:32px;height:32px;border-radius:50%;border:0;background:var(--bg3);color:var(--text);font-size:16px;cursor:pointer}'
+    +'.fl-acc{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}'
+    +'.fl-tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border);overflow-x:auto;flex:none}'
+    +'.fl-tabs button{border:0;background:none;padding:10px 11px;font-size:13px;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;font-family:var(--font)}'
+    +'.fl-tabs button.on{color:var(--strong);border-bottom-color:var(--accent)}'
+    +'.fl-tabs button b{font-size:10.5px;background:var(--bg3);border-radius:99px;padding:0 6px;margin-left:4px;color:var(--text2,var(--text3))}'
+    +'.fl-body{overflow:auto;flex:1;min-height:0;padding:18px 22px 40px}'
+    +'.fl-mas{position:relative}.fl-menu{position:absolute;right:0;top:calc(100% + 6px);width:240px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:0 24px 48px rgba(0,0,0,.55);padding:6px;z-index:3;display:none}'
+    +'.fl-mas.on .fl-menu{display:block}.fl-menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:9px;font-size:13px;color:var(--text);cursor:pointer;font-family:var(--font)}'
+    +'.fl-menu button:hover{background:var(--bg3)}.fl-menu small{display:block;color:var(--text3);font-size:11.5px}'
+    +'.fl-emb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media (max-width:560px){.fl-emb{grid-template-columns:1fr}}'
+    +'.fl-emb button{text-align:left;border:1px solid var(--border);background:var(--bg2);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;color:var(--text);font-family:var(--font)}'
+    +'.fl-emb button:hover{border-color:var(--border2)}';
+  document.head.appendChild(st);
+}
+function _fichaNivel(c){ try{ var n=(typeof p360Nivel==='function')?p360Nivel(c):''; return {aa:'AA+',a:'A',b:'B',c:'C'}[n]||''; }catch(e){ return ''; } }
+function _fichaCuenta(c, k){
+  try{
+    if(k==='llamadas') return (c.fathomCalls||[]).length;
+    if(k==='tareas') return (c.tasks||[]).filter(function(t){ return t&&!t.done&&!t.deleted; }).length;
+    if(k==='lineas') return (typeof _linLineas==='function')?_linLineas(c).length:null;
+  }catch(e){}
+  return null;
+}
+function _fichaEmbudo(c){
+  var er=c.embudoRoto||{}, roto=er.parte||null, tono=(er.tono==='ambar')?'ambar':'rojo';
+  var P=[['top','Top of Funnel','Gasto, alcance, CPL y avisos de Meta'],['middle','Middle of Funnel','Visitas y conversión de la landing'],['bottom','Bottom of Funnel','Agendas, cierres, revenue y CAC']];
+  return '<div class="fl-emb">'+P.map(function(x){ var r=(roto===x[0]);
+      return '<button type="button" onclick="fichaCerrar();cliMenuIr('+c.id+',\''+x[0]+'\')"'+(r?(' style="border-color:'+(tono==='ambar'?'var(--amberx)':'var(--redx)')+'"'):'')+'>'
+        +'<span style="display:flex;align-items:center;gap:8px">'+(typeof _embIco==='function'?_embIco(x[0], roto, tono):'')+'<b style="font-size:13.5px">'+x[1]+'</b></span>'
+        +'<span style="font-size:12px;color:'+(r?(tono==='ambar'?'var(--amberx)':'var(--redx)'):'var(--text3)')+'">'+esc(r?(er.motivo||'Acá se encarece el costo'):x[2])+'</span></button>'; }).join('')+'</div>'
+    +(er.detalle?('<div style="margin-top:12px;font-size:12.5px;color:var(--text2,var(--text3));line-height:1.55">'+esc(er.detalle)+'</div>'):'');
+}
+function fichaCuerpo(c, tab){
+  var seguro=function(f){ try{ return f()||''; }catch(e){ console.warn('ficha:',e); return '<div style="font-size:12.5px;color:var(--text3)">No pude mostrar esta parte.</div>'; } };
+  if(tab==='embudo') return seguro(function(){ return _fichaEmbudo(c); });
+  if(tab==='lineas') return seguro(function(){ return lineasHtml(c); });
+  if(tab==='llamadas') return seguro(function(){ return fathomCallsHTML(c); });
+  if(tab==='materiales') return seguro(function(){ return _ctxResumenHtml(c); });
+  if(tab==='tareas') return seguro(function(){ return (typeof successTareasHtml==='function')?successTareasHtml(c):''; });
+  return seguro(function(){ return ((typeof _llSinVerHtml==='function')?_llSinVerHtml(c):'')+_queHaceHtml(c); })
+    +'<div style="margin-top:18px">'+seguro(function(){ return _acercaPulsoHtml(c); })+'</div>'
+    +'<div style="margin-top:18px">'+seguro(function(){ return _garantiaHtml(c); })+'</div>';
+}
+function fichaCliente(id, tab){
+  var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
+  if(!c) return;
+  _fichaCss();
+  tab=FICHA_TABS.some(function(t){ return t[0]===tab; })?tab:'resumen';
+  var cuerpoPrev=document.querySelector('#cli-ventana .fl-body'), top=(cuerpoPrev && document.getElementById('cli-ventana').dataset.tab===tab)?cuerpoPrev.scrollTop:0;
+  var et=null; try{ et=_p360Etapa(c); }catch(e){}
+  var dias=null; try{ var ci=(typeof _p360Dias==='function')?_p360Dias(c):null; dias=ci; }catch(e){}
+  var niv=_fichaNivel(c);
+  var ms=(typeof _mensDe==='function')?_mensDe(c).filter(function(m){ return !m.listo; }):[];
+  var faltaInteg=!(c.metaToken&&c.metaAccountId) || !(c.ghl&&c.ghl.token&&c.ghl.locationId);
+  var root=document.getElementById('modal-root');
+  root.innerHTML='<div class="fl-velo" onclick="fichaCerrar()"></div>'
+    +'<aside class="fl" id="cli-ventana" data-cli="'+c.id+'" data-que="ficha" data-tab="'+tab+'" role="dialog" aria-label="'+esc(c.name||'')+'">'
+      +'<div class="fl-cab"><button type="button" class="fl-x" aria-label="Cerrar" onclick="fichaCerrar()">×</button>'
+        +'<span class="fl-eb">'+esc((et&&et.l)||'')+'</span>'
+        +'<h3>'+esc(c.name||'')+'</h3>'
+        +'<div style="font-size:13px;color:var(--text3);display:flex;gap:8px;align-items:center">'+esc(c.contacto||'Sin contacto cargado')
+          +(niv?'<span style="font-size:10px;font-weight:800;letter-spacing:.8px;padding:1px 7px;border-radius:99px;'+(niv==='AA+'?'background:var(--accent);color:#0B0E06':'border:1px solid var(--border2);color:var(--text3)')+'">'+niv+'</span>':'')+'</div>'
+        +'<div class="fl-acc">'
+          +'<button class="btn btn-sm btn-primary" type="button" onclick="fichaCerrar();p360Agendar('+c.id+',true)">Agendar reunión</button>'
+          +(ms.length?'<button class="btn btn-sm" type="button" onclick="mensCliPop(this,'+c.id+')"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span>Mensajes de hoy · '+ms.length+'</button>':'')
+          +'<span class="fl-mas"><button class="btn btn-sm" type="button" aria-label="Más acciones" onclick="event.stopPropagation();this.parentNode.classList.toggle(\'on\')">⋯</button><div class="fl-menu">'
+            +'<button type="button" onclick="fichaCerrar();selectClient('+c.id+');openClientTab(\'integraciones\')">Integraciones<small>'+(faltaInteg?'Falta conectar Meta o GHL':'Meta y GHL conectados')+'</small></button>'
+            +'<button type="button" onclick="fichaCerrar();p360Archivar('+c.id+')">Archivar<small>Sale del tablero; no se borra nada</small></button>'
+            +'<button type="button" style="color:var(--redx)" onclick="fichaCerrar();confirmDeleteClient('+c.id+')">Eliminar<small>Se borra del tracker; pide confirmar</small></button>'
+          +'</div></span>'
+        +'</div></div>'
+      +'<div class="fl-tabs" role="tablist">'+FICHA_TABS.map(function(t){ var n=_fichaCuenta(c,t[0]);
+          return '<button type="button" role="tab" aria-selected="'+(t[0]===tab)+'" class="'+(t[0]===tab?'on':'')+'" onclick="fichaCliente('+c.id+',\''+t[0]+'\')">'+t[1]+(n!=null?'<b>'+n+'</b>':'')+'</button>'; }).join('')+'</div>'
+      +'<div class="fl-body">'+fichaCuerpo(c, tab)+'</div>'
+    +'</aside>';
+  var b=document.querySelector('#cli-ventana .fl-body'); if(b&&top) b.scrollTop=top;
+  try{ if(typeof repEmbedCargar==='function') repEmbedCargar(); }catch(e){}
+}
+function fichaCerrar(){ var r=document.getElementById('modal-root'); if(r && r.querySelector('.fl')) r.innerHTML=''; }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') fichaCerrar(); });
+document.addEventListener('click', function(e){ if(!e.target.closest('.fl-mas')) document.querySelectorAll('.fl-mas.on').forEach(function(x){ x.classList.remove('on'); }); });
 function _cliVentanaRefrescar(){
   var v=document.getElementById('cli-ventana'); if(!v) return;
   var id=+v.dataset.cli, top=v.scrollTop, que=v.dataset.que;
+  if(que==='ficha'){ fichaCliente(id, v.dataset.tab); return; }
   if(que==='acerca') acercaCliente(id); else if(que==='lineas') lineasCliente(id); else materialesCliente(id);
   var n=document.getElementById('cli-ventana'); if(n) n.scrollTop=top;
 }
