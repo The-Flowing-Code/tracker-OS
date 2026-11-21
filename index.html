@@ -1091,6 +1091,9 @@ body.light .fx-fecha{color-scheme:light}
   min-height:92px;background:var(--bg3);border-radius:20px;padding:12px 13px;
   margin-bottom:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;
   font-family:var(--font)}
+/* Tarjeta limpia del tablero (20/11/2026): sin piso de alto, la mide su contenido. */
+.p3tk2.p3limpia{min-height:0;padding:11px 13px;border-radius:14px}
+.p3tk2.p3limpia .p3klin{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* Las columnas miden 132px, no los 230px de la grilla del mockup. Reservar el
    ancho de las insignias en TODA la tarjeta dejaba unos 40px para el nombre y
    seguia cortandolo. El hueco se reserva solo en la primera linea, con un
@@ -44826,6 +44829,25 @@ function p360Html(){
     if(extra) lineas=extra+lineas;
     var _emb=_embMovidoHtml(d.c);
     var _lin=_lente?p360LenteLinea(d.c,_lente):null;
+    /* Tarjeta limpia (Angie, 20/11/2026: «la vista por default lo más limpia
+       posible y las otras por lo que cada una implique, con el mismo diseño»).
+       En el tablero por cliente: el nombre y el menú ⋮. Con «Ver por», una sola
+       línea más: la de esa vista. Todo lo demás está en el menú y en «Acerca
+       del cliente». */
+    if(vista==='etapas' && !extra){
+      return '<button class="p3tk2 p3limpia'+(S.p360Abierto===d.c.id?' sel':'')+'" '
+        +((_lin&&_lin.edge)?('style="box-shadow:inset 3px 0 0 '+_lin.edge+',0 8px 24px rgba(0,0,0,.35)" '):'')
+        +'draggable="true" ondragstart="p360Arrastrar(event,'+d.c.id+')" ondragend="p360FinArrastre()" '
+        +'onclick="p360Abrir('+d.c.id+')" '
+        +'title="'+esc(d.c.name||'')+' \u2014 tocala para ver en que quedo, tocale el nombre para ver acerca del cliente, o arrastrala a otra etapa">'
+        +'<div class="p3kins">'+cliMenuIconoHtml(d.c, 0)+'</div>'
+        +'<div class="p3knom b1"><span class="p3knomlk" role="link" tabindex="0" '
+          +'onclick="event.stopPropagation();p360AbrirSuccess('+d.c.id+')" '
+          +'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();p360AbrirSuccess('+d.c.id+');}">'
+          +esc(d.c.name||'')+'</span></div>'
+        +(_lin?('<div style="margin-top:6px">'+_lin.html+'</div>'):'')
+      +'</button>';
+    }
     // Cuantas insignias hay arriba a la derecha, para reservarles el lugar.
     var _nAntes=((calBtn||masBtn)?1:0)+(esProspecto(d.c)?1:0);
     // El birrete de la capacitacion se saco de la tarjeta (27/10/2026): no se
