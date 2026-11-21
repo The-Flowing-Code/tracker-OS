@@ -44296,6 +44296,23 @@ function p360LenteLinea(c, k){
   return null;
 }
 /* El menú del filtro por producto del Panel 360 (20/11/2026). */
+/* Nivel del cliente por lo que paga (Angie, 20/11/2026: «por la cantidad de lo
+   que pagó»). Se usa lo vendido (contractValue); si no está, la suma de sus
+   cuotas, cobradas o no. Solo lo cobrado dejaba en C a los que no tienen los
+   pagos cargados. AA+ desde USD 5.000, A desde 3.000, B desde 1.500, C por
+   debajo; sin ningún dato, «sin dato». */
+var P360_NIVELES=[['aa','AA+',5000],['a','A',3000],['b','B',1500],['c','C',1],['sd','Sin dato',0]];
+function p360Monto(c){
+  var v=Number(c&&c.contractValue)||0;
+  if(v>0) return v;
+  return (c&&c.pagos||[]).reduce(function(s,p){ return s+(Number(p&&p.monto)||0); },0);
+}
+function p360Nivel(c){
+  var m=p360Monto(c);
+  if(!m) return 'sd';
+  for(var i=0;i<P360_NIVELES.length;i++){ if(P360_NIVELES[i][2]&&m>=P360_NIVELES[i][2]) return P360_NIVELES[i][0]; }
+  return 'c';
+}
 /* En qué momento del embudo está un cliente, con GHL (20/11/2026): recibiendo
    leads (entró alguno en 7 días), agendando (alguno pasó a una etapa de agenda
    en 7 días), vendiendo (una venta ganada en 30 días) o quieto (nada de eso). */
@@ -44337,9 +44354,10 @@ function p360FiltroMenu(btn){
       return fila(x[0]===sel, x[1], x[2], 'p360Filtro(\''+String(x[0]).replace(/'/g,"\\'")+'\')');
     }).join('')
     // AA+ y En garantía, dentro de Optimización (Angie, 20/11/2026: «lo filtraría directamente desde ahí»).
-    +tit('Optimización')
-    +[['','Todos'],['aa','AA+'],['gar','En garantía']].map(function(x){
-      return fila(opt===x[0], x[1], null, 'S.p360Opt=\''+x[0]+'\';showTickets()');
+    +tit('Nivel · por lo que paga')
+    +[['','Todos',null]].concat(P360_NIVELES.map(function(n){ return [n[0], n[1]+(n[0]==='c'?' · menos de USD 1.500':(n[2]>1?(' · desde USD '+n[2].toLocaleString('es-AR')):'')), (window._P3_NIVELES||{})[n[0]]||0]; }))
+      .concat([['gar','En garantía',null]]).map(function(x){
+      return fila(opt===x[0], x[1], x[2], 'S.p360Opt=\''+x[0]+'\';showTickets()');
     }).join('')
     // El momento del embudo (Angie, 20/11/2026: «recibiendo leads, agendando, vendiendo»).
     +tit('Embudo · últimos 7 días')
@@ -44423,8 +44441,10 @@ function p360Html(){
      embudo por lo que pasó en GHL en los últimos 7 días (ventas, 30 días). */
   var _optF=(S.p360Opt||''), _movF=(S.p360Mov||'');
   if(_optF){
-    ver=ver.filter(function(d){ var e=_p360Norm((d.et&&d.et.l)||'');
-      return _optF==='aa'?/aa\+/.test(e):/garantia/.test(e); });
+    ver=ver.filter(function(d){
+      if(_optF==='gar') return /garantia/.test(_p360Norm((d.et&&d.et.l)||''));
+      return p360Nivel(d.c)===_optF;
+    });
   }
   if(_movF){
     ver=ver.filter(function(d){ var m=p360Momento(d.c); return m && m[_movF]; });
@@ -44448,11 +44468,12 @@ function p360Html(){
   // que uno viene a mirar.
   /* Un solo botón con el embudo (Angie, 20/11/2026): las pastillas de producto
      pasan a un menú que se abre al tocarlo. El botón dice el filtro activo. */
+  window._P3_NIVELES={}; datos.forEach(function(d){ if(_ocultaVenta && d.et && typeof p360EsVenta==='function' && p360EsVenta(d.et.l)) return; var n=p360Nivel(d.c); window._P3_NIVELES[n]=(window._P3_NIVELES[n]||0)+1; });
   window._P3_FILTROS=[['','Todos',_nTot]]
     .concat(Object.keys(porProd).sort().map(function(p){ return [p,p,porProd[p]]; }))
     .concat(nSin?[['__sin','Sin producto',nSin]]:[]);
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
-  var _optL=[{aa:'AA+',gar:'En garantía'}[S.p360Opt||'']||'',
+  var _optL=[{aa:'AA+',a:'A',b:'B',c:'C',sd:'Sin dato',gar:'En garantía'}[S.p360Opt||'']||'',
     {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento',bajo:'Costo bajó',subio:'Costo subió'}[S.p360Mov||'']||'',
     {bien:'Satisfechos',riesgo:'En riesgo',sin:'Sin llamadas'}[S.p360Sat||'']||'']
     .filter(Boolean).join(' · ');
