@@ -29894,6 +29894,7 @@ function _asContexto(){
   return partes.join('\n\n');
 }
 function _asMontar(){
+  return; // Botón del asistente sacado (Angie, 22/11/2026: «eliminá esto también»).
   if(document.getElementById('as-btn')) return;
   var b=document.createElement('button');
   b.id='as-btn'; b.className='as-btn'; b.title='Preguntar sobre la app';
