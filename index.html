@@ -212,6 +212,15 @@ body.light .client-state.live{text-shadow:none}
   background:transparent;border:0;border-radius:7px;cursor:pointer;
   color:var(--sb-text-faint);font-size:15px;transition:color .12s ease,background .12s ease}
 .sb-tema:hover{color:#fff;background:var(--sb-hover)}
+.sb-yo-w{position:relative;flex:none}
+.sb-yo-menu{display:none;position:absolute;left:0;bottom:calc(100% + 8px);width:250px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:0 20px 44px rgba(0,0,0,.55);padding:6px;z-index:50}
+.sb-yo-w.on .sb-yo-menu{display:block}
+.sb-yo-w.on .sb-yo{color:var(--accent)}
+.sb-yo-menu button{display:grid;grid-template-columns:22px 1fr;column-gap:8px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:9px;font-family:inherit;font-size:13px;color:var(--text);cursor:pointer}
+.sb-yo-menu button:hover{background:var(--bg3)}
+.sb-yo-menu button span{grid-row:span 2;font-size:15px;text-align:center}
+.sb-yo-menu small{grid-column:2;color:var(--text3);font-size:11.5px;line-height:1.35}
+.sidebar.collapsed .sb-yo-menu{left:0}
 
 .topbar{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
 .page-title{font-size:16px;font-weight:500;color:var(--strong)}
@@ -3035,12 +3044,19 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
     </div>
     <div class="sidebar-bottom">
       <div class="sb-acciones">
-        <button class="sb-nuevo" onclick="openNewClientModal()" title="Nuevo cliente">
-          <span class="sb-mas">+</span><span class="btn-new-client-text">Nuevo cliente</span>
-        </button>
-        <button class="sb-tema" id="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar tema (claro / oscuro)" aria-label="Cambiar tema">&#9788;</button>
-        <button class="sb-tema" id="buenas-noches-btn" onclick="buenasNochesMostrar()" title="Cierre del día" aria-label="Cierre del día">&#9790;</button>
-        <button class="sb-tema" id="buen-dia-btn" onclick="bienvenidaMostrar()" title="Buen día" aria-label="Buen día">&#9749;</button>
+        <!-- «Nuevo cliente» sacado del pie (Angie, 22/11/2026: «esto también»); sigue en el menú de comandos.
+             Sol, luna y café pasan a un solo botón de usuario con su menú («en vez de café pondría un usuario»). -->
+        <span style="flex:1"></span>
+        <span class="sb-yo-w">
+          <button class="sb-tema sb-yo" id="sb-yo-btn" onclick="event.stopPropagation();this.parentNode.classList.toggle('on')" title="Tu día" aria-label="Tu día" aria-haspopup="menu">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          </button>
+          <div class="sb-yo-menu" role="menu">
+            <button role="menuitem" onclick="sbYoCerrar();bienvenidaMostrar()"><span>&#9749;</span>Buen día<small>Lo de hoy: no negociables, reuniones y pendientes</small></button>
+            <button role="menuitem" onclick="sbYoCerrar();buenasNochesMostrar()"><span>&#9790;</span>Cierre del día<small>Lo que quedó y lo de mañana</small></button>
+            <button role="menuitem" onclick="sbYoCerrar();toggleTheme()"><span>&#9788;</span>Cambiar tema<small>Claro u oscuro</small></button>
+          </div>
+        </span>
       </div>
       <div class="sidebar-logo">
         <div class="logo-text">EVOLVE</div>
@@ -19591,6 +19607,9 @@ function _matInstructivo(m, n){
   document.addEventListener('click', function(e){ if(!e.target.closest('.mi-pop')) document.querySelectorAll('.mi-card.on').forEach(function(x){ x.classList.remove('on'); }); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.querySelectorAll('.mi-card.on').forEach(function(x){ x.classList.remove('on'); }); });
 }catch(e){} })();
+function sbYoCerrar(){ document.querySelectorAll('.sb-yo-w.on').forEach(function(x){ x.classList.remove('on'); }); }
+document.addEventListener('click', function(e){ if(!e.target.closest('.sb-yo-w')) sbYoCerrar(); });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbYoCerrar(); });
 function materialesHtml(){
   var grilla=function(xs){ return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">'
     +xs.map(_matTarjeta).join('')+'</div>'; };
