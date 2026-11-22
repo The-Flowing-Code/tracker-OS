@@ -2306,16 +2306,19 @@ function fathomCallsHTML(c){
   const opps = (c.ghl&&c.ghl.opportunities)||[];
   const lastCall = calls[0];
   const pendingItems = calls.reduce(function(s,cl){return s+(cl.actionItems?cl.actionItems.length:0);},0);
-  const satisfied = calls.filter(function(cl){return cl.sentiment==='satisfecho';}).length;
-  const sentiment = satisfied/calls.length>=0.6?'Activo':'En riesgo';
-  const sentColor = sentiment==='Activo'?'#C8FF47':'#BA7517';
+  // El estado sale de la misma lectura que la satisfacción del Resumen (Angie,
+  // 22/11/2026): el «satisfecho» de cada llamada lo ponía la app por defecto.
+  var _sl=(typeof satLectura==='function')?satLectura(c):{est:'sin'};
+  const sentiment = {bien:'Bien',mirar:'Para mirar',riesgo:'En riesgo',sin:'Sin lectura'}[_sl.est]||'Sin lectura';
+  const sentColor = _sl.est==='bien'?'var(--accent)':_sl.est==='riesgo'?'var(--redx)':_sl.est==='mirar'?'var(--amberx)':'var(--text3)';
+  var _slSub=_sl.at?((_sl.viejo?'Última lectura ':'Lectura del ')+_sl.at.slice(8,10)+'/'+_sl.at.slice(5,7)):'Sin nada en 15 días';
   // Horas en llamada: el tiempo que la agencia le puso a este cliente. Ya
   // estaba en cada llamada como texto y no lo sumaba nadie.
   var minTotal=calls.reduce(function(s,cl){ return s+_durMin(cl.duration); },0);
   var sinDur=calls.filter(function(cl){ return !_durMin(cl.duration); }).length;
   let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">'
     +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--text)">'+calls.length+'</div><div style="font-size:10px;color:var(--text3)">Llamadas</div></div>'
-    +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center"><div style="font-size:18px;font-weight:500;color:'+sentColor+'">'+sentiment+'</div><div style="font-size:10px;color:var(--text3)">Estado</div></div>'
+    +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center"><div style="font-size:18px;font-weight:500;color:'+sentColor+'">'+sentiment+'</div><div style="font-size:10px;color:var(--text3)" title="'+esc(_sl.animo||'')+'">Estado · '+_slSub+'</div></div>'
     +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center"><div style="font-size:18px;font-weight:500;color:var(--text)">'+pendingItems+'</div><div style="font-size:10px;color:var(--text3)">Action items</div></div>'
     +'<div style="background:var(--bg2);border-radius:var(--radius-md);padding:10px 12px;text-align:center">'
       +'<div style="font-size:18px;font-weight:500;color:'+(minTotal?'var(--text)':'var(--text3)')+'">'
@@ -2348,7 +2351,7 @@ function fathomCallsHTML(c){
     const isSqlLinked = linkedOpp && linkedOpp._sql;
     var abierta = _tlAbierta(c.id, cl.id, _i===0);
     var chips = (isSqlLinked?'<span class="tl-chip sql" style="margin-right:6px">SQL ✓</span>':'')
-      +'<span class="tl-chip '+(sat?'ok':'atn')+'">'+(sat?'Satisfecho':'Atencion')+'</span>';
+      +''; // Sin chip «Satisfecho»: venía por defecto, sin analizar (Angie, 22/11/2026).
     // Las acciones van siempre: grabacion, resumen, transcripcion, IA, editar, borrar.
     var acc = '';
     if(cl.url){
