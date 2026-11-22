@@ -35842,12 +35842,14 @@ function _queHaceHtml(c){
   // Queda el cartel de estado, que es donde se escribe el avance de la lectura.
   return '<div style="'+marco+'">'
     +'<div id="qh-estado" style="font-size:11px;color:var(--text3)"></div>'
+    /* Primero quién es (de qué vive y qué quiere con nosotros), después cómo
+       viene hoy (Angie, 21/11/2026: «tendría que estar invertido el orden»). */
     +'<div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">'
-      +saber
       +parte('De qué vive hoy', hoy)
       +parte('Qué quiere trabajar con nosotros', nos, 'var(--accent)')
       +_factResumenHtml(c)
     +'</div>'
+    +(saber?('<div style="margin-top:18px">'+saber+'</div>'):'')
   +'</div>';
 }
 /* «Acerca del cliente», antes «Lo que tenés que saber» (Angie, 10/11/2026: «quiero en un segundo tener
