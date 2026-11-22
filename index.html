@@ -31978,6 +31978,31 @@ function acercaCliente(id){
       +'<div style="margin-top:18px">'+_garantiaHtml(c)+'</div>';
   }, 'el contexto', true);
 }
+/* Arquetipo y estado, separados (Angie, 22/11/2026: «hay cosas que son parte
+   del arquetipo del cliente y otra el estado… se están confundiendo»).
+   El arquetipo es cómo ES el cliente (uno de siete grupos, con cómo hablarle);
+   el estado es cómo ESTÁ hoy con nosotros, por lo de los últimos 15 días.
+   Los escribe la rutina contexto-clientes (migración 059). La satisfacción
+   lee solo el estado: ya no se adivina con palabras del «Ánimo». */
+var ARQUETIPOS=[['desconfiado','Desconfiado','Con el dato y de dónde sale, sin promesas'],
+  ['exigente','Exigente','Primero lo concreto, nunca «te confirmo más tarde»'],
+  ['sin-tiempo','Sin tiempo','Mensajes cortos, una sola pregunta, nosotros hacemos'],
+  ['tecnico','Se marea con lo técnico','Paso a paso, sin jerga, con captura'],
+  ['apurado','Apurado','Fechas claras y avances chicos seguidos'],
+  ['contencion','Necesita contención','Escribirle todos los días, con claridad'],
+  ['comprometido','Comprometido','Mantener el ritmo y reconocerle lo que hace']];
+function arqDe(c){
+  var a=c&&c.contexto&&c.contexto.arquetipo; if(!a||!a.grupo) return null;
+  var d=ARQUETIPOS.filter(function(x){ return x[0]===a.grupo; })[0]; if(!d) return null;
+  return {grupo:d[0], l:d[1], como:a.como||d[2], por:a.por||''};
+}
+function satLectura(c){
+  var e=c&&c.contexto&&c.contexto.estado;
+  if(!e||!e.nivel||!/^\d{4}-\d{2}-\d{2}$/.test(String(e.fecha||''))) return {est:'sin', animo:'', at:'', viejo:false};
+  var dias=Math.floor((Date.now()-Date.parse(e.fecha+'T12:00:00'))/864e5);
+  var viejo=dias>15;
+  return {est:viejo?'sin':({bien:'bien',mirar:'mirar',riesgo:'riesgo'}[e.nivel]||'sin'), animo:e.motivo||'', at:e.fecha, fuente:e.fuente||'', viejo:viejo, nivel:e.nivel};
+}
 /* Satisfacción, cambios y tiempo del equipo de UN cliente (Angie, 20/11/2026),
    con lo que la app ya mide: el estado de cada llamada de Fathom y el «Ánimo»
    del contexto; los cambios detectados y los cargados a mano; y las horas de
@@ -31990,15 +32015,20 @@ function _acercaPulsoHtml(c){
   var chico='font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:4px';
   // Satisfacción
   var calls=(c.fathomCalls||[]);
-  var ok=calls.filter(function(x){ return x&&x.sentiment==='satisfecho'; }).length;
-  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
-  var animo=((cx&&cx.puntos)||[]).filter(function(t){ return /^\s*Ánimo:/i.test(String(t)); })[0]||'';
-  var est=calls.length?((ok/calls.length>=0.6)?'Activo':'En riesgo'):'Sin llamadas';
-  var col=est==='Activo'?'var(--accent)':est==='En riesgo'?'var(--redx)':'var(--text3)';
+  var sl=satLectura(c);
+  var est={riesgo:'En riesgo',mirar:'Para mirar',bien:'Bien',sin:'Sin lectura'}[sl.est];
+  var col=sl.est==='bien'?'var(--accent)':sl.est==='riesgo'?'var(--redx)':sl.est==='mirar'?'var(--amberx)':'var(--text3)';
+  var arq=arqDe(c);
   var sat='<div style="'+caja+'"><div style="'+rot+'">Satisfacción del cliente</div>'
     +'<div style="'+big+';color:'+col+'">'+est+'</div>'
-    +'<div style="'+chico+'">'+(calls.length?(ok+' de '+calls.length+' llamadas sin alertas'):'Todavía no hay llamadas grabadas')+'</div>'
-    +(animo?('<div style="'+chico+';color:var(--text2)">'+esc(String(animo).replace(/^\s*Ánimo:\s*/i,''))+'</div>'):'')
+    +(sl.animo&&!sl.viejo?('<div style="'+chico+';color:var(--text2)">'+esc(sl.animo)+'</div>'):'')
+    +(sl.at?('<div style="'+chico+'">'+(sl.viejo?'La última lectura es del ':'Lectura del ')+esc(sl.at.slice(8,10)+'/'+sl.at.slice(5,7))+(sl.fuente?(' · '+esc(sl.fuente)):'')+(sl.viejo?': pasaron más de 15 días, falta preguntarle cómo lo ve.':'')+'</div>')
+      :('<div style="'+chico+'">No hay nada de los últimos 15 días: falta preguntarle cómo lo ve.</div>'))
+    +(arq?('<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
+      +'<div style="'+rot+';margin-bottom:4px">Cómo es</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--strong)">'+esc(arq.l)+'</div>'
+      +'<div style="'+chico+';color:var(--text2)">Cómo hablarle: '+esc(arq.como)+'</div>'
+      +(arq.por?('<div style="'+chico+'">'+esc(arq.por)+'</div>'):'')+'</div>'):'')
     +'</div>';
   // Cambios realizados
   var todos=((c.cambiosDetectados&&c.cambiosDetectados.items)||[])
@@ -32386,7 +32416,7 @@ function fichaCliente(id, tab){
         +'<span class="fl-eb">'+esc((et&&et.l)||'')+'</span>'
         +'<h3>'+esc(c.name||'')+'</h3>'
         +'<div style="font-size:13px;color:var(--text3);display:flex;gap:8px;align-items:center">'+esc(c.contacto||'Sin contacto cargado')
-          +(niv?'<span style="font-size:10px;font-weight:800;letter-spacing:.8px;padding:1px 7px;border-radius:99px;'+(niv==='AA+'?'background:var(--accent);color:#0B0E06':'border:1px solid var(--border2);color:var(--text3)')+'">'+niv+'</span>':'')+'</div>'
+          +(niv?'<span style="font-size:10px;font-weight:800;letter-spacing:.8px;padding:1px 7px;border-radius:99px;'+(niv==='AA+'?'background:var(--accent);color:#0B0E06':'border:1px solid var(--border2);color:var(--text3)')+'">'+niv+'</span>':'')+(function(){ var a=(typeof arqDe==='function')?arqDe(c):null; return a?'<span title="Cómo hablarle: '+esc(a.como)+'" style="font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid var(--border2);color:var(--text2,var(--text3))">'+esc(a.l)+'</span>':''; })()+'</div>'
         +'<div class="fl-acc">'
           +'<button class="btn btn-sm btn-primary" type="button" onclick="fichaCerrar();p360Agendar('+c.id+',true)">Agendar reunión</button>'
           +(ms.length?'<button class="btn btn-sm" type="button" onclick="mensCliPop(this,'+c.id+')"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span>Mensajes de hoy · '+ms.length+'</button>':'')
@@ -44475,10 +44505,9 @@ function _lLeads(c){
   return {r7:r7, rAnt:rAnt, a7:a7};
 }
 function _lSat(c){
-  var calls=c.fathomCalls||[], ok=calls.filter(function(x){ return x&&x.sentiment==='satisfecho'; }).length;
-  var animo=_lPunto(c, /^\s*Ánimo:/i).replace(/^\s*Ánimo:\s*/i,'');
-  var est=!calls.length?'sin':((ok<calls.length||_LNEG.test(animo))?'riesgo':'bien');
-  return {est:est, ok:ok, n:calls.length, animo:animo};
+  var sl=(typeof satLectura==='function')?satLectura(c):{est:'sin',animo:''};
+  var calls=c.fathomCalls||[];
+  return {est:sl.est, ok:calls.length, n:calls.length, animo:sl.animo};
 }
 function _lBloq(c){
   var t=_lPunto(c, /^\s*Trabado:/i).replace(/^\s*Trabado:\s*/i,'');
@@ -44595,9 +44624,14 @@ function p360FiltroMenu(btn){
     +[['','Todos'],['leads','Recibiendo leads'],['agenda','Agendando'],['venta','Vendiendo (30 días)'],['quieto','Sin movimiento'],['bajo','El costo por resultado bajó'],['subio','El costo por resultado subió']].map(function(x){
       return fila((S.p360Mov||'')===x[0], x[1], null, 'S.p360Mov=\''+x[0]+'\';showTickets()');
     }).join('')
-    +tit('Satisfacción')
-    +[['','Todos'],['bien','Bien'],['riesgo','En riesgo'],['sin','Sin llamadas']].map(function(x){
+    +tit('Satisfacción · últimos 15 días')
+    +[['','Todos'],['bien','Bien'],['mirar','Para mirar'],['riesgo','En riesgo'],['sin','Sin lectura']].map(function(x){
       return fila((S.p360Sat||'')===x[0], x[1], null, 'S.p360Sat=\''+x[0]+'\';showTickets()');
+    }).join('')
+    // Cómo es el cliente (Angie, 22/11/2026: «agrupemos en grupos»).
+    +tit('Cómo es')
+    +[['','Todos']].concat(ARQUETIPOS.map(function(a){ return [a[0],a[1]]; })).concat([['__sin','Sin grupo']]).map(function(x){
+      return fila((S.p360Arq||'')===x[0], x[1], null, 'S.p360Arq=\''+x[0]+'\';showTickets()');
     }).join('');
   e.style.display='block';
   setTimeout(function(){ document.addEventListener('click', masCerrar, {once:true}); }, 0);
@@ -44685,6 +44719,10 @@ function p360Html(){
   if(_satF){
     ver=ver.filter(function(d){ return (typeof _lSat==='function') && _lSat(d.c).est===_satF; });
   }
+  var _arqF=(S.p360Arq||'');
+  if(_arqF){
+    ver=ver.filter(function(d){ var a=arqDe(d.c); return _arqF==='__sin'?!a:(a&&a.grupo===_arqF); });
+  }
 
   // Las pastillas usan la gramatica de la isla del embudo: mismo alto, mismo
   // redondeo, el activo en verde. Antes tenian su propia clase .p3f.
@@ -44706,7 +44744,8 @@ function p360Html(){
   var _fAct=window._P3_FILTROS.filter(function(x){ return x[0]===sel; })[0]||window._P3_FILTROS[0];
   var _optL=[{aa:'AA+',a:'A',b:'B',c:'C',sd:'Sin dato',gar:'En garantía'}[S.p360Opt||'']||'',
     {leads:'Recibiendo leads',agenda:'Agendando',venta:'Vendiendo',quieto:'Sin movimiento',bajo:'Costo bajó',subio:'Costo subió'}[S.p360Mov||'']||'',
-    {bien:'Satisfechos',riesgo:'En riesgo',sin:'Sin llamadas'}[S.p360Sat||'']||'']
+    {bien:'Satisfechos',mirar:'Para mirar',riesgo:'En riesgo',sin:'Sin lectura'}[S.p360Sat||'']||'',
+    (S.p360Arq==='__sin')?'Sin grupo':((ARQUETIPOS.filter(function(a){ return a[0]===S.p360Arq; })[0]||[])[1]||'')]
     .filter(Boolean).join(' · ');
   var filtrosIsla='<button class="eb'+((sel||_optL)?' on':'')+'" onclick="event.stopPropagation();p360FiltroMenu(this)" '
       +'title="Filtrar por producto" aria-haspopup="menu" style="display:inline-flex;align-items:center;gap:6px">'
