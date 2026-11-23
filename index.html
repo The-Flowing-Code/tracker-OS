@@ -44570,9 +44570,8 @@ function agPanelHtml(){
     +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px">'
       +'<span style="font-size:13px;font-weight:500;color:var(--strong)">Pedidos al agente</span>'
       +'<span style="font-size:11px;color:var(--text3)">'+(listos?(listos+' listo'+(listos===1?'':'s')+' para aprobar'):'')+'</span></div>'
-    +'<div style="font-size:11.5px;color:var(--text3);line-height:1.6;margin-bottom:4px">Los de clientes: el agente los prepara leyendo Meta y GHL, sin tocar nada, '
-      +'y cuando aprobás uno lo hace Claude con vos («hacé los pedidos aprobados»). Los de <b>Evolve OS</b> son cambios a la app: '
-      +'los revisa contra el código cada mañana y deja el plan; los aprobados se hacen con Claude («hacé los cambios aprobados de la app»).</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);line-height:1.6;margin-bottom:4px">Tareas que le pasaron a Claude. Las que dicen «listo para aprobar» esperan tu OK; '
+      +'las aprobadas se hacen cuando le decís a Claude «hacé los pedidos aprobados». Nada se hace sin tu OK.</div>'
     +l.map(function(x){
       var c=(DB.clients||[]).find(function(y){ return String(y.id)===String(x.cliente_id); });
       var sis=_agEsSistema(x);
@@ -44584,8 +44583,14 @@ function agPanelHtml(){
           +'<div style="flex:1;min-width:220px">'
             +'<div style="font-size:12.5px;color:var(--strong);font-weight:500">'+esc(quien)
               +' <span style="font-size:10.5px;padding:1px 8px;border-radius:20px;background:'+e[2]+';color:'+e[1]+';font-weight:400">'+esc(e[0])+'</span></div>'
-            +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:3px">'+esc(x.texto)+'</div>'
-            +(sis&&x.porque?'<div style="font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:2px;white-space:pre-wrap">'+esc(x.porque)+'</div>':'')
+            /* En palabras simples (Angie, 23/11/2026: «me cuesta entender de qué habla»):
+               qué es y qué pasa si se toca «Hacelo». El texto para Claude queda atrás. */
+            +(x.claro
+              ?('<div style="font-size:13px;color:var(--strong);line-height:1.5;margin-top:3px">'+esc(x.claro)+'</div>'
+                +(x.al_aprobar?'<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-top:3px">'
+                  +(x.estado==='preparado'?'<b style="color:var(--accent);font-weight:600">Si tocás «Hacelo»:</b> ':'')+esc(x.al_aprobar)+'</div>':''))
+              :('<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:3px">'+esc(x.texto)+'</div>'
+                +(sis&&x.porque?'<div style="font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:2px;white-space:pre-wrap">'+esc(x.porque)+'</div>':'')))
             +(det?('<a href="javascript:void(0)" onclick="agAbrir('+x.id+')" style="font-size:11.5px;color:var(--accent);text-decoration:none">'
               +(ab?'Ocultar':(x.propuesta&&x.estado!=='hecho'?'Ver el plan':'Ver el resultado'))+'</a>'):'')
           +'</div>'
@@ -44594,7 +44599,9 @@ function agPanelHtml(){
             +((x.estado==='pendiente'||x.estado==='preparado'||x.estado==='aprobado')?'<button class="btn btn-sm" onclick="agDecidir('+x.id+',\'cancelado\')">Cancelar</button>':'')
           +'</div></div>'
         +(ab&&det?('<div style="font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap;margin-top:8px;padding:10px 12px;'
-          +'background:var(--bg3);border-radius:var(--radius)">'+esc(det)+'</div>'):'')
+          +'background:var(--bg3);border-radius:var(--radius)">'
+          +(x.claro?('<div style="color:var(--text3);margin-bottom:8px">Pedido original: '+esc(x.texto)+(x.porque?(' — '+esc(x.porque)):'')+'</div>'):'')
+          +esc(det)+'</div>'):'')
       +'</div>';
     }).join('')
     +(_total>3?('<a href="javascript:void(0)" style="font-size:12px" onclick="S._agTodos=!S._agTodos;'
