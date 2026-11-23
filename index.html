@@ -32443,7 +32443,36 @@ function _fichaCss(){
     +'.fl-emb button:hover{border-color:var(--border2)}'
     +'.fl-ruta .p3fi-cab,.fl-ruta .p3fi-pie,.fl-ruta .p3fi-x{display:none!important}'
     +'.fl-ruta .p3fi-cuerpo{overflow:visible!important;height:auto!important;max-height:none!important;padding:0!important}'
-    +'.fl-ruta .p3fi-cols{display:flex!important;flex-direction:column!important;gap:18px}';
+    +'.fl-ruta .p3fi-cols{display:flex!important;flex-direction:column!important;gap:18px}'
+    /* Diseños 4 a 6 (Angie, 22/11/2026) */
+    +'.fl-cab{padding:24px 28px 14px !important}.fl-fila{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}'
+    +'.fl-cab h3{font-size:28px !important}.fl-eb{letter-spacing:0 !important;text-transform:none !important;font-size:12px !important;font-weight:600;color:var(--amberx) !important}'
+    +'.fl-chip{font-size:12px;font-weight:500;color:var(--text2,var(--text3));background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:999px}'
+    +'.fl-chip-arq{color:var(--amberx);background:rgba(255,181,71,.1)}'
+    +'.fl-acc{margin-top:0 !important;flex:none;flex-wrap:nowrap !important}'
+    +'.fl-agendar{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;background:var(--accent);border:0;border-radius:10px;color:var(--on-accent,#0A0C10);font:700 13px var(--font);cursor:pointer;white-space:nowrap}'
+    +'.fl-ib{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text2,var(--text3));cursor:pointer;padding:0}'
+    +'.fl-ib:hover{color:var(--strong)}'
+    +'.fl-tabs{gap:22px !important;padding:0 28px !important}.fl-tabs button{padding:10px 2px !important;font-size:14px !important;font-weight:500 !important}'
+    +'.fl-tabs button.on{font-weight:600 !important}'
+    +'.fl-body{padding:24px 28px 40px !important}'
+    +'.fk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}@media (max-width:560px){.fk{grid-template-columns:1fr 1fr}}'
+    +'.fk>div{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;min-width:0}'
+    +'.fk span{font-size:12px;color:var(--text3)}.fk b{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    +'.fq{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media (max-width:560px){.fq{grid-template-columns:1fr}}'
+    +'.fcard{display:flex;flex-direction:column;gap:8px;padding:16px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;min-width:0}'
+    +'.fcard>span{font-size:12px;font-weight:600;color:var(--text3)}.fcard p{margin:0;font-size:14px;line-height:1.55;color:var(--text)}'
+    +'.facr{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--border)}'
+    +'.facr span:first-child{font-size:12px;font-weight:600}.facr span:last-child{font-size:14px;line-height:1.5;color:var(--text)}'
+    +'.fplata{display:flex;flex-wrap:wrap;background:var(--bg2);border:1px solid var(--border);border-radius:12px}'
+    +'.fplata>div{flex:1;min-width:130px;padding:14px 16px;border-right:1px solid var(--border)}.fplata>div:last-child{border-right:0}'
+    +'.fplata span{display:block;font-size:12px;color:var(--text3)}.fplata b{font-size:17px;font-weight:700;color:var(--strong)}'
+    +'.fdet{border:1px solid var(--border);border-radius:12px}.fdet>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-size:14px;color:var(--text)}'
+    +'.fdet>summary::-webkit-details-marker{display:none}.fdet[open]>summary svg{transform:rotate(180deg)}.fdet>div{padding:0 16px 16px}'
+    +'.fstep{display:flex;padding:18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;flex-direction:column;gap:16px}'
+    +'.fstep-l{display:flex}.fstep-l>div{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0;text-align:center}'
+    +'.fstep-l i{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}'
+    +'.fstep-l small{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}';
   document.head.appendChild(st);
 }
 function _fichaNivel(c){ try{ var n=(typeof p360Nivel==='function')?p360Nivel(c):''; return {aa:'AA+',a:'A',b:'B',c:'C'}[n]||''; }catch(e){ return ''; } }
@@ -32469,15 +32498,104 @@ function fichaCuerpo(c, tab){
   /* Ruta (Angie, 21/11/2026): la ventana de la ruta por etapa -lo tuyo, lo del
      equipo, lo del partner y el «¿qué pasó?» de una reunión- vive acá. Se usa
      el mismo armado (_p360FichaHtml); su encabezado y su pie se esconden. */
-  if(tab==='ruta') return seguro(function(){ return '<div class="fl-ruta">'+_p360FichaHtml(c, false)+'</div>'; });
+  if(tab==='ruta') return seguro(function(){ return _fichaPasos(c)+'<div class="fl-ruta">'+_p360FichaHtml(c, false)+'</div>'; });
   if(tab==='embudo') return seguro(function(){ return _fichaEmbudo(c); });
   if(tab==='lineas') return seguro(function(){ return lineasHtml(c); });
   if(tab==='llamadas') return seguro(function(){ return fathomCallsHTML(c); });
   if(tab==='materiales') return seguro(function(){ return _ctxResumenHtml(c); });
   if(tab==='tareas') return seguro(function(){ return (typeof successTareasHtml==='function')?successTareasHtml(c):''; });
-  return seguro(function(){ return ((typeof _llSinVerHtml==='function')?_llSinVerHtml(c):'')+_queHaceHtml(c); })
-    +'<div style="margin-top:18px">'+seguro(function(){ return _acercaPulsoHtml(c); })+'</div>'
-    +'<div style="margin-top:18px">'+seguro(function(){ return _garantiaHtml(c); })+'</div>';
+  return '<div style="display:flex;flex-direction:column;gap:22px">'
+    +seguro(function(){ return _fichaKpis(c); })
+    +seguro(function(){ return (typeof _llSinVerHtml==='function')?_llSinVerHtml(c):''; })
+    +seguro(function(){ return _fichaQuien(c); })
+    +seguro(function(){ return _fichaAcerca(c); })
+    +seguro(function(){ return _fichaPlata(c); })
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +_fichaPliegue('Satisfacción, cambios y tiempo del equipo', seguro(function(){ return _acercaPulsoHtml(c); }))
+      +_fichaPliegue('Garantía', seguro(function(){ return _garantiaHtml(c); }))
+    +'</div>'
+  +'</div>';
+}
+/* Piezas del Resumen nuevo (Angie, 22/11/2026, diseño 4 del rediseño). */
+function _fichaPliegue(t, html){
+  if(!html) return '';
+  return '<details class="fdet"><summary>'+esc(t)+'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text3);transition:transform .15s"><path d="M6 9l6 6 6-6"/></svg></summary><div>'+html+'</div></details>';
+}
+function _fichaKpis(c){
+  var et=null; try{ et=_p360Etapa(c); }catch(e){}
+  var cie=(typeof _cierresDe==='function')?_cierresDe(c,30):0;
+  var conGhl=c.ghl&&((c.ghl.opportunities||[]).length);
+  var dias=(et&&et.fecha)?Math.max(0,Math.round((Date.now()-et.fecha.getTime())/864e5)):null;
+  var abiertas=(c.tasks||[]).filter(function(t){ return t&&!t.done&&!t.deleted&&!t.archived; }).length;
+  var prox=null;
+  try{
+    var ahora=Date.now();
+    [].concat(Object.keys(c.citas||{}).map(function(k){ return c.citas[k]; }), c.citasSinEtapa||[]).forEach(function(x){
+      if(!x||!x.inicio||x.estado==='cancelled') return; var t=Date.parse(x.inicio); if(t>ahora && (!prox||t<prox)) prox=t; });
+  }catch(e){}
+  var f=function(t){ var d=new Date(t); return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); };
+  var k=function(l,v,col,sub){ return '<div><span>'+l+'</span><b'+(col?' style="color:'+col+'"':'')+'>'+v+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</div>'; };
+  return '<div class="fk">'
+    +k('Cierres · 30d', conGhl?cie:'—', conGhl?(cie?'var(--accent)':'var(--redx)'):'', conGhl?(cie?'':'Sin cierres'):'Sin GHL conectado')
+    +k('Días en '+esc((et&&et.l)||'la etapa'), dias==null?'—':dias)
+    +k('Tareas abiertas', abiertas)
+    +k('Próxima reunión', prox?f(prox):'Sin agendar', prox?'':'var(--amberx)')
+  +'</div>';
+}
+function _fichaQuien(c){
+  var q=(typeof _queHace==='function')?_queHace(c):null;
+  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
+  var hoy=String((q&&(q.hoy||q.txt))||(cx&&cx.hoy)||'').trim();
+  var nos=String((q&&q.conNosotros)||(cx&&cx.conNosotros)||'').trim();
+  if(!hoy&&!nos) return '';
+  return '<div class="fq">'
+    +'<div class="fcard"><span>De qué vive hoy</span><p>'+esc(hoy||'Sin escribir')+'</p></div>'
+    +'<div class="fcard"><span style="color:var(--accent)">Qué quiere lograr con nosotros</span><p>'+esc(nos||'Sin escribir')+'</p></div>'
+  +'</div>';
+}
+function _fichaAcerca(c){
+  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
+  if(!cx) return '';
+  var nec=String(cx.necesidad||'').trim();
+  var ps=(Array.isArray(cx.puntos)?cx.puntos:[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+  if(!nec&&!ps.length) return '';
+  var cuando=''; try{ if(cx.at) cuando=new Date(cx.at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}); }catch(e){}
+  var ETQ=[[/^trabad[oa]/i,'Trabado','var(--redx)'],[/^prometid[oa]/i,'Prometido','var(--amberx)'],[/^(ánimo|animo)/i,'Ánimo','var(--accent)'],
+           [/^c[oó]mo (trabaja|decide)/i,'Cómo decide','var(--text3)'],[/^no hacer/i,'Ojo','var(--text3)']];
+  var filas=ps.map(function(x){
+    var m=x.match(/^([^:]{2,28}):\s*(.+)$/), et='', col='var(--text3)', txt=x;
+    if(m){ txt=m[2]; et=m[1]; ETQ.some(function(e){ if(e[0].test(m[1])){ et=e[1]; col=e[2]; return true; } return false; }); }
+    return '<div class="facr"><span style="color:'+col+'">'+esc(et||'·')+'</span><span>'+esc(txt)+'</span></div>';
+  }).join('');
+  return '<div class="fcard" style="gap:6px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px;color:var(--strong)">Acerca del cliente</b>'
+      +(cuando?'<span style="font-size:12px;color:var(--text3)" title="'+esc(cx.fuentes||'')+'">Actualizado el '+cuando+'</span>':'')+'</div>'
+    +(nec?'<p style="margin:6px 0 8px;font-size:15px;font-weight:600;line-height:1.45">'+esc(nec)+'</p>':'')
+    +filas
+  +'</div>';
+}
+function _fichaPlata(c){
+  if(typeof verPlata==='function' && !verPlata()) return '';
+  var m=function(n){ return Number(n)?('$'+Number(n).toLocaleString('en-US')):'—'; };
+  var desde=c.altaAt||c.createdAt; var d=desde?new Date(desde):null;
+  var celdas=[['Implementación', m(c.contractValue)],['Fee mensual', m(c.monthlyFee)],['Cliente desde', d&&!isNaN(d.getTime())?d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—']];
+  return '<div class="fplata" onclick="if(typeof factModal===\'function\')factModal('+c.id+')" title="Editar la facturación" style="cursor:pointer">'
+    +celdas.map(function(x){ return '<div><span>'+x[0]+'</span><b>'+x[1]+'</b></div>'; }).join('')+'</div>';
+}
+/* El paso a paso de la Ruta (diseño 5): las etapas con la actual marcada. */
+function _fichaPasos(c){
+  var et=null; try{ et=_p360Etapa(c); }catch(e){}
+  var cols=(typeof rutaColumnas==='function')?rutaColumnas().filter(function(e){ return !(typeof p360EsVenta==='function'&&p360EsVenta(e.l)); }):[];
+  if(!cols.length) return '';
+  var i=et?cols.map(function(e){ return e.l; }).indexOf(et.l):-1;
+  var dias=(et&&et.fecha)?Math.max(0,Math.round((Date.now()-et.fecha.getTime())/864e5)):null;
+  return '<div class="fstep" style="margin-bottom:18px"><div class="fstep-l">'+cols.map(function(e,k){
+      var hecho=i>=0&&k<i, act=k===i;
+      var bola=hecho?'<i style="background:rgba(200,255,71,.15);color:var(--accent)"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></i>'
+        :'<i style="border:2px solid '+(act?'var(--amberx)':'var(--border2)')+'"></i>';
+      return '<div>'+bola+'<small style="'+(act?'color:var(--strong);font-weight:600':'')+'">'+esc(e.l)+'</small></div>'; }).join('')+'</div>'
+    +(et?'<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--strong)">'+esc(et.l)+'</span><span style="color:var(--text3)">'+(dias==null?'':(dias+' día'+(dias===1?'':'s')+' en la etapa'))+'</span></div>':'')
+  +'</div>';
 }
 function fichaCliente(id, tab){
   var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
@@ -32493,20 +32611,28 @@ function fichaCliente(id, tab){
   var root=document.getElementById('modal-root');
   root.innerHTML='<div class="fl-velo" onclick="fichaCerrar()"></div>'
     +'<aside class="fl" id="cli-ventana" data-cli="'+c.id+'" data-que="ficha" data-tab="'+tab+'" role="dialog" aria-label="'+esc(c.name||'')+'">'
-      +'<div class="fl-cab"><button type="button" class="fl-x" aria-label="Cerrar" onclick="fichaCerrar()">×</button>'
-        +'<span class="fl-eb">'+esc((et&&et.l)||'')+'</span>'
-        +'<h3>'+esc(c.name||'')+'</h3>'
-        +'<div style="font-size:13px;color:var(--text3);display:flex;gap:8px;align-items:center">'+esc(c.contacto||'Sin contacto cargado')
-          +(niv?'<span style="font-size:10px;font-weight:800;letter-spacing:.8px;padding:1px 7px;border-radius:99px;'+(niv==='AA+'?'background:var(--accent);color:#0B0E06':'border:1px solid var(--border2);color:var(--text3)')+'">'+niv+'</span>':'')+(function(){ var a=(typeof arqDe==='function')?arqDe(c):null; return a?'<span title="Cómo hablarle: '+esc(a.como)+'" style="font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid var(--border2);color:var(--text2,var(--text3))">'+esc(a.l)+'</span>':''; })()+'</div>'
+      /* Cabecera nueva (Angie, 22/11/2026, diseños 4 a 6 del rediseño): etapa en
+         color, nombre grande, contacto con «Segmento» y cómo es, y las acciones
+         a la derecha (Agendar, ⋯, página completa, cerrar). */
+      +'<div class="fl-cab"><div class="fl-fila">'
+        +'<div style="display:flex;flex-direction:column;gap:7px;min-width:0">'
+          +'<span class="fl-eb">'+esc((et&&et.l)||'')+'</span>'
+          +'<h3>'+esc(c.name||'')+'</h3>'
+          +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:14px;color:var(--text2,var(--text3))">'+esc(c.contacto||'Sin contacto cargado')+'</span>'
+            +(niv?'<span class="fl-chip" title="Nivel por lo que paga">Segmento '+niv+'</span>':'')
+            +(function(){ var a=(typeof arqDe==='function')?arqDe(c):null; return a?'<span class="fl-chip fl-chip-arq" title="Cómo hablarle: '+esc(a.como)+'">'+esc(a.l)+'</span>':''; })()+'</div>'
+        +'</div>'
         +'<div class="fl-acc">'
-          +'<button class="btn btn-sm btn-primary" type="button" onclick="fichaCerrar();p360Agendar('+c.id+',true)">Agendar reunión</button>'
-          +(ms.length?'<button class="btn btn-sm" type="button" onclick="mensCliPop(this,'+c.id+')"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span>Mensajes de hoy · '+ms.length+'</button>':'')
-          +'<span class="fl-mas"><button class="btn btn-sm" type="button" aria-label="Más acciones" onclick="event.stopPropagation();this.parentNode.classList.toggle(\'on\')">⋯</button><div class="fl-menu">'
+          +'<button class="fl-agendar" type="button" onclick="fichaCerrar();p360Agendar('+c.id+',true)"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>Agendar reunión</button>'
+          +'<span class="fl-mas"><button class="fl-ib" type="button" aria-label="Más acciones" onclick="event.stopPropagation();this.parentNode.classList.toggle(\'on\')"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button><div class="fl-menu">'
+            +(ms.length?'<button type="button" onclick="mensCliPop(this,'+c.id+')">Mensajes de hoy · '+ms.length+'<small>Lo que hay para mandarle hoy</small></button>':'')
             +'<button type="button" onclick="fichaCerrar();selectClient('+c.id+');openClientTab(\'integraciones\')">Integraciones<small>'+(faltaInteg?'Falta conectar Meta o GHL':'Meta y GHL conectados')+'</small></button>'
             +'<button type="button" onclick="fichaCerrar();p360Archivar('+c.id+')">Archivar<small>Sale del tablero; no se borra nada</small></button>'
             +'<button type="button" style="color:var(--redx)" onclick="fichaCerrar();confirmDeleteClient('+c.id+')">Eliminar<small>Se borra del tracker; pide confirmar</small></button>'
           +'</div></span>'
-        +'</div></div>'
+          +'<button class="fl-ib" type="button" aria-label="Abrir en página completa" title="Abrir en página completa" onclick="fichaCerrar();selectClient('+c.id+')"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>'
+          +'<button class="fl-ib" type="button" aria-label="Cerrar" onclick="fichaCerrar()"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'
+        +'</div></div></div>'
       +'<div class="fl-tabs" role="tablist">'+FICHA_TABS.map(function(t){ var n=_fichaCuenta(c,t[0]);
           return '<button type="button" role="tab" aria-selected="'+(t[0]===tab)+'" class="'+(t[0]===tab?'on':'')+'" onclick="fichaCliente('+c.id+',\''+t[0]+'\')">'+t[1]+(n!=null?'<b>'+n+'</b>':'')+'</button>'; }).join('')+'</div>'
       +'<div class="fl-body">'+fichaCuerpo(c, tab)+'</div>'
