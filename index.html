@@ -3423,14 +3423,18 @@ const EvoLoader = (() => {
   function setText(text) {
     if (text === current) return;
     current = text;
-    const old = stepBox.querySelector("span:not(.is-out)");
     const next = document.createElement("span");
     next.textContent = text;
     next.className = "is-in";
     stepBox.appendChild(next);
+    // Se van TODOS los anteriores, no solo uno: dos pasos en el mismo cuadro
+    // (pasa al arrancar) dejaban un texto viejo encimado para siempre.
     requestAnimationFrame(() => {
       next.className = "";
-      if (old) { old.className = "is-out"; setTimeout(() => old.remove(), 300); }
+      stepBox.querySelectorAll("span").forEach((sp) => {
+        if (sp === next || sp.classList.contains("is-out")) return;
+        sp.className = "is-out"; setTimeout(() => sp.remove(), 300);
+      });
     });
   }
   function armarPlazo() {
@@ -32753,7 +32757,38 @@ function _fichaCss(){
     +'.fstep{display:flex;padding:18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;flex-direction:column;gap:16px}'
     +'.fstep-l{display:flex}.fstep-l>div{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0;text-align:center}'
     +'.fstep-l i{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}'
-    +'.fstep-l small{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}';
+    +'.fstep-l small{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}'
+    /* Embudo de la ficha (23/11/2026) */
+    +'.fe{display:flex;flex-direction:column;gap:16px}'
+    +'.fe-per{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.fe-per>span{font-size:12px;color:var(--text3)}'
+    +'.fe-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px}'
+    +'.fe-seg button{border:0;background:none;color:var(--text3);font:500 12.5px var(--font);padding:6px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}'
+    +'.fe-seg button.on{background:var(--bg3);color:var(--strong)}.fe-seg button:disabled{opacity:.4;cursor:default}'
+    +'.fe-hero{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:44px 16px 16px}'
+    +'.fe-full{position:absolute;top:10px;right:12px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font:600 12px var(--font);padding:6px 10px;border-radius:9px;cursor:pointer}'
+    +'.fe-full:hover{border-color:var(--accent)}'
+    +'.fe-g{display:grid;grid-template-columns:64px minmax(84px,150px) minmax(0,1fr);row-gap:8px;column-gap:14px;align-items:stretch}'
+    +'.fe-fr svg{display:block;width:100%;height:100%;min-height:78px}'
+    +'.fe-pz{font-size:11px;color:var(--text3);line-height:1.25;text-align:right;align-self:start;margin-top:-14px}.fe-pz b{display:block;font-size:14px;color:var(--strong)}'
+    +'.fe-bl{display:flex;flex-direction:column;gap:2px;border-left:2px solid var(--border2);padding:2px 0 2px 10px;min-width:0;justify-content:center}'
+    +'.fe-bt{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}'
+    +'.fe-bf{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fe-bf b{font-size:13.5px;color:var(--strong);font-weight:700}'
+    +'.fe-bx{font-size:11.5px;color:var(--amberx)}'
+    +'.fe-aviso{font-size:13px;line-height:1.5;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px}'
+    +'.fe-roto{font-size:12.5px;line-height:1.5}.fe-roto span{display:block;color:var(--text2,var(--text3))}'
+    +'.fe-sec{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;padding:6px 16px 10px}'
+    +'.fe-sh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0}.fe-sh span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}'
+    +'.fe-sh button{border:0;background:none;color:var(--accent);font:600 12.5px var(--font);cursor:pointer;padding:4px 0;white-space:nowrap}'
+    +'.fe-falta{font-size:12.5px;color:var(--amberx);display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:6px}'
+    +'.fe-fila{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-top:1px solid var(--border)}'
+    +'.fe-f1{display:flex;align-items:center;gap:10px}.fe-n{flex:1;min-width:0;font-size:13px;color:var(--text2,var(--text3))}'
+    +'.fe-d{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}.fe-spw{color:var(--text3);display:flex}.fe-sp{width:64px;height:20px;display:block}'
+    +'.fe-f2{display:flex;flex-direction:column}.fe-f2 b{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--strong);font-variant-numeric:tabular-nums}'
+    +'.fe-f2 small{font-size:12px;color:var(--text3)}'
+    +'.fe-bar{height:4px;background:var(--bg3);border-radius:99px;overflow:hidden}.fe-bar i{display:block;height:100%;background:var(--accent);border-radius:99px}'
+    +'.fe-paso{font-size:12px;color:var(--text3);padding:6px 0 4px}'
+    +'.fe-pie{font-size:11.5px;color:var(--text3);line-height:1.55}'
+    +'@media (max-width:600px){.fe-g{grid-template-columns:48px 78px minmax(0,1fr);column-gap:10px}.fe-pz b{font-size:13px}.fe-hero{padding:46px 12px 14px}}';
   document.head.appendChild(st);
 }
 function _fichaNivel(c){ try{ var n=(typeof p360Nivel==='function')?p360Nivel(c):''; return {aa:'AA+',a:'A',b:'B',c:'C'}[n]||''; }catch(e){ return ''; } }
@@ -32766,14 +32801,237 @@ function _fichaCuenta(c, k){
   }catch(e){}
   return null;
 }
+/* ── Embudo de la ficha (Angie, 23/11/2026, captura de Goltia en el celu) ──
+   El embudo dibujado arriba, el período (14 días, 30 días o desde la línea
+   activa) contra el anterior de igual largo, un aviso de una línea y las tres
+   partes con sus filas. NADA SE INVENTA: Meta sale de la misma consulta de
+   insights que usa el «Mes a mes» (mismas campañas excluidas de la línea
+   activa, mismo `_mmActions`), pedida por día; registros, agendas, asistencias
+   y cierres salen de `ghlFunnelForRange`, el mismo conteo acumulado del
+   Bottom of Funnel. Lo que no tiene fuente se muestra «—» con lo que falta. */
+var _FE_META={}; // 'id|desde|hasta' -> {pidiendo} | {dias, cur, prev, at} | {error, at}
+function _feYmd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function _feSuma(ymd, n){ var p=ymd.split('-'); return _feYmd(new Date(+p[0], +p[1]-1, +p[2]+n)); }
+function _feDiasEntre(a, b){ var pa=a.split('-'), pb=b.split('-'); return Math.round((new Date(+pb[0],+pb[1]-1,+pb[2])-new Date(+pa[0],+pa[1]-1,+pa[2]))/864e5)+1; }
+function _feRango(c, per){
+  var hoy=_feYmd(new Date()), desde=null, et='';
+  if(per==='linea'){
+    var al=null; try{ al=getActiveLine(c.conversionLines||[]); }catch(e){}
+    var ds=al&&String(al.dateStart||'').slice(0,10);
+    if(ds && /^\d{4}-\d{2}-\d{2}$/.test(ds) && ds<=hoy){ desde=ds; et='desde la línea'+(al.name?(' «'+al.name+'»'):''); }
+    else return null;
+  }else{
+    var n=(per==='14')?14:30; desde=_feSuma(hoy, -(n-1)); et='últimos '+n+' días';
+  }
+  var dias=_feDiasEntre(desde, hoy);
+  return {desde:desde, hasta:hoy, pDesde:_feSuma(desde,-dias), pHasta:_feSuma(desde,-1), dias:dias, etiqueta:et};
+}
+function _feMetaFila(acc, row){
+  var a=_mmActions(row);
+  acc.spend+=parseFloat(row.spend||0)||0;
+  acc.clicks+=parseInt(row.clicks||0)||0;
+  // Sumado entre campañas el alcance queda alto (Meta deduplica solo dentro de
+  // cada una): es el mismo piso que muestra el «Mes a mes».
+  acc.reach+=parseInt(row.reach||0)||0;
+  acc.landing+=a.landing;
+}
+function _feVacio(){ return {spend:0, clicks:0, reach:0, landing:0}; }
+async function _fePedirMeta(c, r){
+  var k=c.id+'|'+r.desde+'|'+r.hasta, prev=_FE_META[k];
+  if(prev && (prev.pidiendo || Date.now()-prev.at<10*60000)) return;
+  _FE_META[k]={pidiendo:true, at:Date.now()};
+  try{
+    var al=getActiveLine(c.conversionLines||[]);
+    var excl=((al&&al.excludedCampaigns)||[]).map(String);
+    var base='https://graph.facebook.com/v25.0/act_'+c.metaAccountId+'/insights?level=campaign&limit=500'
+      +'&fields='+encodeURIComponent('campaign_id,spend,clicks,reach,actions')+'&access_token='+c.metaToken;
+    var leer=async function(url, fn){
+      var pag=0;
+      while(url && pag<20){
+        pag++;
+        var j=await (await fetch(url)).json();
+        if(j.error) throw new Error(j.error.message||'Meta no respondió');
+        (j.data||[]).forEach(function(row){ if(excl.indexOf(String(row.campaign_id))<0) fn(row); });
+        url=(j.paging&&j.paging.next)||null;
+      }
+    };
+    // Por día, para las tendencias; los totales de cada período van aparte
+    // porque el alcance de un período no es la suma de sus días.
+    var dias={};
+    await leer(base+'&time_increment=1&time_range='+encodeURIComponent(JSON.stringify({since:r.pDesde, until:r.hasta})), function(row){
+      var d=String(row.date_start||''); _feMetaFila(dias[d]=dias[d]||_feVacio(), row);
+    });
+    var cur=_feVacio(), ant=_feVacio();
+    await leer(base+'&time_ranges='+encodeURIComponent(JSON.stringify([{since:r.pDesde, until:r.pHasta},{since:r.desde, until:r.hasta}])), function(row){
+      _feMetaFila(String(row.date_start||'')===r.desde?cur:ant, row);
+    });
+    _FE_META[k]={dias:dias, cur:cur, prev:ant, at:Date.now()};
+  }catch(e){ _FE_META[k]={error:String(e&&e.message||e), at:Date.now()}; }
+  try{ var v=document.getElementById('cli-ventana'); if(v && v.dataset.que==='ficha' && +v.dataset.cli===c.id && /resultados|embudo/.test(v.dataset.tab||'')) fichaCliente(c.id, v.dataset.tab); }catch(e){}
+}
+function _feGhl(c, d1, d2){ try{ return (typeof ghlFunnelForRange==='function')?ghlFunnelForRange(c, d1, d2):null; }catch(e){ return null; } }
+function _fePer(per, id){ S._fePer=per; var v=document.getElementById('cli-ventana'); fichaCliente(id, (v&&v.dataset.tab)||'resultados'); }
+function _feSpark(vals){
+  var v=vals.map(function(x){ return (x==null||!isFinite(x))?0:x; }), max=Math.max.apply(null, v.concat([0]));
+  if(!max || v.length<2) return '<svg class="fe-sp" viewBox="0 0 64 20" aria-hidden="true"></svg>';
+  var pts=v.map(function(x,i){ return (i*64/(v.length-1)).toFixed(1)+','+(18-x/max*16).toFixed(1); }).join(' ');
+  return '<svg class="fe-sp" viewBox="0 0 64 20" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+}
 function _fichaEmbudo(c){
-  var er=c.embudoRoto||{}, roto=er.parte||null, tono=(er.tono==='ambar')?'ambar':'rojo';
-  var P=[['top','Top of Funnel','Gasto, alcance, CPL y avisos de Meta'],['middle','Middle of Funnel','Visitas y conversión de la landing'],['bottom','Bottom of Funnel','Agendas, cierres, revenue y CAC']];
-  return '<div class="fl-emb">'+P.map(function(x){ var r=(roto===x[0]);
-      return '<button type="button" onclick="fichaCerrar();cliMenuIr('+c.id+',\''+x[0]+'\')"'+(r?(' style="border-color:'+(tono==='ambar'?'var(--amberx)':'var(--redx)')+'"'):'')+'>'
-        +'<span style="display:flex;align-items:center;gap:8px">'+(typeof _embIco==='function'?_embIco(x[0], roto, tono):'')+'<b style="font-size:13.5px">'+x[1]+'</b></span>'
-        +'<span style="font-size:12px;color:'+(r?(tono==='ambar'?'var(--amberx)':'var(--redx)'):'var(--text3)')+'">'+esc(r?(er.motivo||'Acá se encarece el costo'):x[2])+'</span></button>'; }).join('')+'</div>'
-    +(er.detalle?('<div style="margin-top:12px;font-size:12.5px;color:var(--text2,var(--text3));line-height:1.55">'+esc(er.detalle)+'</div>'):'');
+  var er=c.embudoRoto||{}, roto=er.parte||null, tono=(er.tono==='ambar')?'ambar':'rojo', colRoto=(tono==='ambar')?'var(--amberx)':'var(--redx)';
+  var per=S._fePer||'30', r=_feRango(c, per);
+  if(!r){ per='30'; r=_feRango(c, '30'); }
+  var hayLinea=!!_feRango(c, 'linea');
+  var nf=function(v){ return Math.round(v).toLocaleString('es-AR'); };
+  var fx=(typeof fxActiva==='function' && fxActiva(c))?Number(getFx(c).rate):0;
+  var mon=fx?'USD':(c.metaCurrency||'USD');
+  var plata=function(v){ if(v==null||!isFinite(v)) return '—'; var n=fx?v/fx:v; return mon+' '+n.toLocaleString('es-AR',{maximumFractionDigits:(Math.abs(n)<100?2:0)}); };
+  var pct=function(a,b){ return (a!=null&&b)?a/b*100:null; };
+  var fp=function(v){ return v==null?'—':(v<10?v.toFixed(1).replace('.',','):Math.round(v))+' %'; };
+
+  // ── Meta ──
+  var metaOk=!!(c.metaToken&&c.metaAccountId), M=null, metaFalta='';
+  if(!metaOk) metaFalta='Falta conectar Meta';
+  else{
+    M=_FE_META[c.id+'|'+r.desde+'|'+r.hasta];
+    if(!M || (!M.dias && !M.error && !M.pidiendo)){ _fePedirMeta(c, r); M=_FE_META[c.id+'|'+r.desde+'|'+r.hasta]; }
+    if(M && M.error){ metaFalta='No se pudo leer Meta: '+M.error; M=null; }
+    else if(!M || !M.dias){ metaFalta='Leyendo Meta…'; M=null; }
+  }
+  // ── GHL ──
+  var ghlOk=!!(c.ghl&&c.ghl.token&&c.ghl.locationId), G=null, Gp=null, ghlFalta='';
+  if(!ghlOk) ghlFalta='Falta conectar GHL';
+  else{
+    G=_feGhl(c, r.desde, r.hasta); Gp=_feGhl(c, r.pDesde, r.pHasta);
+    if(!G) ghlFalta='GHL todavía no trajo oportunidades de este cliente';
+  }
+  var agFalta=(G && G.agendas==null)?'Faltan las reglas de etapas de GHL (qué etapa es agenda)':'';
+  var vivoFalta=(G && G.enVivo==null)?'Faltan las reglas de etapas de GHL (qué etapa es asistió)':'';
+
+  // Visitas: el evento landing_page_view de Meta, como la fila del «Mes a mes».
+  // Si Meta no lo registra (clics pero cero visitas en los dos períodos), no es
+  // un cero: es que el evento no está.
+  var visFalta='';
+  if(M && !M.cur.landing && !M.prev.landing && (M.cur.clicks||M.prev.clicks)) visFalta='Meta no registra visitas a la landing (falta el evento landing_page_view)';
+
+  var dias=[]; for(var i=0;i<r.dias;i++) dias.push(_feSuma(r.desde, i));
+  var serieM=function(k){ return M?dias.map(function(d){ return (M.dias[d]||{})[k]||0; }):[]; };
+  var gDia=null;
+  var serieG=function(k){
+    if(!G) return [];
+    if(!gDia) gDia=dias.map(function(d){ return _feGhl(c, d, d)||{}; });
+    return gDia.map(function(x){ return x[k]||0; });
+  };
+  var val=function(src, k){ return src?src[k]:null; };
+  var F={
+    gasto:{l:'Gasto', v:M&&M.cur.spend, p:M&&M.prev.spend, falta:metaFalta, plata:true, serie:serieM('spend')},
+    alcance:{l:'Alcance', v:M&&M.cur.reach, p:M&&M.prev.reach, falta:metaFalta, serie:serieM('reach'), cu:'cada 1.000 alcanzadas', mil:true},
+    clics:{l:'Clics al anuncio', v:M&&M.cur.clicks, p:M&&M.prev.clicks, falta:metaFalta, serie:serieM('clicks'), cu:'por clic'},
+    visitas:{l:'Visitas a la landing', v:visFalta?null:(M&&M.cur.landing), p:visFalta?null:(M&&M.prev.landing), falta:metaFalta||visFalta, serie:visFalta?[]:serieM('landing'), cu:'por visita'},
+    registros:{l:'Registros', v:val(G,'registros'), p:val(Gp,'registros'), falta:ghlFalta, serie:serieG('registros'), cu:'por registro'},
+    agendas:{l:'Agendas', v:agFalta?null:val(G,'agendas'), p:agFalta?null:val(Gp,'agendas'), falta:ghlFalta||agFalta, serie:serieG('agendas'), cu:'por agenda'},
+    vivo:{l:'Asistieron', v:vivoFalta?null:val(G,'enVivo'), p:vivoFalta?null:val(Gp,'enVivo'), falta:ghlFalta||vivoFalta, serie:serieG('enVivo'), cu:'por llamada'},
+    cierres:{l:'Cierres', v:val(G,'ganados'), p:val(Gp,'ganados'), falta:ghlFalta, serie:serieG('ganados'), cu:'CAC'}
+  };
+  var gC=F.gasto.v, gP=F.gasto.p;
+  Object.keys(F).forEach(function(k){
+    var f=F[k]; if(f.plata||!f.cu) return;
+    var m=f.mil?1000:1;
+    f.costo=(gC!=null&&f.v)?gC/f.v*m:null; f.costoP=(gP!=null&&f.p)?gP/f.p*m:null;
+  });
+  F.gasto.costo=(gC!=null)?gC/r.dias:null; F.gasto.cu='por día';
+
+  // Pasos: de una fila a la siguiente. El paso alcance→clic no compite por el
+  // «mayor corte»: siempre es de un dígito y taparía el corte real.
+  var PASOS=[['alcance','clics','hizo clic',false],['clics','visitas','cargó la página',true],['visitas','registros','se registró',true],
+             ['registros','agendas','agendó',true],['agendas','vivo','asistió',true],['vivo','cierres','cerró',true]];
+  var paso={}, peor=null;
+  PASOS.forEach(function(p){
+    var a=F[p[0]].v, b=F[p[1]].v, x=(a&&b!=null)?b/a*100:null;
+    paso[p[1]]={pct:x, t:p[2]};
+    if(p[3] && x!=null && x<=100 && (peor==null || x<paso[peor].pct)) peor=p[1];
+  });
+
+  // ── El aviso de una línea ──
+  var aviso='', avCol='var(--text2,var(--text3))', peorSube=null;
+  ['clics','visitas','registros','agendas','vivo','cierres'].forEach(function(k){
+    var f=F[k]; if(f.costo==null||f.costoP==null||!f.costoP) return;
+    var d=(f.costo/f.costoP-1)*100;
+    if(d>25 && (!peorSube || d>peorSube.d)) peorSube={k:k, d:d};
+  });
+  var nomCosto={clics:'el clic',visitas:'la visita',registros:'el registro',agendas:'la agenda',vivo:'la llamada',cierres:'el cierre (CAC)'};
+  if(peorSube){
+    var fs=F[peorSube.k];
+    aviso='Se encareció '+nomCosto[peorSube.k]+': +'+Math.round(peorSube.d)+' % ('+plata(fs.costoP)+' → '+plata(fs.costo)+') contra el período anterior.';
+    avCol=peorSube.d>50?'var(--redx)':'var(--amberx)';
+  }else if(['clics','registros','agendas'].some(function(k){ return F[k].costo!=null && F[k].costoP!=null; })){
+    aviso='Embudo estable: ningún paso se encareció más de 25 %.'+(peor?(' Donde más se pierde: '+F[peor].l.toLowerCase()+' (solo '+fp(paso[peor].pct)+' '+paso[peor].t+').'):'');
+  }else{
+    aviso='Todavía no hay datos de los dos períodos para comparar los costos.'+(peor?(' Donde más se pierde: '+F[peor].l.toLowerCase()+' ('+fp(paso[peor].pct)+' '+paso[peor].t+').'):'');
+  }
+
+  // ── El dibujo ──
+  var franja=function(parte, w1, w2){
+    var mal=(roto===parte), col=mal?colRoto:'var(--accent)', x1=(100-w1)/2, x2=(100-w2)/2;
+    return '<svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true" style="color:'+col+'"><path d="M'+x1+' 0H'+(100-x1)+'L'+(100-x2)+' 60H'+x2+'Z" fill="currentColor" fill-opacity="'+(mal?'.9':(parte==='top'?'.95':(parte==='middle'?'.75':'.55')))+'"/></svg>';
+  };
+  var dato=function(v, fmt){ return (v==null)?'—':(fmt?fmt(v):nf(v)); };
+  var pierden=(F.visitas.v&&F.registros.v!=null)?Math.max(0,100-F.registros.v/F.visitas.v*100):null;
+  var bloque=function(parte, tit, filas, falta){
+    var mal=(roto===parte);
+    return '<div class="fe-bl"'+(mal?' style="border-left-color:'+colRoto+'"':'')+'><span class="fe-bt"'+(mal?' style="color:'+colRoto+'"':'')+'>'+tit+'</span>'
+      +filas.map(function(f){ return '<span class="fe-bf"><b>'+f[1]+'</b> '+f[0]+'</span>'; }).join('')
+      +(falta?'<span class="fe-bx">'+esc(falta)+'</span>':'')+'</div>';
+  };
+  var pasoIzq=function(x, t){ return '<span class="fe-pz">'+(x==null?'':('<b>'+fp(x)+'</b>'+t))+'</span>'; };
+  var hero='<div class="fe-hero">'
+    +'<button type="button" class="fe-full" onclick="fichaCerrar();cliMenuIr('+c.id+',\'top\')">Ver el embudo completo →</button>'
+    +'<div class="fe-g">'
+      +'<span class="fe-pz"></span><div class="fe-fr">'+franja('top',100,74)+'</div>'
+      +bloque('top','Atracción · Meta',[['alcance',dato(F.alcance.v)],['clics',dato(F.clics.v)],['inversión',dato(F.gasto.v,plata)]], metaFalta)
+      +pasoIzq(pct(F.visitas.v,F.clics.v),'llega')+'<div class="fe-fr">'+franja('middle',74,48)+'</div>'
+      +bloque('middle','Conversión · Landing',[['registros',dato(F.registros.v)],['visitas',dato(F.visitas.v)],['se pierden',pierden==null?'—':fp(pierden)]], ghlFalta||visFalta)
+      +pasoIzq(pct(F.agendas.v,F.registros.v),'agenda')+'<div class="fe-fr">'+franja('bottom',48,26)+'</div>'
+      +bloque('bottom','Cierre · Ventas',[['cierres',dato(F.cierres.v)],['revenue',G?dato(G.revenueGanados,function(v){ return '$ '+nf(v); }):'—'],['agendas',dato(F.agendas.v)],['se presentaron',dato(F.vivo.v)]], ghlFalta||agFalta)
+    +'</div></div>';
+
+  // ── Las secciones ──
+  var fila=function(k, ref){
+    var f=F[k], v=f.v, d=(v!=null&&f.p)?((v/f.p-1)*100):null;
+    var w=(v!=null&&ref)?Math.max(v>0?2:0, Math.min(100, v/ref*100)):0;
+    var dcol=(d==null)?'var(--text3)':(f.plata?'var(--text2,var(--text3))':(d>=0?'var(--accent)':'var(--redx)'));
+    var p=paso[k], corte=(p&&p.pct!=null)?('<div class="fe-paso"'+(k===peor?' style="color:var(--redx)"':'')+'>↓ '+fp(p.pct)+' '+p.t+(k===peor?' · el mayor corte':'')+'</div>'):'';
+    return corte+'<div class="fe-fila">'
+      +'<div class="fe-f1"><span class="fe-n">'+f.l+'</span><span class="fe-d" style="color:'+dcol+'">'+(d==null?'':((d>=0?'+':'')+Math.round(d)+' %'))+'</span>'+(v==null?'':'<span class="fe-spw">'+_feSpark(f.serie)+'</span>')+'</div>'
+      +'<div class="fe-f2"><b>'+(v==null?'—':(f.plata?plata(v):nf(v)))+'</b>'
+        +'<small>'+(v==null?esc(f.falta||'Sin dato'):(f.costo!=null?(plata(f.costo)+' '+f.cu):''))+'</small></div>'
+      +'<div class="fe-bar"><i style="width:'+w.toFixed(1)+'%'+(k===peor?';background:var(--redx)':'')+'"></i></div>'
+    +'</div>';
+  };
+  var seccion=function(tit, hoja, ver, filas, falta, btn){
+    return '<section class="fe-sec"><div class="fe-sh"><span>'+tit+'</span><button type="button" onclick="fichaCerrar();cliMenuIr('+c.id+',\''+hoja+'\')">'+ver+' →</button></div>'
+      +((falta&&btn)?('<div class="fe-falta">'+esc(falta)+' <button type="button" class="btn btn-sm" onclick="fichaCerrar();selectClient('+c.id+');openClientTab(\'integraciones\')">Conectar</button></div>'):'')
+      +filas+'</section>';
+  };
+  var refGasto=Math.max(F.gasto.v||0, F.gasto.p||0);
+  var secs=seccion('Atracción · Meta','top','Ver Meta en detalle',
+        fila('gasto', refGasto)+fila('alcance', F.alcance.v)+fila('clics', F.alcance.v), metaFalta, !metaOk)
+    +seccion('Conversión · Landing','middle','Ver la landing en detalle',
+        fila('visitas', F.visitas.v)+fila('registros', F.visitas.v||F.registros.v), ghlFalta, !ghlOk)
+    +seccion('Cierre · Ventas','bottom','Ver ventas en detalle',
+        fila('agendas', F.agendas.v)+fila('vivo', F.agendas.v)+fila('cierres', F.agendas.v), ghlFalta||agFalta, !ghlOk);
+
+  var perBtn=function(k, t, ok){ return '<button type="button" class="'+(per===k?'on':'')+'"'+(ok?'':' disabled title="No hay una línea de conversión activa con fecha de inicio"')+' onclick="_fePer(\''+k+'\','+c.id+')">'+t+'</button>'; };
+  var fecha=function(ymd){ var p=ymd.split('-'); return p[2]+'/'+p[1]; };
+  return '<div class="fe">'
+    +'<div class="fe-per"><div class="fe-seg">'+perBtn('14','14 días',true)+perBtn('30','30 días',true)+perBtn('linea','Desde la línea',hayLinea)+'</div>'
+      +'<span>'+fecha(r.desde)+' al '+fecha(r.hasta)+' · contra los '+r.dias+' días anteriores</span></div>'
+    +hero
+    +'<div class="fe-aviso" style="color:'+avCol+'">'+esc(aviso)+'</div>'
+    +((er.motivo||er.detalle)?('<div class="fe-roto" style="color:'+colRoto+'">'+esc(er.motivo||'')+(er.detalle?('<span>'+esc(er.detalle)+'</span>'):'')+'</div>'):'')
+    +secs
+    +'<div class="fe-pie">Meta: campañas de la línea activa, '+(fx?'convertido a USD':'en '+esc(mon))+'; el alcance sumado entre campañas es un piso. Registros por fecha de entrada en GHL, cierres por fecha de cierre.</div>'
+  +'</div>';
 }
 function fichaCuerpo(c, tab){
   var seguro=function(f){ try{ return f()||''; }catch(e){ console.warn('ficha:',e); return '<div style="font-size:12.5px;color:var(--text3)">No pude mostrar esta parte.</div>'; } };
