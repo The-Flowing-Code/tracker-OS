@@ -70,6 +70,9 @@ function avisosACsm(){
         dec=c.cambiosDecisiones; act++;
         return;
       }
+      /* De una llamada solo salen tickets del equipo (Angie, 23/11/2026: «que queden las de
+         equipo nada más»). Lo que hace el cliente o hay que avisarle no se convierte. */
+      if(!_llam && String(it.id).indexOf('llamada-')===0) return;
       var aviso=(it.tipo!=='cliente');
       var venc=new Date(ahora.getTime()); venc.setDate(venc.getDate()+(aviso?2:7));
       var t;
