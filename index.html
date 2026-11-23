@@ -3176,7 +3176,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
 <script src="js/fathom.js?v=DEV"></script>
 <script src="js/meta.js?v=DEV"></script>
 <script src="js/bienvenida.js?v=DEV"></script>
-<script src="js/avisos.js?v=20261123"></script>
+<script src="js/avisos.js?v=20261123b"></script>
 <script src="js/etapas-csm.js?v=DEV"></script>
 <script src="js/mensual.js?v=DEV"></script>
 <script src="js/lista-lanzamientos.js?v=DEV"></script>
@@ -8717,6 +8717,7 @@ function _tkOrigen(t){
   if(t.source==='Rutina') return 'Rutina';
   if(t.source==='Agente') return 'Agente';
   if(t.source==='Etapa') return 'Etapa';
+  if(t.source==='Reporte semanal') return 'Reporte semanal';
   return (!t.source||t.source==='Manual')?'Manual':'Llamada';
 }
 function _tkDias(a,b){ return Math.max(0,Math.round((b-a)/86400000)); }
@@ -44160,6 +44161,10 @@ function dashCambiosPendientes(){
     var ts=new Date(cp.at||0).getTime()||0;
     (cp.items||[]).forEach(function(it){
       if(!it||!it.id||!it.texto) return;
+      /* Desde el 23/11/2026 las sugerencias salen una vez por semana, del reporte
+         semanal de los lunes (id «reporte-…»), como tickets del equipo. Las del
+         reporte diario de campañas ya no se muestran (Angie: «solo el lunes»). */
+      if(!/^(llamada-|reporte-)/.test(String(it.id))) return;
       if(dec[it.id] && dec[it.id].estado && dec[it.id].estado!=='pendiente') return;
       /* Santi (21/10/2026): «¿qué hago con sacar el token de GHL del código?».
          Lo técnico y de seguridad (tokens, claves, código, permisos) no es del

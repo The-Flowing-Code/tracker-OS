@@ -48,6 +48,9 @@ function avisosACsm(){
     ((c.cambiosPropuestos||{}).items||[]).forEach(function(it){
       var _llam=(it && it.crear==='ticket');   // nace de una llamada: ticket directo (Angie, 20/10/2026)
       if(!it || !it.id || !it.texto || (it.para!=='csm' && !_llam)) return;
+      /* Solo lo de las llamadas y del reporte semanal de los lunes (23/11/2026): el
+         reporte diario de campañas ya no crea avisos ni tickets. */
+      if(!/^(llamada-|reporte-)/.test(String(it.id))) return;
       /* Si el aviso ya tiene ticket abierto y la rutina le cambió el texto (los
          nombres de los leads, por ejemplo), el ticket se actualiza en vez de
          quedarse con el del primer día (pedido 4, 26/10/2026). */
@@ -89,7 +92,7 @@ function avisosACsm(){
         t={ id:Date.now()+Math.floor(Math.random()*100000)+n,
           text:String(it.texto)+(it.porque?(' — '+it.porque):''),
           responsible:resp, tambien:copia.filter(function(m){ return m!==resp; }), done:false,
-          source:'Llamada', due:due, delegated:true, delegatedAt:ahora.toISOString(),
+          source:(String(it.id).indexOf('reporte-')===0?'Reporte semanal':'Llamada'), due:due, delegated:true, delegatedAt:ahora.toISOString(),
           ticket:'#'+nextTicketFromApp(), desdeCambio:it.id };
       } else {
       t={ id:Date.now()+Math.floor(Math.random()*100000)+n,
