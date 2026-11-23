@@ -32587,7 +32587,12 @@ function _fichaPasos(c){
   var et=null; try{ et=_p360Etapa(c); }catch(e){}
   var cols=(typeof rutaColumnas==='function')?rutaColumnas().filter(function(e){ return !(typeof p360EsVenta==='function'&&p360EsVenta(e.l)); }):[];
   if(!cols.length) return '';
-  var i=et?cols.map(function(e){ return e.l; }).indexOf(et.l):-1;
+  // Recurrente, AA+ y Garantía van juntas como «Optimización», igual que en el tablero.
+  var _opt=function(l){ return /^(recurrente( aa\+)?|en garant[ií]a)$/i.test(String(l||'').trim()); };
+  var _vis=[]; cols.forEach(function(e){ var l=_opt(e.l)?'Optimización':e.l; if(_vis.indexOf(l)<0) _vis.push(l); });
+  cols=_vis.map(function(l){ return {l:l}; });
+  var _act=et?(_opt(et.l)?'Optimización':et.l):'';
+  var i=et?_vis.indexOf(_act):-1;
   var dias=(et&&et.fecha)?Math.max(0,Math.round((Date.now()-et.fecha.getTime())/864e5)):null;
   return '<div class="fstep" style="margin-bottom:18px"><div class="fstep-l">'+cols.map(function(e,k){
       var hecho=i>=0&&k<i, act=k===i;
