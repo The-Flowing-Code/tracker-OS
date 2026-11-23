@@ -4078,7 +4078,10 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                     /* El tiempo con Claude de cada persona, por día y tipo de trabajo, para la
                        rueda del Dashboard (11/11/2026, migracion 055). Cumple el filtro: cada
                        máquina lo vuelve a medir y reportar. */
-                    'tiempoEquipo'];
+                    'tiempoEquipo',
+                    /* La métrica que manda de cada cliente (migracion 062): la propone y la
+                       mide la rutina; se confirma o se cambia desde la ficha con rpc/set_metrica. */
+                    'metrica'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
@@ -32688,6 +32691,7 @@ function fichaCuerpo(c, tab){
   if(tab==='materiales') return seguro(function(){ return _ctxResumenHtml(c); });
   if(tab==='tareas') return seguro(function(){ return (typeof successTareasHtml==='function')?successTareasHtml(c):''; });
   return '<div style="display:flex;flex-direction:column;gap:22px">'
+    +seguro(function(){ return _fichaMetrica(c); })
     +seguro(function(){ return _fichaKpis(c); })
     +seguro(function(){ return (typeof _llSinVerHtml==='function')?_llSinVerHtml(c):''; })
     +seguro(function(){ return _fichaQuien(c); })
@@ -32698,6 +32702,65 @@ function fichaCuerpo(c, tab){
       +_fichaPliegue('Garantía', seguro(function(){ return _garantiaHtml(c); }))
     +'</div>'
   +'</div>';
+}
+/* La métrica que manda (Angie, 23/11/2026): el costo de adquisición si las ventas
+   están validadas; si no, el escalón más profundo de la victoria mayor del cliente
+   (llamada en vivo, agenda o calificado). Vive en maquina.metrica (migración 062):
+   la propone y la mide cada mañana metrica_que_manda.py; se confirma o se cambia
+   acá. La leen M1, M3 y S1. */
+var METRICA_ESC=[['venta','Costo por venta'],['en_vivo','Costo por llamada en vivo'],['agenda','Costo por agenda'],['calificado','Costo por lead calificado']];
+function _metNombre(k){ var x=METRICA_ESC.filter(function(e){ return e[0]===k; })[0]; return x?x[1]:''; }
+function _metPlata(v, mon){ if(v==null||isNaN(v)) return '—'; return (mon?mon+' ':'')+Number(v).toLocaleString('es-AR',{maximumFractionDigits:(v<100?2:0)}); }
+function _metFecha(iso){ if(!iso) return ''; var p=String(iso).split('-'); return p[2]+'/'+p[1]; }
+function _fichaMetrica(c){
+  var m=c.metrica||{}, ac=m.actual||{}, mon=ac.moneda||'';
+  var caja='border:1px solid var(--border2);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;background:var(--bg2)';
+  if(S._metEdit===c.id){
+    return '<div style="'+caja+'"><div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700">Métrica que manda</div>'
+      +'<label style="font-size:12px;color:var(--text3)">Escalón<select id="met-esc" class="btn btn-sm" style="display:block;width:100%;margin-top:4px;text-align:left">'
+      +METRICA_ESC.map(function(e){ return '<option value="'+e[0]+'"'+(m.escalon===e[0]?' selected':'')+'>'+e[1]+'</option>'; }).join('')+'</select></label>'
+      +'<label style="font-size:12px;color:var(--text3)">Costo de base'+(mon?' ('+esc(mon)+')':'')+'<input id="met-base" type="number" min="0" step="any" value="'+(m.base!=null?m.base:'')+'" style="display:block;width:100%;margin-top:4px;padding:7px 10px;border-radius:9px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font:inherit"></label>'
+      +'<div id="met-err" style="font-size:12px;color:var(--redx)"></div>'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-sm btn-primary" type="button" onclick="metGuardar('+c.id+')">Guardar</button>'
+      +'<button class="btn btn-sm" type="button" onclick="S._metEdit=null;fichaCliente('+c.id+',\'resumen\')">Cancelar</button></div></div>';
+  }
+  if(!m.escalon){
+    return '<div style="'+caja+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-weight:700">Métrica que manda</span>'
+      +'<button class="btn btn-sm" type="button" onclick="S._metEdit='+c.id+';fichaCliente('+c.id+',\'resumen\')">Elegir</button></div>'
+      +'<div style="font-size:13px;color:var(--text3)">Todavía no hay datos para elegirla: ningún escalón tuvo 3 casos en las últimas 7 semanas. Mientras tanto se mira el costo por registro.</div></div>';
+  }
+  var pct=ac.vs_base_pct, col=(pct==null)?'var(--text3)':(pct>=30?'var(--redx)':(pct<=-10?'var(--accent)':'var(--text2,var(--text3))'));
+  return '<div style="'+caja+'">'
+    +'<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700">Métrica que manda'+(m.propuesta?' · propuesta':'')+'</span>'
+    +'<span style="display:flex;gap:6px">'+(m.propuesta?'<button class="btn btn-sm btn-primary" type="button" onclick="metConfirmar('+c.id+')">Confirmar</button>':'')
+    +'<button class="btn btn-sm" type="button" onclick="S._metEdit='+c.id+';fichaCliente('+c.id+',\'resumen\')">Cambiar</button></span></div>'
+    +'<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-size:14px;color:var(--text)">'+esc(_metNombre(m.escalon))+'</span>'
+    +'<span style="font-size:24px;font-weight:800;color:var(--strong);letter-spacing:-.5px">'+_metPlata(ac.costo,mon)+'</span>'
+    +(pct!=null?'<span style="font-size:12.5px;font-weight:600;color:'+col+'">'+(pct>0?'+':'')+pct+' % vs base</span>':'')+'</div>'
+    +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'
+      +(ac.desde?'Del '+_metFecha(ac.desde)+' al '+_metFecha(ac.hasta)+' · '+(ac.casos||0)+' caso'+(ac.casos===1?'':'s')+(ac.pocos_casos?' (pocos para comparar)':'')+' · ':'')
+      +'base '+_metPlata(m.base,mon)+(m.desde?' desde el '+_metFecha(m.desde):'')+(m.por?' · '+esc(m.por):'')+'</div>'
+    +(m.nota&&m.propuesta?'<div style="font-size:12px;color:var(--text3)">'+esc(m.nota)+'</div>':'')
+  +'</div>';
+}
+async function _metEnviar(cid, val){
+  var r=await sbFetch('rpc/set_metrica',{method:'POST',body:JSON.stringify({p_id:cid,p_val:val})});
+  var c=(DB.clients||[]).find(function(x){ return x.id===+cid; });
+  if(c) c.metrica=(r&&typeof r==='object'&&!Array.isArray(r))?r:Object.assign({}, c.metrica||{}, val);
+  return c;
+}
+async function metConfirmar(cid){
+  try{ await _metEnviar(cid,{propuesta:false, por:(personaNombre(SB.email)||SB.email||'').slice(0,60)}); toast('Métrica confirmada'); }
+  catch(e){ toast('No se pudo guardar: '+((e&&e.message)||e)); }
+  fichaCliente(cid,'resumen');
+}
+async function metGuardar(cid){
+  var esc_=document.getElementById('met-esc').value, b=parseFloat(document.getElementById('met-base').value), err=document.getElementById('met-err');
+  if(!(b>0)){ err.textContent='Poné un costo de base mayor a 0.'; return; }
+  var hoy=new Date(), d=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+  try{ await _metEnviar(cid,{escalon:esc_, base:b, desde:d, propuesta:false, por:(personaNombre(SB.email)||SB.email||'').slice(0,60), nota:''}); S._metEdit=null; toast('Métrica guardada: se recalcula mañana a la mañana'); }
+  catch(e){ err.textContent='No se pudo guardar: '+((e&&e.message)||e); return; }
+  fichaCliente(cid,'resumen');
 }
 /* Piezas del Resumen nuevo (Angie, 22/11/2026, diseño 4 del rediseño). */
 function _fichaPliegue(t, html){
