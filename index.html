@@ -241,6 +241,19 @@ body.light .client-state.live{text-shadow:none}
 .bdj-tabs button b{font-size:10.5px;background:var(--bg3);border-radius:99px;padding:0 6px;margin-left:6px;color:var(--text2,var(--text3))}
 .bdj-aviso{background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.25);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text2,var(--text3));margin-bottom:14px}
 .bdj-aviso b{color:var(--amberx)}
+.cal-fl{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--strong);cursor:pointer;font-size:16px;padding:0}
+.cal-hoy{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--border2);background:transparent;color:var(--strong);font:500 13px var(--font);cursor:pointer}
+.cal-seg{display:flex;height:36px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-sizing:border-box}
+.cal-seg button{padding:0 12px;background:transparent;border:0;border-radius:7px;color:var(--text3);font:400 13px var(--font);cursor:pointer;white-space:nowrap}
+.cal-seg button.on{background:var(--bg4,#2A3040);color:var(--strong);font-weight:600}
+.cal-ley{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)}.cal-ley i{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:8px}
+.cal-banda{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--text3);margin-bottom:12px}.cal-banda b{color:var(--strong)}
+.cal-dos{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}@media (max-width:1100px){.cal-dos{grid-template-columns:1fr}}
+.cal-lado{display:flex;flex-direction:column;gap:12px}
+.cal-lat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.cal-lat>b{font-size:14px;color:var(--strong)}.cal-lat>small{font-size:12px;color:var(--text3);line-height:1.45;margin-bottom:6px}.cal-lat p{margin:4px 0 0;font-size:12.5px;color:var(--text3)}
+.cal-lat-f{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)}
+.cal-lat-f span{display:flex;flex-direction:column}.cal-lat-f b{font-size:13px;color:var(--strong)}.cal-lat-f small{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tk-menu-sec{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 12px 4px}
 .tk-menu-2{align-items:flex-start !important}.tk-menu-2 b{display:block;font-weight:500}.tk-menu-2 small{display:block;font-size:11.5px;color:var(--text3);line-height:1.35;margin-top:2px;white-space:normal}
 
@@ -19410,47 +19423,67 @@ function _calTitulo(e, ref, y, m){
 
    Estas dos funciones son las piezas que se dibujan arriba; las usa el render
    de la seccion, no `calendarioHtml`. */
+/* Diseños 12 y 13 (Angie, 22/11/2026): cabecera propia del calendario con
+   título, período con flechas, Hoy y las vistas en un control segmentado. */
 function _calNavHtml(){
   var e=_calEstado(), ref=_calRef(e);
-  return '<div style="display:flex;align-items:center;gap:7px">'
-    +'<button class="btn btn-sm" style="padding:3px 9px" aria-label="Anterior" '
-      +'onclick="calMover(-1)">\u2039</button>'
-    +'<span style="font-size:14px;color:var(--strong);min-width:142px">'
+  return '<div style="display:flex;align-items:center;gap:8px">'
+    +'<button class="cal-fl" aria-label="Anterior" onclick="calMover(-1)">\u2039</button>'
+    +'<span style="font-size:15px;font-weight:600;color:var(--strong);min-width:130px;text-align:center">'
       +_calTitulo(e, ref, ref.getFullYear(), ref.getMonth())+'</span>'
-    +'<button class="btn btn-sm" style="padding:3px 9px" aria-label="Siguiente" '
-      +'onclick="calMover(1)">\u203a</button>'
+    +'<button class="cal-fl" aria-label="Siguiente" onclick="calMover(1)">\u203a</button>'
+    +'<button class="cal-hoy" onclick="calHoy()">Hoy</button>'
   +'</div>';
 }
 function _calVistasHtml(){
   var e=_calEstado();
-  return [{k:'mes',l:'Mes'},{k:'semana',l:'Semana'},{k:'dia',l:'D\u00eda'},
+  return '<div class="cal-seg" role="group" aria-label="Vista">'+[{k:'mes',l:'Mes'},{k:'semana',l:'Semana'},{k:'dia',l:'D\u00eda'},
           {k:'lista',l:'Lista'}].map(function(x){
-    return '<button class="btn btn-sm'+(e.vista===x.k?' btn-primary':'')+'" '
-      +'style="font-size:11.5px;padding:3px 11px" onclick="calVista(\''+x.k+'\')">'
-      +x.l+'</button>';
-  }).join('');
+    return '<button aria-pressed="'+(e.vista===x.k)+'" class="'+(e.vista===x.k?'on':'')+'" onclick="calVista(\''+x.k+'\')">'+x.l+'</button>';
+  }).join('')+'</div>';
+}
+function _calCabHtml(){
+  return '<div class="p3-cab"><div><div class="p3-tit">Calendario</div><div class="p3-sub">Reuniones de ventas y delivery de todos los clientes</div></div>'
+    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+_calNavHtml()+_calVistasHtml()+'</div></div>';
+}
+/* La columna de la derecha del mes (diseño 12). */
+function _calLateralHtml(todas, hoy, y, m){
+  var en7=new Date(hoy.getTime()+7*864e5), desde=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  var prox=todas.filter(function(x){ return x.tipo==='cita' && x.at>=desde && x.at<en7 && x.estado!=='cancelled'; });
+  var DS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  var hh=function(d){ return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); };
+  var b1='<div class="cal-lat"><b>Próximos 7 días</b><small>'+prox.length+' reuni'+(prox.length===1?'ón':'ones')+(prox.length<=3?' · semana liviana':'')+'</small>'
+    +(prox.length?prox.slice(0,8).map(function(x){ return '<div class="cal-lat-f"><span><small>'+DS[x.at.getDay()]+' '+x.at.getDate()+'</small><b>'+hh(x.at)+'</b></span><span style="min-width:0"><b>'+esc(x.cli)+'</b><small>'+esc(_calPara(x)||'')+'</small></span></div>'; }).join('')
+      :'<p>No hay reuniones agendadas en la próxima semana.</p>')+'</div>';
+  var mes=todas.filter(function(x){ return x.at.getFullYear()===y && x.at.getMonth()===m; });
+  var sinT=mes.filter(function(x){ return /impromptu google meet meeting|^sin t[ií]tulo$|^$/i.test(String(x.titulo||'').trim()); }).length;
+  var b2=sinT?('<div class="cal-lat"><b>Reuniones sin título</b><small>'+sinT+' este mes se llaman «Impromptu Google Meet Meeting» o no tienen nombre: no se sabe para qué fueron.</small></div>'):'';
+  var sinC=todas.filter(function(x){ return /@/.test(String(x.cli||'')); });
+  var vistos={}; sinC=sinC.filter(function(x){ if(vistos[x.cli]) return false; vistos[x.cli]=1; return true; });
+  var b3=sinC.length?('<div class="cal-lat"><b>Sin cliente asociado</b><small>No suman a ningún cliente ni a Ventas</small>'
+    +sinC.slice(0,5).map(function(x){ return '<div class="cal-lat-f" style="cursor:pointer" onclick="fichaCliente('+x.cliId+')"><span style="min-width:0"><b>'+esc(x.cli)+'</b><small>'+esc(_calPara(x)||'')+' · '+('0'+x.at.getDate()).slice(-2)+'/'+('0'+(x.at.getMonth()+1)).slice(-2)+'</small></span></div>'; }).join('')+'</div>'):'';
+  return '<div class="cal-lado">'+b1+b3+b2+'</div>';
 }
 function calendarioHtml(){
   _CAL_EV={}; _CAL_EV_N=0;
   var e=_calEstado();
   var todas=_calEntradas();
-  var lista=(e.lado==='todas')?todas:todas.filter(function(x){ return x.lado===e.lado; });
+  var lista=(e.lado==='todas')?todas:todas.filter(function(x){ return e.lado==='otras'?!x.lado:x.lado===e.lado; });
   var sinClasif=todas.filter(function(x){ return !x.lado; }).length;
   var hoy=new Date();
   var ref=_calRef(e);
   var y=ref.getFullYear(), m=ref.getMonth();
 
-  var pills=CAL_LADOS.map(function(x){
+  var pills='<div class="cal-seg">'+CAL_LADOS.concat([{k:'otras',l:'Otras'}]).map(function(x){
     var on=(e.lado===x.k);
-    var n=(x.k==='todas')?todas.length:todas.filter(function(z){ return z.lado===x.k; }).length;
-    return '<button class="btn btn-sm'+(on?' btn-primary':'')+'" '
-      +'style="font-size:11.5px;padding:3px 11px" onclick="calFiltro(\''+x.k+'\')">'
-      +x.l+' <span style="opacity:.6">'+n+'</span></button>';
-  }).join('');
+    var n=(x.k==='todas')?todas.length:todas.filter(function(z){ return x.k==='otras'?!z.lado:z.lado===x.k; }).length;
+    return '<button class="'+(on?'on':'')+'" onclick="calFiltro(\''+x.k+'\')">'+x.l+' <span style="opacity:.6">'+n+'</span></button>';
+  }).join('')+'</div>'
+  +'<span style="flex:1"></span><span class="cal-ley"><i style="background:var(--amberx)"></i>Ventas<i style="background:var(--accent)"></i>Delivery<i style="background:var(--text3)"></i>Otras</span>';
   /* Solo los filtros. El periodo y las vistas se dibujan arriba, en la
      cabecera de la pantalla, y la linea de explicacion se saco: decia siempre
      lo mismo y empujaba la grilla catorce pixeles mas abajo todos los dias. */
-  var cab='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;'
+  var cab=_calCabHtml()+'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
     +'margin-bottom:14px">'+pills+'</div>';
 
   if(e.vista==='semana' || e.vista==='dia'){
@@ -19462,8 +19495,9 @@ function calendarioHtml(){
     }
     var hayAlgo=lista.some(function(x){
       return dias.some(function(d){ return d.toDateString()===x.at.toDateString(); }); });
+    var nSem=lista.filter(function(x){ return dias.some(function(d){ return d.toDateString()===x.at.toDateString(); }); }).length;
     return cab
-      +(hayAlgo?_calGrilla(dias, lista, hoy)
+      +(hayAlgo?('<div class="cal-banda">'+(e.vista==='dia'?'Día':'Semana')+' con <b>'+nSem+' reuni'+(nSem===1?'ón':'ones')+'</b>.</div>'+_calGrilla(dias, lista, hoy))
         :_torreVacio('Nada agendado',(e.vista==='dia'?'Ese día':'Esa semana')
           +' no tiene ninguna reunión con ese filtro.'));
   }
@@ -19513,8 +19547,8 @@ function calendarioHtml(){
     var esHoy=(d.toDateString()===hoy.toDateString());
     var ev=porDia[k]||[];
     if(i>=35 && !ev.length && fuera) continue;
-    celdas+='<div style="min-height:86px;padding:5px 6px;border:1px solid var(--border);'
-      +'border-radius:6px;background:'+(esHoy?'rgba(200,255,71,.06)':'var(--bg2)')+';'
+    celdas+='<div style="min-height:86px;padding:6px 7px;border:1px solid '+(esHoy?'var(--accent)':'var(--border)')+';'
+      +'border-radius:8px;background:'+(esHoy?'rgba(200,255,71,.04)':'var(--bg2)')+';'
       +(fuera?'opacity:.4;':'')+'overflow:hidden">'
       +'<div onclick="event.stopPropagation();calAbrirDia(\''+k+'\')" '
         +'style="font-size:10.5px;margin-bottom:4px;cursor:pointer;color:'
@@ -19524,6 +19558,7 @@ function calendarioHtml(){
     +'</div>';
   }
   return cab
+    +'<div class="cal-dos"><div style="min-width:0">'
     +'<div style="overflow-x:auto">'
     +'<div style="min-width:680px">'
       +'<div class="cel-grilla" style="display:grid;grid-template-columns:repeat(7,1fr);'
@@ -19533,7 +19568,8 @@ function calendarioHtml(){
       +'</div>'
       +'<div class="cel-grilla" style="display:grid;grid-template-columns:repeat(7,1fr);'
         +'gap:5px">'+celdas+'</div>'
-    +'</div></div>';
+    +'</div></div>'
+    +'</div>'+_calLateralHtml(todas, hoy, y, m)+'</div>';
 }
 /* ── Bandeja (Angie, 22/11/2026, diseño 10) ──────────────────────────────
    Lo que espera una decisión: aprobaciones, pedidos al agente y cambios
@@ -20245,12 +20281,12 @@ function showTickets(){
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:3px">'
     +'<div style="display:flex;align-items:center;gap:16px;min-width:0">'
     /* Sin pestañas arriba (Angie, 22/11/2026): las secciones están en el desplegable del Panel 360. */
-    +((_torre==='panel360'||_torre==='bandeja')?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
+    +((_torre==='panel360'||_torre==='bandeja'||_torre==='calendario')?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
       +({mirador:'Panel 360',tickets:'Tickets',actividad:'Actividad',
          panel360:'Pipeline',bandeja:'Bandeja',dashboard:'Métricas',rentabilidad:'Rentabilidad',calendario:'Calendario',
          editor:'Editor con IA',estaticos:'Estaticos con IA',materiales:'Materiales'}[_torre]||'Panel 360')+'</div>')
     // El periodo va pegado al titulo: es la otra mitad de "donde estoy parada".
-    +((_torre==='calendario'&&typeof _calNavHtml==='function')?_calNavHtml():'')
+    +''
     +'</div>'
     +'<span style="flex:1"></span>'
     +'<div style="display:flex;align-items:center;gap:12px">'
@@ -20258,8 +20294,8 @@ function showTickets(){
        hace X", Actualizar y el menu son de las pantallas que sincronizan
        Fathom y WhatsApp; aca no se usaban y le robaban el lugar al unico
        control que se toca todo el tiempo. */
-    +((_torre==='calendario'&&typeof _calVistasHtml==='function')
-      ? _calVistasHtml()
+    +((_torre==='calendario')
+      ? ''
       /* «actualizado hace X» y el botón Actualizar se sacaron (Angie, 20/11/2026):
          el texto contaba el último ticket tocado, no la última sincronización, y
          confundía. Fathom y la agenda se sincronizan solos; `actualizarTodo` queda. */
