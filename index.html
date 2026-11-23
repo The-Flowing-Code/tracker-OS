@@ -2650,7 +2650,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   .cel-barra button.on{color:var(--accent);font-weight:600}
   .cel-bn{position:absolute;top:0;left:calc(50% + 4px);font-size:9.5px;font-weight:700;background:var(--amberx);color:#0A0C10;border-radius:99px;padding:0 5px;line-height:15px}
   /* Clientes en el celu (diseño 14) */
-  .p360-wrap .cel-2col{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:8px !important}
+  html body div.p360-wrap div.cel-2col{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:8px !important}
   .p360-wrap .cel-2col>.ov-card:nth-child(2),.p360-wrap .cel-2col>.ov-card:nth-child(5){display:none}
   .p360-wrap .ov-card .metric-label{font-size:10.5px}
   .p360-wrap .p3-ctrl{display:none}
@@ -32687,7 +32687,7 @@ function _fichaKpis(c){
   var k=function(l,v,col,sub){ return '<div><span>'+l+'</span><b'+(col?' style="color:'+col+'"':'')+'>'+v+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</div>'; };
   return '<div class="fk">'
     +k('Cierres · 30d', conGhl?cie:'—', conGhl?(cie?'var(--accent)':'var(--redx)'):'', conGhl?(cie?'':'Sin cierres'):'Sin GHL conectado')
-    +k('Días en '+esc((et&&et.l)||'la etapa'), dias==null?'—':dias)
+    +k('Ruta de '+esc((et&&et.l)||'la etapa'), (et&&et.total)?((et.hechas||0)+' de '+et.total):'—')
     +k('Tareas abiertas', abiertas)
     +k('Próxima reunión', prox?f(prox):'Sin agendar', prox?'':'var(--amberx)')
   +'</div>';
@@ -32749,7 +32749,8 @@ function _fichaPasos(c){
       var bola=hecho?'<i style="background:rgba(200,255,71,.15);color:var(--accent)"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></i>'
         :'<i style="border:2px solid '+(act?'var(--amberx)':'var(--border2)')+'"></i>';
       return '<div>'+bola+'<small style="'+(act?'color:var(--strong);font-weight:600':'')+'">'+esc(e.l)+'</small></div>'; }).join('')+'</div>'
-    +(et?'<div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--strong)">'+esc(et.l)+'</span><span style="color:var(--text3)">'+(dias==null?'':(dias+' día'+(dias===1?'':'s')+' en la etapa'))+'</span></div>':'')
+    +((et&&et.total)?('<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--strong)">'+esc(et.l)+' · '+(et.hechas||0)+' de '+et.total+' tareas</span></div>'
+      +'<div role="img" aria-label="'+(et.hechas||0)+' de '+et.total+' tareas completas" style="height:6px;background:var(--bg3);border-radius:3px"><div style="width:'+Math.max(2,Math.round(100*(et.hechas||0)/et.total))+'%;height:6px;background:var(--amberx);border-radius:3px"></div></div></div>'):'')
   +'</div>';
 }
 function fichaCliente(id, tab){
@@ -45771,9 +45772,10 @@ function p360Html(){
       try{ var qq=(typeof _yaLanzo==='function'&&_yaLanzo(c))?null:((typeof _lanzaCuenta==='function')?_lanzaCuenta(c):null);
         var conG=c.ghl&&((c.ghl.opportunities||[]).length);
         if(qq&&qq.faltan>=0&&qq.faltan<=7){ r=qq.faltan===0?'Lanza hoy':('Lanza en '+qq.faltan+' d'); col=dot='var(--amberx)'; }
-        else if(conG&&_cierresDe(c,30)===0){ r='Sin cierres'; col=dot='var(--redx)'; }
-        else if(conG){ r=_cierresDe(c,30)+' cierre'+(_cierresDe(c,30)===1?'':'s'); col=dot='var(--accent)'; }
-        else if(d.et&&d.et.fecha){ r=Math.max(0,Math.round((Date.now()-d.et.fecha.getTime())/864e5))+' d en etapa'; }
+        else if(qq&&qq.faltan<0&&/lanzamiento|sistemas|estrategia|onboarding/i.test((d.et&&d.et.l)||'')){ r='Sin lanzar · '+(-qq.faltan)+' d tarde'; col=dot='var(--redx)'; }
+        else if(conG&&_cierresDe(c,30)===0){ r='Sin cierres · 30 d'; col=dot='var(--redx)'; }
+        else if(conG){ var _nc=_cierresDe(c,30); r=_nc+' cierre'+(_nc===1?'':'s')+' · 30 d'; col=dot='var(--accent)'; }
+        else if(d.et&&d.et.total){ r=(d.et.hechas||0)+' de '+d.et.total+' tareas'; }
       }catch(e){}
       return '<div class="p3cel-it" onclick="fichaCliente('+c.id+')"><span class="d" style="background:'+dot+'"></span><span style="min-width:0"><b>'+esc(c.name||'')+'</b>'
         +(c.contacto?'<small>'+esc(c.contacto)+'</small>':'<small style="color:var(--amberx)">Sin contacto asignado</small>')+'</span><span class="r" style="color:'+col+'">'+r+'</span></div>'; };
