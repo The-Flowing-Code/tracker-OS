@@ -32602,7 +32602,7 @@ function lineasCliente(id){ fichaCliente(id,'lineas'); }
    eliminar, en el «⋯». Las pestañas reusan lo que ya existía: _queHaceHtml,
    _acercaPulsoHtml, _garantiaHtml, lineasHtml, fathomCallsHTML,
    _ctxResumenHtml y successTareasHtml. */
-var FICHA_TABS=[['resumen','Resumen'],['ruta','Ruta'],['embudo','Embudo'],['lineas','Líneas'],['llamadas','Llamadas'],['materiales','Materiales'],['tareas','Tareas']];
+var FICHA_TABS=[['resumen','Resumen'],['ruta','Ruta'],['embudo','Embudo'],['reportes','Reportes'],['lineas','Líneas'],['llamadas','Llamadas'],['materiales','Materiales'],['tareas','Tareas']];
 function _fichaCss(){
   if(document.getElementById('ficha-css')) return;
   var st=document.createElement('style'); st.id='ficha-css';
@@ -32667,6 +32667,7 @@ function _fichaCuenta(c, k){
     if(k==='llamadas') return (c.fathomCalls||[]).length;
     if(k==='tareas') return (c.tasks||[]).filter(function(t){ return t&&!t.done&&!t.deleted; }).length;
     if(k==='lineas') return (typeof _linLineas==='function')?_linLineas(c).length:null;
+    if(k==='reportes'){ var R=(S._repCli||{})[c.id]; return (R&&R.lista)?R.lista.length:null; }
   }catch(e){}
   return null;
 }
@@ -32686,6 +32687,7 @@ function fichaCuerpo(c, tab){
      el mismo armado (_p360FichaHtml); su encabezado y su pie se esconden. */
   if(tab==='ruta') return seguro(function(){ return _fichaPasos(c)+'<div class="fl-ruta">'+_p360FichaHtml(c, false)+'</div>'; });
   if(tab==='embudo') return seguro(function(){ return _fichaEmbudo(c); });
+  if(tab==='reportes') return seguro(function(){ return _fichaReportes(c); });
   if(tab==='lineas') return seguro(function(){ return lineasHtml(c); });
   if(tab==='llamadas') return seguro(function(){ return fathomCallsHTML(c); });
   if(tab==='materiales') return seguro(function(){ return _ctxResumenHtml(c); });
@@ -32761,6 +32763,39 @@ async function metGuardar(cid){
   try{ await _metEnviar(cid,{escalon:esc_, base:b, desde:d, propuesta:false, por:(personaNombre(SB.email)||SB.email||'').slice(0,60), nota:''}); S._metEdit=null; toast('Métrica guardada: se recalcula mañana a la mañana'); }
   catch(e){ err.textContent='No se pudo guardar: '+((e&&e.message)||e); return; }
   fichaCliente(cid,'resumen');
+}
+/* Reportes semanales del cliente (Angie, 23/11/2026): cada semana con su titular
+   y su link propio, del más nuevo al más viejo (migraciones 061 y 063). El del día
+   que todavía está en «Mensajes para mandar hoy» va resaltado. */
+var REP_URL='https://the-flowing-code.github.io/tracker-OS/r/#';
+function _repCargar(c){
+  S._repCli=S._repCli||{};
+  var R=S._repCli[c.id];
+  if(R&&(R.cargando||(Date.now()-R.at)<120000)) return;
+  S._repCli[c.id]={cargando:true, at:Date.now(), lista:R&&R.lista};
+  sbFetch('rpc/reportes_de_cliente',{method:'POST',body:JSON.stringify({p_id:c.id})})
+    .then(function(l){ S._repCli[c.id]={lista:Array.isArray(l)?l:[], at:Date.now()}; })
+    .catch(function(e){ S._repCli[c.id]={lista:[], error:(e&&e.message)||'error', at:Date.now()}; })
+    .then(function(){ var v=document.getElementById('cli-ventana'); if(v && +v.dataset.cli===c.id && v.dataset.tab==='reportes') fichaCliente(c.id,'reportes'); });
+}
+function _fichaReportes(c){
+  _repCargar(c);
+  var R=(S._repCli||{})[c.id]||{};
+  if(!R.lista) return '<div style="font-size:13px;color:var(--text3)">Buscando los reportes…</div>';
+  if(R.error) return '<div style="font-size:13px;color:var(--redx)">No pude traer los reportes. Probá de nuevo en un rato.</div>';
+  if(!R.lista.length) return '<div style="font-size:13px;color:var(--text3);line-height:1.6">Todavía no hay reportes semanales de este cliente. Salen los lunes, si tuvo inversión esa semana o la anterior.</div>';
+  var md=(c.mensajesDia||{}).reporte||{};
+  var dia=function(f){ var d=new Date(f+'T12:00:00'); return ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()]+' '+_metFecha(f); };
+  return '<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<div style="font-size:12.5px;color:var(--text3)">Cada semana, el resumen que recibe el cliente. Tocá uno para abrirlo tal como lo vio él.</div>'
+    +R.lista.map(function(x,i){
+      var pend=(md.fecha===x.fecha);
+      return '<a href="'+REP_URL+esc(x.token)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:5px;border-radius:12px;padding:12px 14px;background:var(--bg2);border:'+(pend?'2px solid var(--accent)':'1px solid var(--border)')+'">'
+        +'<span style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--text3)">'+esc(dia(x.fecha))+(i===0?' · el último':'')+'</span>'
+        +(pend?'<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:rgba(200,255,71,.12);color:var(--accent)">En «Mensajes para mandar hoy»</span>':'')+'</span>'
+        +'<span style="font-size:14px;font-weight:600;color:var(--strong);line-height:1.4">'+esc(x.titular||'Reporte de la semana')+'</span>'
+        +'<span style="font-size:12px;color:var(--accent)">Abrir el reporte ↗</span></a>';
+    }).join('')+'</div>';
 }
 /* Piezas del Resumen nuevo (Angie, 22/11/2026, diseño 4 del rediseño). */
 function _fichaPliegue(t, html){
