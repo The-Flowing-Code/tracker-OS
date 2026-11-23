@@ -32621,7 +32621,7 @@ async function _linPedirGasto(c){
     (j.data||[]).forEach(function(x){ dias[x.date_start]=Number(x.spend)||0; });
     _LIN_GASTO[k]={dias:dias, at:Date.now()};
   }catch(e){ _LIN_GASTO[k]={error:String(e&&e.message||e), at:Date.now()}; }
-  try{ var v=document.getElementById('cli-ventana'); if(v && v.dataset.que==='lineas' && +v.dataset.cli===c.id) _cliVentanaRefrescar(); }catch(e){}
+  try{ var v=document.getElementById('cli-ventana'); if(v && +v.dataset.cli===c.id && (v.dataset.que==='lineas' || (v.dataset.que==='ficha' && v.dataset.tab==='resultados'))) _cliVentanaRefrescar(); }catch(e){}
 }
 function _linLineas(c){
   var todos=((c.cambiosDetectados&&c.cambiosDetectados.items)||[])
@@ -32699,7 +32699,7 @@ function lineasCliente(id){ fichaCliente(id,'lineas'); }
    eliminar, en el «⋯». Las pestañas reusan lo que ya existía: _queHaceHtml,
    _acercaPulsoHtml, _garantiaHtml, lineasHtml, fathomCallsHTML,
    _ctxResumenHtml y successTareasHtml. */
-var FICHA_TABS=[['resumen','Resumen'],['ruta','Ruta'],['embudo','Embudo'],['reportes','Reportes'],['lineas','Líneas'],['llamadas','Llamadas'],['materiales','Materiales'],['tareas','Tareas']];
+var FICHA_TABS=[['resumen','Resumen'],['equipo','Equipo'],['plan','Plan'],['resultados','Resultados'],['reportes','Reportes'],['conversaciones','Conversaciones'],['materiales','Materiales']];
 function _fichaCss(){
   if(document.getElementById('ficha-css')) return;
   var st=document.createElement('style'); st.id='ficha-css';
@@ -32760,6 +32760,21 @@ function _fichaCss(){
        el nombre y lo tapaban («Lanzam», «Metrodev» cortados). En el celu van
        en su propia fila, arriba, y el nombre ocupa todo el ancho. */
     +'@media (max-width:600px){.fl-fila{flex-direction:column-reverse;align-items:stretch;gap:12px}.fl-acc{justify-content:flex-end}.fl-cab{padding:16px 16px 10px !important}.fl-cab h3{font-size:24px !important;overflow-wrap:anywhere}.fl-tabs{padding:0 16px !important;gap:16px !important}.fl-body{padding:18px 16px 40px !important}}'
+    /* Ficha en siete pestañas (23/11/2026) */
+    +'.feq-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.feq-cab>span{font-size:13px;color:var(--text3)}'
+    +'.feq{display:flex;flex-direction:column;gap:12px}'
+    +'.feq-p{display:flex;flex-direction:column;gap:10px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px}'
+    +'.feq-t{display:flex;gap:12px;align-items:center}.feq-t b{display:block;font-size:15px;color:var(--strong)}.feq-t div>span{font-size:12.5px;color:var(--text3)}'
+    +'.feq-av{width:38px;height:38px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:var(--text2,var(--text3));flex:none}'
+    +'.feq-como{font-size:13px;line-height:1.5;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px}.feq-como span{display:block;font-size:11.5px;color:var(--amberx);margin-bottom:2px}'
+    +'.feq-dat{font-size:12.5px;color:var(--text2,var(--text3));overflow-wrap:anywhere}.feq-dat i{color:var(--text3)}'
+    +'.feq-acc{display:flex;gap:6px;flex-wrap:wrap}.feq-acc a{text-decoration:none}'
+    +'.fcv-dia{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:14px 0 8px}'
+    +'.fcv{padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px}'
+    +'.fcv-c{display:flex;flex-direction:column;gap:1px}.fcv-c b{font-size:13.5px;color:var(--strong)}.fcv-c span{font-size:12px;color:var(--text3)}'
+    +'.fcv p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}'
+    +'.fcv-p{font-size:12px;color:var(--text3)}.fcv-p a,.fcv-p button{color:var(--accent);background:none;border:0;padding:0;font:600 12px var(--font);cursor:pointer;text-decoration:none}'
+    +'@media (max-width:600px){.fk{grid-template-columns:1fr 1fr}.fplata>div{min-width:45%}}'
     /* Embudo de la ficha (23/11/2026) */
     +'.fe{display:flex;flex-direction:column;gap:16px}'
     +'.fe-per{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.fe-per>span{font-size:12px;color:var(--text3)}'
@@ -32796,9 +32811,9 @@ function _fichaCss(){
 function _fichaNivel(c){ try{ var n=(typeof p360Nivel==='function')?p360Nivel(c):''; return {aa:'AA+',a:'A',b:'B',c:'C'}[n]||''; }catch(e){ return ''; } }
 function _fichaCuenta(c, k){
   try{
-    if(k==='llamadas') return (c.fathomCalls||[]).length;
-    if(k==='tareas') return (c.tasks||[]).filter(function(t){ return t&&!t.done&&!t.deleted; }).length;
-    if(k==='lineas') return (typeof _linLineas==='function')?_linLineas(c).length:null;
+    if(k==='equipo') return _fichaPersonas(c).length;
+    if(k==='conversaciones') return _fichaConvItems(c).length;
+    if(k==='plan'){ var et=_p360Etapa(c); return (et&&et.total)?((et.hechas||0)+'/'+et.total):null; }
     if(k==='reportes'){ var R=(S._repCli||{})[c.id]; return (R&&R.lista)?R.lista.length:null; }
   }catch(e){}
   return null;
@@ -33039,18 +33054,151 @@ function _fichaEmbudo(c){
     +'<div class="fe-pie">Meta: campañas de la línea activa, '+(fx?'convertido a USD':'en '+esc(mon))+'; el alcance sumado entre campañas es un piso. Registros por fecha de entrada en GHL, cierres por fecha de cierre.</div>'
   +'</div>';
 }
+/* ── Ficha en siete pestañas (Angie, 23/11/2026, ficha-diseno.html) ──────
+   Resumen, Equipo, Plan, Resultados, Reportes, Conversaciones y Materiales.
+   Los nombres viejos siguen abriendo donde corresponde (_FICHA_ALIAS): un
+   link a 'lineas' o 'embudo' cae en Resultados con esa vista, 'ruta' y
+   'tareas' en Plan, 'llamadas' en Conversaciones con el filtro de llamadas. */
+var _FICHA_ALIAS={ruta:'plan', tareas:'plan', embudo:'resultados', lineas:'resultados', llamadas:'conversaciones'};
+function _fichaTab(tab){
+  if(tab==='embudo'||tab==='lineas') S._fichaRes=tab;
+  if(tab==='llamadas') S._convFil='llamadas';
+  return _FICHA_ALIAS[tab]||tab;
+}
+// Las tareas de la etapa que son de quien mira: el mismo criterio que «Tuyo»
+// en el Plan (js/etapas-csm.js): sin hacer, ni del cliente ni de otro rol.
+function _fichaTuyas(c){
+  try{
+    var def=csmEtapaActual(c); if(!def) return null;
+    var yo=(typeof _soyCsm==='function' && _soyCsm())?'csm':'delivery', ahora=new Date(), n=0;
+    def.tareas.forEach(function(t){ var st=csmTareaEstado(c, t, def, ahora); if(!st.ok && t.quien===yo) n++; });
+    return n;
+  }catch(e){ return null; }
+}
+function _fichaPersonas(c){
+  var L=[], visto={};
+  var clave=function(n, m){ return String(m||'').trim().toLowerCase() || String(n||'').trim().toLowerCase(); };
+  if(c.contacto || c.contactoEmail || c.email){
+    var p0={nombre:c.contacto||'', email:c.contactoEmail||c.email||'', tel:c.phone||'', principal:true, i:-1};
+    L.push(p0); visto[clave(p0.nombre,p0.email)]=1;
+  }
+  (c.equipo||[]).forEach(function(p, i){
+    var o=(typeof p==='object'&&p)?p:{nombre:String(p||'')};
+    var k=clave(o.nombre, o.email); if(!k || visto[k]) return; visto[k]=1;
+    L.push({nombre:o.nombre||o.email||'', email:o.email||'', tel:o.tel||o.telefono||'', rol:o.rol||'', i:i});
+  });
+  return L;
+}
+function _fichaIniciales(n){ var p=String(n||'?').trim().split(/\s+/); return ((p[0]||'?')[0]+((p[1]||'')[0]||'')).toUpperCase(); }
+function _fichaEquipo(c){
+  var L=_fichaPersonas(c), arq=(typeof arqDe==='function')?arqDe(c):null;
+  var cab='<div class="feq-cab"><span>'+(L.length?(L.length===1?'1 persona':L.length+' personas')+' del lado de '+esc(c.name||'el cliente'):'Todavía no hay nadie cargado del lado de '+esc(c.name||'el cliente'))+'</span>'
+    +'<button type="button" class="btn btn-sm" onclick="fichaCerrar();eqAgregar('+c.id+')">Sumar persona</button></div>';
+  if(!L.length) return cab+'<div class="fe-pie">Cargá el contacto principal o sumá a alguien del equipo del cliente.</div>';
+  return cab+'<div class="feq">'+L.map(function(p){
+    var tel=String(p.tel||'').replace(/[^\d]/g,'');
+    var acc=[];
+    if(tel) acc.push('<a class="btn btn-sm" href="https://wa.me/'+tel+'" target="_blank" rel="noopener">WhatsApp</a>');
+    if(p.email) acc.push('<a class="btn btn-sm" href="mailto:'+esc(p.email)+'">Mail</a>');
+    acc.push('<button type="button" class="btn btn-sm" onclick="S._convFil=\'todas\';fichaCliente('+c.id+',\'conversaciones\')">Ver conversaciones</button>');
+    if(p.i>=0) acc.push('<button type="button" class="btn btn-sm" onclick="fichaCerrar();eqAgregar('+c.id+','+p.i+')">Editar</button>');
+    return '<div class="feq-p"><div class="feq-t"><span class="feq-av">'+esc(_fichaIniciales(p.nombre||p.email))+'</span>'
+      +'<div style="min-width:0;flex:1"><b>'+esc(p.nombre||p.email||'Sin nombre')+'</b>'
+      +'<span>'+(p.principal?'Contacto principal':esc(p.rol||'Sin vínculo cargado'))+'</span></div>'
+      +(p.principal&&p.rol?'<span class="fl-chip">'+esc(p.rol)+'</span>':'')+'</div>'
+      +((p.principal&&arq)?('<div class="feq-como"><span>Cómo hablarle · '+esc(arq.l)+'</span>'+esc(arq.como||'')+'</div>'):'')
+      +'<div class="feq-dat">'+(p.email?esc(p.email):'<i>Sin mail</i>')+' · '+(p.tel?esc(p.tel):'<i>Sin WhatsApp</i>')+'</div>'
+      +'<div class="feq-acc">'+acc.join('')+'</div></div>';
+  }).join('')+'</div>'
+  +(arq?'':'<div class="fe-pie">«Cómo hablarle» sale del arquetipo del cliente, que todavía no está cargado.</div>');
+}
+function _fichaPlan(c){
+  var t=(typeof successTareasHtml==='function')?successTareasHtml(c):'';
+  var n=(c.tasks||[]).filter(function(x){ return x&&!x.done&&!x.deleted&&!x.archived; }).length;
+  return _fichaPasos(c)+'<div class="fl-ruta">'+_p360FichaHtml(c, false)+'</div>'
+    +(t?('<div class="fpl-t"><div class="fe-sh" style="padding:18px 0 8px"><span>Tareas sueltas · '+n+'</span></div>'+t+'</div>'):'');
+}
+function _fichaResultados(c){
+  var v=(S._fichaRes==='lineas')?'lineas':'embudo';
+  var b=function(k, t){ return '<button type="button" class="'+(v===k?'on':'')+'" onclick="S._fichaRes=\''+k+'\';fichaCliente('+c.id+',\'resultados\')">'+t+'</button>'; };
+  var nl=(typeof _linLineas==='function')?_linLineas(c).length:0;
+  return '<div class="fe-seg" role="group" aria-label="Vista" style="margin-bottom:16px">'+b('embudo','Embudo')+b('lineas','Líneas'+(nl?' · '+nl:''))+'</div>'
+    +(v==='lineas'?lineasHtml(c):_fichaEmbudo(c));
+}
+/* Conversaciones: un hilo por fecha con lo que la app tiene del cliente. Las
+   llamadas de Fathom; los mensajes que dejaron las rutinas para mandarle
+   (son borradores, no lo que se mandó: así se rotulan); y lo que la vigilancia
+   de WhatsApp anotó de él. Mails la app no trae: el filtro lo dice. */
+function _fichaConvItems(c){
+  var L=[], nom=String(c.name||'').toLowerCase().trim();
+  var fecha=function(s){
+    var m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(s||''));
+    if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+    var d=new Date(s); return isNaN(d)?null:d;
+  };
+  (c.fathomCalls||[]).forEach(function(f){
+    var d=fecha(f.date); if(!d) return;
+    var r=(f.resumenIA&&f.resumenIA.acordado)||String(f.summary||'');
+    if(!r && Array.isArray(f.actionItems) && f.actionItems.length) r='Pendientes: '+f.actionItems.slice(0,3).map(function(a){ return typeof a==='string'?a:(a&&(a.text||a.description||a.que))||''; }).filter(Boolean).join('; ');
+    L.push({d:d, tipo:'llamadas', quien:f.grabaNombre||'', titulo:f.title||'Llamada', meta:f.duration||'', texto:r,
+      pie:(f.url?'<a href="'+esc(f.url)+'" target="_blank" rel="noopener">Abrir en Fathom</a> · ':'')+'<button type="button" onclick="S._convFil=\'llamadas\';fichaCliente('+c.id+',\'conversaciones\')">Ver en Llamadas →</button>'});
+  });
+  var FU={leads:'Cómo venimos',whatsapp:'Respuesta para el grupo',onboarding:'Link de bienvenida',reporte:'Reporte semanal'};
+  var M=(c.mensajesDia&&typeof c.mensajesDia==='object')?c.mensajesDia:{};
+  Object.keys(FU).forEach(function(f){
+    var x=M[f]; if(!x||!x.fecha) return;
+    var d=fecha(x.fecha+'T12:00:00');
+    (x.mensajes||[]).forEach(function(m){
+      L.push({d:d, tipo:'whatsapp', quien:'Borrador de la rutina', titulo:FU[f], meta:'para mandar', texto:String(m.texto||''),
+        pie:m.motivo?esc(String(m.motivo)):''});
+    });
+  });
+  try{
+    (DB.clients||[]).forEach(function(cc){
+      var w=cc&&cc.vigilancia&&cc.vigilancia.whatsapp; if(!w||!Array.isArray(w.items)) return;
+      w.items.forEach(function(it){
+        if(!it || String(it.cliente||'').toLowerCase().trim()!==nom) return;
+        var t=String(it.texto||it.resumen||it.detalle||it.que||'').trim(); if(!t) return;
+        L.push({d:fecha((w.fecha||'')+'T12:00:00'), tipo:'whatsapp', quien:'Parte de WhatsApp', titulo:'Lo que pasó en el grupo', meta:'', texto:t, pie:''});
+      });
+    });
+  }catch(e){}
+  return L.filter(function(x){ return x.d; }).sort(function(a,b){ return b.d-a.d; });
+}
+function _fichaConversaciones(c){
+  var L=_fichaConvItems(c), fil=S._convFil||'todas';
+  var n=function(t){ return L.filter(function(x){ return x.tipo===t; }).length; };
+  var F=[['todas','Todas',L.length],['whatsapp','WhatsApp',n('whatsapp')],['mail','Mail',0],['llamadas','Llamadas',n('llamadas')]];
+  var seg='<div class="fe-seg" style="margin-bottom:14px;flex-wrap:wrap">'+F.map(function(f){
+    return '<button type="button" class="'+(fil===f[0]?'on':'')+'" onclick="S._convFil=\''+f[0]+'\';fichaCliente('+c.id+',\'conversaciones\')">'+f[1]+' '+f[2]+'</button>'; }).join('')+'</div>';
+  var cx=(c.contexto&&typeof c.contexto==='object')?c.contexto:null;
+  var sem=(cx&&String(cx.necesidad||'').trim())?('<div class="fcard" style="margin-bottom:16px"><span>Esta semana con '+esc(c.name||'')+'</span><p>'+esc(cx.necesidad)+'</p></div>'):'';
+  if(fil==='mail') return seg+sem+'<div class="fe-pie">La app todavía no trae los mails del cliente: no hay de dónde leerlos.</div>';
+  var V=(fil==='todas')?L:L.filter(function(x){ return x.tipo===fil; });
+  var hoy=new Date(); hoy.setHours(0,0,0,0);
+  var dia=function(d){ var x=new Date(d); x.setHours(0,0,0,0); var k=Math.round((hoy-x)/864e5);
+    return k===0?'Hoy':(k===1?'Ayer':x.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})); };
+  var ult='', hilo=V.map(function(x){
+    var dd=dia(x.d), sep=(dd!==ult)?('<div class="fcv-dia">'+dd+'</div>'):''; ult=dd;
+    var TIPO={llamadas:'Llamada',whatsapp:'WhatsApp',mail:'Mail'}[x.tipo];
+    return sep+'<div class="fcv"><div class="fcv-c"><b>'+esc(x.titulo)+'</b><span>'+TIPO+(x.meta?' · '+esc(x.meta):'')+(x.quien?' · '+esc(x.quien):'')+'</span></div>'
+      +(x.texto?'<p>'+esc(x.texto)+'</p>':'')+(x.pie?'<div class="fcv-p">'+x.pie+'</div>':'')+'</div>';
+  }).join('');
+  var vacio=V.length?'':'<div class="fe-pie">'+(fil==='llamadas'?'No hay llamadas de Fathom con este cliente.':(fil==='whatsapp'?'No hay mensajes de WhatsApp guardados para este cliente.':'Todavía no hay conversaciones guardadas de este cliente.'))+'</div>';
+  var detalle=(fil==='llamadas' && typeof fathomCallsHTML==='function')?('<div class="fe-sh" style="padding:22px 0 8px"><span>Llamadas en detalle</span></div>'+fathomCallsHTML(c)):'';
+  return seg+sem+hilo+vacio+detalle;
+}
 function fichaCuerpo(c, tab){
   var seguro=function(f){ try{ return f()||''; }catch(e){ console.warn('ficha:',e); return '<div style="font-size:12.5px;color:var(--text3)">No pude mostrar esta parte.</div>'; } };
   /* Ruta (Angie, 21/11/2026): la ventana de la ruta por etapa -lo tuyo, lo del
      equipo, lo del partner y el «¿qué pasó?» de una reunión- vive acá. Se usa
      el mismo armado (_p360FichaHtml); su encabezado y su pie se esconden. */
-  if(tab==='ruta') return seguro(function(){ return _fichaPasos(c)+'<div class="fl-ruta">'+_p360FichaHtml(c, false)+'</div>'; });
-  if(tab==='embudo') return seguro(function(){ return _fichaEmbudo(c); });
+  if(tab==='equipo') return seguro(function(){ return _fichaEquipo(c); });
+  if(tab==='plan') return seguro(function(){ return _fichaPlan(c); });
+  if(tab==='resultados') return seguro(function(){ return _fichaResultados(c); });
   if(tab==='reportes') return seguro(function(){ return _fichaReportes(c); });
-  if(tab==='lineas') return seguro(function(){ return lineasHtml(c); });
-  if(tab==='llamadas') return seguro(function(){ return fathomCallsHTML(c); });
+  if(tab==='conversaciones') return seguro(function(){ return _fichaConversaciones(c); });
   if(tab==='materiales') return seguro(function(){ return _ctxResumenHtml(c); });
-  if(tab==='tareas') return seguro(function(){ return (typeof successTareasHtml==='function')?successTareasHtml(c):''; });
   return '<div style="display:flex;flex-direction:column;gap:22px">'
     +seguro(function(){ return _fichaMetrica(c); })
     +seguro(function(){ return _fichaKpis(c); })
@@ -33177,8 +33325,8 @@ function _fichaKpis(c){
   var k=function(l,v,col,sub){ return '<div><span>'+l+'</span><b'+(col?' style="color:'+col+'"':'')+'>'+v+'</b>'+(sub?'<span>'+sub+'</span>':'')+'</div>'; };
   return '<div class="fk">'
     +k('Cierres · 30d', conGhl?cie:'—', conGhl?(cie?'var(--accent)':'var(--redx)'):'', conGhl?(cie?'':'Sin cierres'):'Sin GHL conectado')
-    +k('Ruta de '+esc((et&&et.l)||'la etapa'), (et&&et.total)?((et.hechas||0)+' de '+et.total):'—')
-    +k('Tareas abiertas', abiertas)
+    +k('Días en '+esc((et&&et.l)||'la etapa'), dias!=null?dias:'—', '', dias!=null?'':'Sin fecha de entrada')
+    +k('Ruta de la etapa', (et&&et.total)?((et.hechas||0)+' de '+et.total):'—', '', (function(){ var n=_fichaTuyas(c); return n==null?'':(n===1?'1 es tuya':n+' son tuyas'); })())
     +k('Próxima reunión', prox?f(prox):'Sin agendar', prox?'':'var(--amberx)')
   +'</div>';
 }
@@ -33218,7 +33366,8 @@ function _fichaPlata(c){
   if(typeof verPlata==='function' && !verPlata()) return '';
   var m=function(n){ return Number(n)?('$'+Number(n).toLocaleString('en-US')):'—'; };
   var desde=c.altaAt||c.createdAt; var d=desde?new Date(desde):null;
-  var celdas=[['Implementación', m(c.contractValue)],['Fee mensual', m(c.monthlyFee)],['Cliente desde', d&&!isNaN(d.getTime())?d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—']];
+  var dur=Number(c.contract&&c.contract.durationDays)||0;
+  var celdas=[['Implementación', m(c.contractValue)],['Fee mensual', m(c.monthlyFee)],['Cliente desde', d&&!isNaN(d.getTime())?d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'],['Duración', dur?(dur+' días'):'—']];
   return '<div class="fplata" onclick="if(typeof factModal===\'function\')factModal('+c.id+')" title="Editar la facturación" style="cursor:pointer">'
     +celdas.map(function(x){ return '<div><span>'+x[0]+'</span><b>'+x[1]+'</b></div>'; }).join('')+'</div>';
 }
@@ -33247,6 +33396,7 @@ function fichaCliente(id, tab){
   var c=(DB.clients||[]).find(function(x){ return x.id===+id; });
   if(!c) return;
   _fichaCss();
+  tab=_fichaTab(tab);
   tab=FICHA_TABS.some(function(t){ return t[0]===tab; })?tab:'resumen';
   var cuerpoPrev=document.querySelector('#cli-ventana .fl-body'), top=(cuerpoPrev && document.getElementById('cli-ventana').dataset.tab===tab)?cuerpoPrev.scrollTop:0;
   var et=null; try{ et=_p360Etapa(c); }catch(e){}
