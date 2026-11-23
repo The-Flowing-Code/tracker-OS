@@ -233,6 +233,14 @@ body.light .client-state.live{text-shadow:none}
 .p3-mas{padding:6px 10px;font-size:15px;line-height:1}
 .p3-bd:hover,.p3-mas:hover{background:var(--bg3)}
 .p3-ctrl-isla .eb.on{background:var(--bg3) !important;color:var(--strong) !important;border-color:var(--border2) !important}
+.sb-badge{margin-left:8px;font-size:10.5px;font-weight:700;background:var(--accent);color:var(--on-accent,#0B0E06);border-radius:99px;padding:0 6px;line-height:16px;display:inline-block}
+.torre-sub-item.sel .sb-badge{background:var(--on-accent,#0B0E06);color:var(--accent)}
+.bdj-tabs{display:flex;gap:22px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto}
+.bdj-tabs button{border:0;background:none;padding:10px 2px;font:500 13.5px var(--font);color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.bdj-tabs button.on{color:var(--strong);font-weight:600;border-bottom-color:var(--accent)}
+.bdj-tabs button b{font-size:10.5px;background:var(--bg3);border-radius:99px;padding:0 6px;margin-left:6px;color:var(--text2,var(--text3))}
+.bdj-aviso{background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.25);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--text2,var(--text3));margin-bottom:14px}
+.bdj-aviso b{color:var(--amberx)}
 .tk-menu-sec{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 12px 4px}
 .tk-menu-2{align-items:flex-start !important}.tk-menu-2 b{display:block;font-weight:500}.tk-menu-2 small{display:block;font-size:11.5px;color:var(--text3);line-height:1.35;margin-top:2px;white-space:normal}
 
@@ -3063,6 +3071,7 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
            antes Dashboard, Tickets y Materiales eran pestañas arriba del tablero. -->
       <div class="torre-sub" id="torre-sub">
         <div class="torre-sub-item" data-k="panel360" onclick="irTorre('panel360')">Pipeline</div>
+        <div class="torre-sub-item" data-k="bandeja" id="nav-bandeja" onclick="irTorre('bandeja')">Bandeja<span class="sb-badge" id="bandeja-n"></span></div>
         <div class="torre-sub-item" data-k="dashboard" onclick="irTorre('dashboard')">Métricas</div>
         <div class="torre-sub-item" data-k="tickets" onclick="irTorre('tickets')">Tickets</div>
         <div class="torre-sub-item" data-k="materiales" onclick="irTorre('materiales')">Materiales</div>
@@ -18807,7 +18816,7 @@ function irTorre(k){
   /* El Dashboard es una solapa del Panel 360 y la ve tambien quien tiene solo
      su cartera: la solapa estaba a la vista pero esto la devolvia al Panel 360,
      y para Santi el boton "no abria". dashboardHtml filtra a su cartera. */
-  S.torreVista=(soloCartera()&&_k!=='calendario'&&_k!=='dashboard'&&_k!=='tickets'&&_k!=='materiales')?'panel360':_k;
+  S.torreVista=(soloCartera()&&_k!=='calendario'&&_k!=='dashboard'&&_k!=='tickets'&&_k!=='materiales'&&_k!=='bandeja')?'panel360':_k;
   collapseSidebar();
   showTickets();
 }
@@ -18822,7 +18831,7 @@ function _torreSubVisible(){
     // Se esconden todas menos Panel 360, que es donde trabaja.
     if(soloCartera()){
       document.querySelectorAll('#torre-sub .torre-sub-item').forEach(function(el){
-        var ok=(el.dataset.k==='panel360'||el.dataset.k==='dashboard'||el.dataset.k==='tickets'||el.dataset.k==='materiales')
+        var ok=(el.dataset.k==='panel360'||el.dataset.k==='bandeja'||el.dataset.k==='dashboard'||el.dataset.k==='tickets'||el.dataset.k==='materiales')
              ||(el.dataset.k==='calendario'&&puedeCalendario());
         el.style.display=ok?'':'none';
       });
@@ -18832,6 +18841,7 @@ function _torreSubVisible(){
       if(el.dataset.k==='calendario'&&!puedeCalendario()) el.style.display='none';
     });
   }catch(e){}
+  try{ var bn=document.getElementById('bandeja-n'); if(bn){ var t=bandejaCuentas().total; bn.textContent=t||''; bn.style.display=t?'':'none'; } }catch(e){}
   var sub=document.getElementById('torre-sub');
   var it=document.getElementById('nav-tickets');
   if(!sub||!it) return;
@@ -19525,6 +19535,42 @@ function calendarioHtml(){
         +'gap:5px">'+celdas+'</div>'
     +'</div></div>';
 }
+/* ── Bandeja (Angie, 22/11/2026, diseño 10) ──────────────────────────────
+   Lo que espera una decisión: aprobaciones, pedidos al agente y cambios
+   propuestos, en tres pestañas. Usa los mismos bloques que vivían abajo de
+   Tickets, así que los botones (Aprobar, Hacelo, Crear ticket…) son los de siempre. */
+function bandejaCuentas(){
+  var ap=0, ag=0, cp=0;
+  try{ ap=tareasEsperandoAprobacion().length+((typeof rvEsperandoAprobacion==='function')?rvEsperandoAprobacion().length:0); }catch(e){}
+  try{ ag=(((S._agPed||{}).lista)||[]).filter(function(x){ return x.estado==='preparado'||x.estado==='pendiente'; }).length; }catch(e){}
+  try{ cp=dashCambiosPendientes().length; }catch(e){}
+  return {ap:ap, ag:ag, cp:cp, total:ap+ag+cp};
+}
+function bandejaTab(k){ S.bandejaTab=k; showTickets(); }
+function bandejaHtml(){
+  var n=bandejaCuentas(), tab=S.bandejaTab||(n.ap?'aprobar':(n.ag?'agente':'cambios'));
+  var tabs=[['aprobar','Para aprobar',n.ap],['agente','Pedidos al agente',n.ag],['cambios','Cambios propuestos',n.cp]];
+  // Cuántos días lleva la aprobación más vieja.
+  var viejo=0;
+  try{ tareasEsperandoAprobacion().forEach(function(x){ var d=new Date(x.t.revisionAt||x.t.delegatedAt||0).getTime(); if(d){ var dd=Math.floor((Date.now()-d)/864e5); if(dd>viejo) viejo=dd; } }); }catch(e){}
+  var cuerpo='';
+  try{
+    if(tab==='aprobar') cuerpo=rvAprobacionesHtml();
+    else if(tab==='agente') cuerpo=agPanelHtml();
+    else cuerpo=dashCambiosHtml(false);
+  }catch(e){ console.warn('bandeja:',e); }
+  var vacio={aprobar:'No hay nada esperando tu aprobación.',agente:'No hay pedidos al agente para revisar.',cambios:'No hay cambios propuestos sin decidir.'}[tab];
+  var _caja=function(t){ return '<div style="padding:40px 20px;text-align:center;border:1px dashed var(--border2);border-radius:var(--radius-lg);font-size:13px;color:var(--text3)">'+t+'</div>'; };
+  // El panel del agente se carga solo y se reemplaza a sí mismo: su caja vacía tiene que quedar.
+  if(/^<div id="ag-panel"><\/div>$/.test(cuerpo)) cuerpo+=_caja((S._agPed&&S._agPed.lista)?vacio:'Trayendo los pedidos…');
+  else if(!cuerpo) cuerpo=_caja(vacio);
+  return '<div class="bdj">'
+    +'<div class="p3-cab" style="margin-bottom:12px"><div><div class="p3-tit">Bandeja</div><div class="p3-sub">Lo que espera una decisión tuya: aprobaciones, pedidos al agente y cambios propuestos</div></div></div>'
+    +'<div class="bdj-tabs" role="tablist">'+tabs.map(function(t){ return '<button role="tab" aria-selected="'+(t[0]===tab)+'" class="'+(t[0]===tab?'on':'')+'" onclick="bandejaTab(\''+t[0]+'\')">'+t[1]+'<b>'+t[2]+'</b></button>'; }).join('')+'</div>'
+    +((tab==='aprobar'&&n.ap&&viejo>=7)?('<div class="bdj-aviso"><b>'+(n.ap===1?'La aprobación lleva ':'Las '+n.ap+' aprobaciones llevan hasta ')+viejo+' días esperando.</b> Mientras no se decidan, esas tareas quedan frenadas.</div>'):'')
+    +cuerpo
+  +'</div>';
+}
 function _torreVacio(titulo, texto){
   return '<div style="padding:44px 20px;text-align:center;border:1px dashed var(--border2);border-radius:var(--radius-lg)">'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:4px">'+titulo+'</div>'
@@ -20190,9 +20236,9 @@ function showTickets(){
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:3px">'
     +'<div style="display:flex;align-items:center;gap:16px;min-width:0">'
     /* Sin pestañas arriba (Angie, 22/11/2026): las secciones están en el desplegable del Panel 360. */
-    +(_torre==='panel360'?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
+    +((_torre==='panel360'||_torre==='bandeja')?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
       +({mirador:'Panel 360',tickets:'Tickets',actividad:'Actividad',
-         panel360:'Pipeline',dashboard:'Métricas',rentabilidad:'Rentabilidad',calendario:'Calendario',
+         panel360:'Pipeline',bandeja:'Bandeja',dashboard:'Métricas',rentabilidad:'Rentabilidad',calendario:'Calendario',
          editor:'Editor con IA',estaticos:'Estaticos con IA',materiales:'Materiales'}[_torre]||'Panel 360')+'</div>')
     // El periodo va pegado al titulo: es la otra mitad de "donde estoy parada".
     +((_torre==='calendario'&&typeof _calNavHtml==='function')?_calNavHtml():'')
@@ -20254,6 +20300,7 @@ function showTickets(){
       :(_torre==='estaticos'?estaticosHtml()
       :(_torre==='editor'?editorIaHtml()
       :(_torre==='panel360'?p360Html()
+      :(_torre==='bandeja'?bandejaHtml()
       :(_torre==='dashboard'?dashboardHtml()
       :(_torre==='rentabilidad'?(verPlata()?rentabilidadHtml():_torreVacio('Rentabilidad','Esta seccion no esta habilitada para tu usuario.'))
       :(_torre==='calendario'?calendarioHtml()
@@ -20283,9 +20330,7 @@ function showTickets(){
         +'<div style="font-size:11.5px;color:var(--text3);max-width:460px;margin:0 auto">Los tickets se crean al delegar una tarea desde la pestana Tareas de un cliente (boton Delegar): se numeran, se mandan por mail a tu colaboradora y quedan aca para el seguimiento.</div>'
         +'</div>')))
     +'<div style="height:22px"></div>'
-    +rvAprobacionesHtml()
-    +agPanelHtml()
-    +dashCambiosHtml(false)
+    /* Aprobaciones, pedidos al agente y cambios propuestos pasaron a la Bandeja (Angie, 22/11/2026, diseño 10). */
     +dashHechosHtml()
     +progresoHtml
     // El periodo tambien se esconde detras del embudo: son cinco botones que se
@@ -20308,7 +20353,7 @@ function showTickets(){
     +kpi('Tiempo en proceso',avgProceso!=null?(avgProceso*24).toFixed(1)+' hs':'-')
     +kpi('Entregas a tiempo',aTiempo!=null?aTiempo+'%':'-')
     +'</div>'
-    +'')))))))))))
+    +''))))))))))))
     +'</div>';
   // La campanita se repinta en cada render: lo que muestra depende de la
   // pantalla, y el render es el unico momento en que se sabe cual es.
