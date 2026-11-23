@@ -2664,6 +2664,15 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   .p3cel-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
   .p3cel-cab .bt{width:36px;height:36px;border-radius:50%;border:1px solid var(--border2);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center}
   .p3cel-cab .bt.mas{background:var(--accent);color:var(--on-accent,#0A0C10);border:0;font-size:20px;font-weight:600}
+  .tkc-it{display:flex;gap:10px;align-items:flex-start;padding:13px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer}
+  .tkc-it b{display:block;font-size:13.5px;color:var(--strong);line-height:1.35}.tkc-it small{display:block;font-size:11.5px;color:var(--text3);margin-top:3px}
+  .tkc-r{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:11px;white-space:nowrap}.tkc-r i{width:7px;height:7px;border-radius:50%;background:var(--redx)}
+  /* Métricas en el celu (diseño 17) */
+  .mc-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+  .mc-card>b{display:block;font-size:13.5px;color:var(--strong)}.mc-card>small{display:block;font-size:11.5px;color:var(--text3);margin-top:2px;line-height:1.4}
+  .mc-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:10px}.mc-v strong{font-size:22px;font-weight:700;color:var(--strong);font-variant-numeric:tabular-nums}
+  .mc-v span{font-size:12px;color:var(--text3)}
+  .mc-pie{display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:12px;padding-top:9px;font-size:11.5px;color:var(--text3)}.mc-pie b{color:var(--text);font-variant-numeric:tabular-nums}
   /* Bandeja en el celu (diseño 15): cada pedido en su tarjeta */
   .bdj .tk-card,.bdj [style*="border-top:1px solid rgba(240,138,40,0.2)"]{flex-wrap:wrap !important}
   .bdj [style*="width:140px"]{width:100% !important}
@@ -19598,6 +19607,26 @@ function calendarioHtml(){
    Lo que espera una decisión: aprobaciones, pedidos al agente y cambios
    propuestos, en tres pestañas. Usa los mismos bloques que vivían abajo de
    Tickets, así que los botones (Aprobar, Hacelo, Crear ticket…) son los de siempre. */
+/* Tickets en el celu (diseño 16, Angie, 22/11/2026): pestañas por estado,
+   vencidas primero y una fila por tarea con el cliente y el vencimiento. */
+function tkCelTab(k){ S.tkCelTab=k; showTickets(); }
+function _tkCelHtml(abiertos, now, endOfDue){
+  var orden=['','delegada','proceso','revision','revisada','bloqueada'];
+  var nom=function(k){ return k===''?'Abierta':((_TK_ESTADOS[k]&&_TK_ESTADOS[k].label)||k).replace('Esperando aprobacion','Esperando'); };
+  var por={}; abiertos.forEach(function(r){ var k=r.t.estado||''; if(k==='finalizada') return; if(orden.indexOf(k)<0) k=''; (por[k]=por[k]||[]).push(r); });
+  var tabs=orden.filter(function(k){ return (por[k]||[]).length; });
+  var sel=(S.tkCelTab!=null&&por[S.tkCelTab])?S.tkCelTab:(tabs[0]||'');
+  var lista=(por[sel]||[]).slice().sort(function(a,b){ var da=endOfDue(a.t), db=endOfDue(b.t); return (da?da.getTime():9e15)-(db?db.getTime():9e15); });
+  var fila=function(r){ var t=r.t, c=r.c, d=endOfDue(t), venc=d&&d<now, dias=d?Math.round(Math.abs(now-d)/864e5):null;
+    var der=d?(venc?'<span style="color:var(--redx)">Vencida '+dias+' d</span>':'<span style="color:var(--text3)">'+(dias===0?'Vence hoy':('Vence en '+dias+' d'))+'</span>'):'';
+    return '<div class="tkc-it" onclick="ticketEditarModal('+c.id+','+t.id+')"><div style="min-width:0;flex:1"><b>'+esc(String(t.text||'').slice(0,90))+'</b><small>'+esc(c.name||'')+(t.ticket?(' · #'+esc(t.ticket)):'')+'</small></div>'
+      +'<div class="tkc-r">'+(venc?'<i></i>':'')+der+'</div></div>'; };
+  return '<div class="p3cel-cab"><div><div class="p3-tit">Tickets</div><div class="p3-sub">'+abiertos.length+' abiertos</div></div>'
+      +'<div style="display:flex;gap:8px"><button class="bt mas" aria-label="Crear tarea" onclick="openNewTicketModal()">+</button></div></div>'
+    +'<div class="p3cel-tabs">'+tabs.map(function(k){ return '<button class="'+(k===sel?'on':'')+'" onclick="tkCelTab(\''+k+'\')">'+nom(k)+' '+por[k].length+'</button>'; }).join('')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin:-4px 0 10px">Vencidas primero</div>'
+    +(lista.length?lista.map(fila).join(''):'<div style="font-size:13px;color:var(--text3);padding:20px 0">No hay tareas en este estado.</div>');
+}
 function bandejaCuentas(){
   var ap=0, ag=0, cp=0;
   try{ ap=tareasEsperandoAprobacion().length+((typeof rvEsperandoAprobacion==='function')?rvEsperandoAprobacion().length:0); }catch(e){}
@@ -20372,7 +20401,7 @@ function showTickets(){
       :(_torre==='dashboard'?dashboardHtml()
       :(_torre==='rentabilidad'?(verPlata()?rentabilidadHtml():_torreVacio('Rentabilidad','Esta seccion no esta habilitada para tu usuario.'))
       :(_torre==='calendario'?calendarioHtml()
-      :(_torre==='actividad'?_actividadHtml():(''
+      :(_torre==='actividad'?_actividadHtml():((typeof esCelular==='function'&&esCelular()&&_torre==='tickets')?_tkCelHtml(abiertos, now, endOfDue):(''
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
       +_tkSelectorVistaHtml()
       +'<span style="font-size:13px;color:var(--strong)">'+_tkEstadoLabel(filter)+'</span>'
@@ -20421,7 +20450,7 @@ function showTickets(){
     +kpi('Tiempo en proceso',avgProceso!=null?(avgProceso*24).toFixed(1)+' hs':'-')
     +kpi('Entregas a tiempo',aTiempo!=null?aTiempo+'%':'-')
     +'</div>'
-    +''))))))))))))
+    +'')))))))))))))
     +'</div>';
   // La campanita se repinta en cada render: lo que muestra depende de la
   // pantalla, y el render es el unico momento en que se sabe cual es.

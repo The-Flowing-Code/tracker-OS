@@ -227,10 +227,13 @@ function dashMensualHtml(activos){
   var MS=mensMeses(), A=mensCalcular(MS[0], base, base), B=mensCalcular(MS[1], base, base), C=mensCalcular(MS[2], base, base);
   var hoyD=new Date().getDate();
   // Cada fila: los dos meses cerrados, el cambio entre ellos y el mes en curso.
+  // En el celu (diseño 17, Angie, 22/11/2026) cada fila es una tarjeta: se juntan por sección.
+  var _secs=[], _cur=null;
   var fila=function(nombre, va, vb, cambio, nota, vc){
+    if(_cur) _cur.rows.push({n:nombre, va:va, vb:vb, cambio:cambio, nota:nota, vc:vc});
     return '<tr><td>'+nombre+(nota?'<div class="ks">'+nota+'</div>':'')+'</td><td class="v">'+va+'</td><td class="v">'+vb+'</td><td class="v">'+(cambio||'')+'</td><td class="v cur">'+(vc==null?'—':vc)+'</td></tr>';
   };
-  var sec=function(t){ return '<tr class="sec"><td colspan="5">'+t+'</td></tr>'; };
+  var sec=function(t){ _cur={t:t, rows:[]}; _secs.push(_cur); return '<tr class="sec"><td colspan="5">'+t+'</td></tr>'; };
   // El porcentaje es sobre los clientes con campaña activa ese mes (Angie, 04/11/2026).
   var pctTxt=function(f,R){ return f.pct==null?String(f.clientes):'<span title="'+f.deAct+' de '+R.conCamp+' con campaña activa">'+_mensPct(f.pct)+'</span>'; };
   var cnt=function(k, nombre, costoNombre){
@@ -276,6 +279,20 @@ function dashMensualHtml(activos){
     +fila('Clientes con cierre', pctTxt(A.f.compro,A), pctTxt(B.f.compro,B), _mensCambio(A.f.compro.pct,B.f.compro.pct),
         [A,B,C].map(function(R){ return R.cierres.length?R.M.nombre+': '+esc(R.cierres.join(', ')):''; }).filter(Boolean).join(' · '), pctTxt(C.f.compro,C))
     +fila('CAC', _mensUsd(A.cac), _mensUsd(B.cac), _mensCambio(A.cac,B.cac,true), 'inversión de los clientes con cierre dividida por sus cierres', _mensUsd(C.cac));
+  if(typeof esCelular==='function' && esCelular()){
+    var tab=(typeof S!=='undefined' && S.mensCelTab!=null && _secs[S.mensCelTab])?S.mensCelTab:0;
+    var abr=function(n){ return String(n||'').slice(0,3).toLowerCase(); };
+    var tarjeta=function(r){
+      return '<div class="mc-card"><b>'+r.n+'</b>'+(r.nota?'<small>'+r.nota+'</small>':'')
+        +'<div class="mc-v"><strong>'+r.vb+'</strong>'+(r.cambio?'<span>'+r.cambio+'</span>':'')+'<span>vs '+abr(MS[0].nombre)+' ('+r.va+')</span></div>'
+        +'<div class="mc-pie"><span>'+MS[2].nombre+', al día '+hoyD+'</span><b>'+(r.vc==null?'—':r.vc)+'</b></div></div>';
+    };
+    return '<div class="mens-cel">'
+      +'<div class="p3cel-cab"><div><div class="p3-tit">Métricas</div><div class="p3-sub">'+MS[1].nombre+' contra '+MS[0].nombre.toLowerCase()+'</div></div></div>'
+      +'<div class="p3cel-tabs">'+_secs.map(function(x,i){ return '<button class="'+(i===tab?'on':'')+'" onclick="S.mensCelTab='+i+';showTickets()">'+x.t+'</button>'; }).join('')+'</div>'
+      +(_secs[tab]?_secs[tab].rows.map(tarjeta).join(''):'')
+    +'</div>';
+  }
   return '<div class="card mens" style="display:flex;flex-direction:column;gap:16px;padding:24px 28px">'
     +'<style>.mens table{width:100%;border-collapse:collapse}.mens td{padding:10px 12px;border-top:1px solid #1E222B;vertical-align:top}'
       +'.mens td.v{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}'
