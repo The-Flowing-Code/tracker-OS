@@ -19547,7 +19547,16 @@ function bandejaCuentas(){
   return {ap:ap, ag:ag, cp:cp, total:ap+ag+cp};
 }
 function bandejaTab(k){ S.bandejaTab=k; showTickets(); }
+// Los pedidos al agente llegan después del primer pintado: cuando están, se repinta una vez para que el número sea el real.
+function _bandejaEsperarAgente(){
+  if(S._agPed&&S._agPed.lista) return;
+  if(_bandejaEsperarAgente.corriendo) return; _bandejaEsperarAgente.corriendo=true;
+  var n=0, t=setInterval(function(){ n++;
+    if((S._agPed&&S._agPed.lista)||n>20){ clearInterval(t); _bandejaEsperarAgente.corriendo=false;
+      if(S._agPed&&S._agPed.lista){ try{ _torreSubVisible(); }catch(e){} if(S.view==='tickets'&&S.torreVista==='bandeja') showTickets(); } } }, 700);
+}
 function bandejaHtml(){
+  try{ if(!(S._agPed&&S._agPed.lista)){ if(typeof _agCargar==='function') _agCargar(); _bandejaEsperarAgente(); } }catch(e){}
   var n=bandejaCuentas(), tab=S.bandejaTab||(n.ap?'aprobar':(n.ag?'agente':'cambios'));
   var tabs=[['aprobar','Para aprobar',n.ap],['agente','Pedidos al agente',n.ag],['cambios','Cambios propuestos',n.cp]];
   // Cuántos días lleva la aprobación más vieja.
