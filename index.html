@@ -2688,6 +2688,11 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   /* ── Lo que flotaba abajo y ahora choca con la barra ─────────────── */
   /* El asistente sube por encima de la barra y se queda a la derecha. */
   .as-btn{right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 74px)}
+  /* El círculo gris que flotaba abajo a la derecha en el celu era este botón
+     del asistente (44 px, fondo --bg3). Se sacó el 22/11 (_asMontar devuelve
+     antes de montarlo), pero una pestaña abierta desde antes o una copia en
+     caché lo seguía mostrando encima del contenido: en el celu no se dibuja. */
+  .as-btn{display:none !important}
   .as-panel{right:12px;left:12px;width:auto;
     bottom:calc(env(safe-area-inset-bottom,0px) + 128px);
     max-height:calc(100dvh - 210px)}
@@ -32758,6 +32763,10 @@ function _fichaCss(){
     +'.fstep-l{display:flex}.fstep-l>div{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0;text-align:center}'
     +'.fstep-l i{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box}'
     +'.fstep-l small{font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}'
+    /* Cabecera en el celu (23/11/2026): los botones iban en la misma fila que
+       el nombre y lo tapaban («Lanzam», «Metrodev» cortados). En el celu van
+       en su propia fila, arriba, y el nombre ocupa todo el ancho. */
+    +'@media (max-width:600px){.fl-fila{flex-direction:column-reverse;align-items:stretch;gap:12px}.fl-acc{justify-content:flex-end}.fl-cab{padding:16px 16px 10px !important}.fl-cab h3{font-size:24px !important;overflow-wrap:anywhere}.fl-tabs{padding:0 16px !important;gap:16px !important}.fl-body{padding:18px 16px 40px !important}}'
     /* Embudo de la ficha (23/11/2026) */
     +'.fe{display:flex;flex-direction:column;gap:16px}'
     +'.fe-per{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}.fe-per>span{font-size:12px;color:var(--text3)}'
@@ -32887,7 +32896,7 @@ function _fichaEmbudo(c){
   var mon=fx?'USD':(c.metaCurrency||'USD');
   var plata=function(v){ if(v==null||!isFinite(v)) return '—'; var n=fx?v/fx:v; return mon+' '+n.toLocaleString('es-AR',{maximumFractionDigits:(Math.abs(n)<100?2:0)}); };
   var pct=function(a,b){ return (a!=null&&b)?a/b*100:null; };
-  var fp=function(v){ return v==null?'—':(v<10?v.toFixed(1).replace('.',','):Math.round(v))+' %'; };
+  var fp=function(v){ return v==null?'—':((v>0&&v<10)?v.toFixed(1).replace('.',','):Math.round(v))+' %'; };
 
   // ── Meta ──
   var metaOk=!!(c.metaToken&&c.metaAccountId), M=null, metaFalta='';
@@ -32931,7 +32940,10 @@ function _fichaEmbudo(c){
     registros:{l:'Registros', v:val(G,'registros'), p:val(Gp,'registros'), falta:ghlFalta, serie:serieG('registros'), cu:'por registro'},
     agendas:{l:'Agendas', v:agFalta?null:val(G,'agendas'), p:agFalta?null:val(Gp,'agendas'), falta:ghlFalta||agFalta, serie:serieG('agendas'), cu:'por agenda'},
     vivo:{l:'Asistieron', v:vivoFalta?null:val(G,'enVivo'), p:vivoFalta?null:val(Gp,'enVivo'), falta:ghlFalta||vivoFalta, serie:serieG('enVivo'), cu:'por llamada'},
-    cierres:{l:'Cierres', v:val(G,'ganados'), p:val(Gp,'ganados'), falta:ghlFalta, serie:serieG('ganados'), cu:'CAC'}
+    cierres:{l:'Cierres', v:val(G,'ganados'), p:val(Gp,'ganados'), falta:ghlFalta, serie:serieG('ganados'), cu:'CAC'},
+    // El valor de las oportunidades ganadas en GHL, en la moneda que tenga
+    // cargada el cliente ahí: no se convierte porque GHL no dice cuál es.
+    facturacion:{l:'Facturación', v:val(G,'revenueGanados'), p:val(Gp,'revenueGanados'), falta:ghlFalta, serie:serieG('revenueGanados'), rev:true}
   };
   var gC=F.gasto.v, gP=F.gasto.p;
   Object.keys(F).forEach(function(k){
@@ -32940,6 +32952,7 @@ function _fichaEmbudo(c){
     f.costo=(gC!=null&&f.v)?gC/f.v*m:null; f.costoP=(gP!=null&&f.p)?gP/f.p*m:null;
   });
   F.gasto.costo=(gC!=null)?gC/r.dias:null; F.gasto.cu='por día';
+  var gUsd=(gC!=null)?(fx?gC/fx:gC):null;
 
   // Pasos: de una fila a la siguiente. El paso alcance→clic no compite por el
   // «mayor corte»: siempre es de un dígito y taparía el corte real.
@@ -33003,8 +33016,8 @@ function _fichaEmbudo(c){
     var p=paso[k], corte=(p&&p.pct!=null)?('<div class="fe-paso"'+(k===peor?' style="color:var(--redx)"':'')+'>↓ '+fp(p.pct)+' '+p.t+(k===peor?' · el mayor corte':'')+'</div>'):'';
     return corte+'<div class="fe-fila">'
       +'<div class="fe-f1"><span class="fe-n">'+f.l+'</span><span class="fe-d" style="color:'+dcol+'">'+(d==null?'':((d>=0?'+':'')+Math.round(d)+' %'))+'</span>'+(v==null?'':'<span class="fe-spw">'+_feSpark(f.serie)+'</span>')+'</div>'
-      +'<div class="fe-f2"><b>'+(v==null?'—':(f.plata?plata(v):nf(v)))+'</b>'
-        +'<small>'+(v==null?esc(f.falta||'Sin dato'):(f.costo!=null?(plata(f.costo)+' '+f.cu):''))+'</small></div>'
+      +'<div class="fe-f2"><b>'+(v==null?'—':(f.plata?plata(v):(f.rev?('$ '+nf(v)):nf(v))))+'</b>'
+        +'<small>'+(v==null?esc(f.falta||'Sin dato'):(f.rev?((gUsd&&v)?((v/gUsd).toFixed(1).replace('.',',')+'× lo invertido'):''):(f.costo!=null?(plata(f.costo)+' '+f.cu):'')))+'</small></div>'
       +'<div class="fe-bar"><i style="width:'+w.toFixed(1)+'%'+(k===peor?';background:var(--redx)':'')+'"></i></div>'
     +'</div>';
   };
@@ -33019,7 +33032,7 @@ function _fichaEmbudo(c){
     +seccion('Conversión · Landing','middle','Ver la landing en detalle',
         fila('visitas', F.visitas.v)+fila('registros', F.visitas.v||F.registros.v), ghlFalta, !ghlOk)
     +seccion('Cierre · Ventas','bottom','Ver ventas en detalle',
-        fila('agendas', F.agendas.v)+fila('vivo', F.agendas.v)+fila('cierres', F.agendas.v), ghlFalta||agFalta, !ghlOk);
+        fila('agendas', F.agendas.v)+fila('vivo', F.agendas.v)+fila('cierres', F.agendas.v)+fila('facturacion', Math.max(F.facturacion.v||0, F.facturacion.p||0)), ghlFalta||agFalta, !ghlOk);
 
   var perBtn=function(k, t, ok){ return '<button type="button" class="'+(per===k?'on':'')+'"'+(ok?'':' disabled title="No hay una línea de conversión activa con fecha de inicio"')+' onclick="_fePer(\''+k+'\','+c.id+')">'+t+'</button>'; };
   var fecha=function(ymd){ var p=ymd.split('-'); return p[2]+'/'+p[1]; };
@@ -33028,7 +33041,7 @@ function _fichaEmbudo(c){
       +'<span>'+fecha(r.desde)+' al '+fecha(r.hasta)+' · contra los '+r.dias+' días anteriores</span></div>'
     +hero
     +'<div class="fe-aviso" style="color:'+avCol+'">'+esc(aviso)+'</div>'
-    +((er.motivo||er.detalle)?('<div class="fe-roto" style="color:'+colRoto+'">'+esc(er.motivo||'')+(er.detalle?('<span>'+esc(er.detalle)+'</span>'):'')+'</div>'):'')
+    +((roto&&(er.motivo||er.detalle))?('<div class="fe-roto" style="color:'+colRoto+'">'+esc(er.motivo||'')+(er.detalle?('<span>'+esc(er.detalle)+'</span>'):'')+'</div>'):'')
     +secs
     +'<div class="fe-pie">Meta: campañas de la línea activa, '+(fx?'convertido a USD':'en '+esc(mon))+'; el alcance sumado entre campañas es un piso. Registros por fecha de entrada en GHL, cierres por fecha de cierre.</div>'
   +'</div>';
