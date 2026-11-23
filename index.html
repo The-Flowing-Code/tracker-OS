@@ -19619,7 +19619,7 @@ function _tkCelHtml(abiertos, now, endOfDue){
   var lista=(por[sel]||[]).slice().sort(function(a,b){ var da=endOfDue(a.t), db=endOfDue(b.t); return (da?da.getTime():9e15)-(db?db.getTime():9e15); });
   var fila=function(r){ var t=r.t, c=r.c, d=endOfDue(t), venc=d&&d<now, dias=d?Math.round(Math.abs(now-d)/864e5):null;
     var der=d?(venc?'<span style="color:var(--redx)">Vencida '+dias+' d</span>':'<span style="color:var(--text3)">'+(dias===0?'Vence hoy':('Vence en '+dias+' d'))+'</span>'):'';
-    return '<div class="tkc-it" onclick="ticketEditarModal('+c.id+','+t.id+')"><div style="min-width:0;flex:1"><b>'+esc(String(t.text||'').slice(0,90))+'</b><small>'+esc(c.name||'')+(t.ticket?(' · #'+esc(t.ticket)):'')+'</small></div>'
+    return '<div class="tkc-it" onclick="ticketEditarModal('+c.id+','+t.id+')"><div style="min-width:0;flex:1"><b>'+esc(String(t.text||'').slice(0,90))+'</b><small>'+esc(c.name||'')+(t.ticket?(' · #'+esc(String(t.ticket).replace(/^#+/,''))):'')+'</small></div>'
       +'<div class="tkc-r">'+(venc?'<i></i>':'')+der+'</div></div>'; };
   return '<div class="p3cel-cab"><div><div class="p3-tit">Tickets</div><div class="p3-sub">'+abiertos.length+' abiertos</div></div>'
       +'<div style="display:flex;gap:8px"><button class="bt mas" aria-label="Crear tarea" onclick="openNewTicketModal()">+</button></div></div>'
@@ -20333,7 +20333,7 @@ function showTickets(){
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:3px">'
     +'<div style="display:flex;align-items:center;gap:16px;min-width:0">'
     /* Sin pestañas arriba (Angie, 22/11/2026): las secciones están en el desplegable del Panel 360. */
-    +((_torre==='panel360'||_torre==='bandeja'||_torre==='calendario')?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
+    +((_torre==='panel360'||_torre==='bandeja'||_torre==='calendario'||(typeof esCelular==='function'&&esCelular()&&(_torre==='tickets'||_torre==='dashboard')))?'':'<div style="font-size:17px;font-weight:600;color:var(--strong);flex:none">'
       +({mirador:'Panel 360',tickets:'Tickets',actividad:'Actividad',
          panel360:'Pipeline',bandeja:'Bandeja',dashboard:'Métricas',rentabilidad:'Rentabilidad',calendario:'Calendario',
          editor:'Editor con IA',estaticos:'Estaticos con IA',materiales:'Materiales'}[_torre]||'Panel 360')+'</div>')
@@ -20362,7 +20362,7 @@ function showTickets(){
     +'</div>'
     // El calendario no lleva renglon de explicacion: dice siempre lo mismo y
     // separa el titulo de la grilla sin agregar nada.
-    +(_torre==='calendario' ? '<div style="height:16px"></div>'
+    +((_torre==='calendario'||(typeof esCelular==='function'&&esCelular()&&(_torre==='tickets'||_torre==='dashboard'))) ? '<div style="height:8px"></div>'
       : '<div style="font-size:12px;color:var(--text3);margin-bottom:22px">'
     +({mirador:'Lo que hay que mirar hoy: benchmarks, cuentas de Meta y revisiones pendientes. ',
        tickets:'Tareas delegadas por mail (con numero de ticket) o extraidas de llamadas. ',
