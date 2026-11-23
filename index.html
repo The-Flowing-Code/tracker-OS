@@ -2641,15 +2641,32 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
             calc(env(safe-area-inset-bottom,0px) + 92px) !important}
 
   /* ── La barra de abajo ───────────────────────────────────────────── */
-  .cel-barra{display:flex !important;position:fixed;left:12px;right:12px;z-index:150;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
-    gap:2px;padding:5px;border-radius:999px;
-    background:var(--bg3);border:1px solid var(--border2);
-    box-shadow:0 10px 30px rgba(0,0,0,.5)}
-  .cel-barra button{flex:1;padding:9px 0;border:0;border-radius:999px;
-    background:none;color:var(--text2);font-family:var(--font);font-size:11.5px;
-    cursor:pointer;white-space:nowrap}
-  .cel-barra button.on{background:var(--accent);color:var(--on-accent);font-weight:500}
+  .cel-barra{display:flex !important;position:fixed;left:0;right:0;z-index:150;bottom:0;
+    padding:6px max(8px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 6px) max(8px,env(safe-area-inset-left,0px));
+    background:var(--bg2);border-top:1px solid var(--border)}
+  .cel-barra button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border:0;
+    background:none;color:var(--text3);font-family:var(--font);font-size:10.5px;cursor:pointer;white-space:nowrap}
+  .cel-barra button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .cel-barra button.on{color:var(--accent);font-weight:600}
+  .cel-bn{position:absolute;top:0;left:calc(50% + 4px);font-size:9.5px;font-weight:700;background:var(--amberx);color:#0A0C10;border-radius:99px;padding:0 5px;line-height:15px}
+  /* Clientes en el celu (diseño 14) */
+  .p360-wrap .cel-2col{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:8px !important}
+  .p360-wrap .cel-2col>.ov-card:nth-child(2),.p360-wrap .cel-2col>.ov-card:nth-child(5){display:none}
+  .p360-wrap .ov-card .metric-label{font-size:10.5px}
+  .p360-wrap .p3-ctrl{display:none}
+  .p3cel-tabs{display:flex;gap:6px;overflow-x:auto;margin:4px -16px 12px;padding:0 16px;scrollbar-width:none}
+  .p3cel-tabs button{flex:none;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:999px;padding:6px 12px;font:500 12.5px var(--font)}
+  .p3cel-tabs button.on{background:var(--strong);color:var(--bg);border-color:transparent}
+  .p3cel-it{display:flex;align-items:center;gap:10px;padding:13px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer}
+  .p3cel-it b{display:block;font-size:14px;color:var(--strong)}.p3cel-it small{display:block;font-size:12px;color:var(--text3)}
+  .p3cel-it .d{width:8px;height:8px;border-radius:50%;flex:none}
+  .p3cel-it .r{margin-left:auto;font-size:11.5px;white-space:nowrap}
+  .p3cel-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .p3cel-cab .bt{width:36px;height:36px;border-radius:50%;border:1px solid var(--border2);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center}
+  .p3cel-cab .bt.mas{background:var(--accent);color:var(--on-accent,#0A0C10);border:0;font-size:20px;font-weight:600}
+  /* Bandeja en el celu (diseño 15): cada pedido en su tarjeta */
+  .bdj .tk-card,.bdj [style*="border-top:1px solid rgba(240,138,40,0.2)"]{flex-wrap:wrap !important}
+  .bdj [style*="width:140px"]{width:100% !important}
 
   /* ── Lo que flotaba abajo y ahora choca con la barra ─────────────── */
   /* El asistente sube por encima de la barra y se queda a la derecha. */
@@ -3137,11 +3154,13 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
   </button>
 </div>
 
+<!-- Diseños 14 a 17 (Angie, 22/11/2026): barra de abajo con ícono y nombre. -->
 <nav class="cel-barra" id="cel-barra" style="display:none" aria-label="Secciones">
-  <button data-k="panel360" onclick="celIr('panel360')">Panel 360</button>
-  <button data-k="clientes" onclick="celIr('clientes')">Clientes</button>
-  <button data-k="tickets"  onclick="celIr('tickets')">Tickets</button>
-  <button data-k="mas"      onclick="celIr('mas')">Más</button>
+  <button data-k="hoy" onclick="celIr('hoy')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Hoy</button>
+  <button data-k="panel360" onclick="celIr('panel360')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5"/></svg>Clientes</button>
+  <button data-k="bandeja" onclick="celIr('bandeja')"><span class="cel-bn" id="cel-bandeja-n"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/></svg>Bandeja</button>
+  <button data-k="tickets" onclick="celIr('tickets')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/></svg>Tickets</button>
+  <button data-k="mas" onclick="celIr('mas')"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>Más</button>
 </nav>
 
 <div id="modal-root"></div>
@@ -5431,6 +5450,7 @@ function celCajon(abrir){
    clientes no son una seccion: son una lista que vive adentro del menu.
    La diferencia es a donde te deja parado. */
 function celIr(k){
+  if(k==='hoy'){ celCajon(false); try{ bienvenidaMostrar(); }catch(e){} return; }
   if(k==='mas' || k==='clientes'){
     celCajon(true);
     if(k==='clientes'){
@@ -5453,8 +5473,9 @@ function celBarraMarcar(){
   if(S.view==='client') k='clientes';
   else if(S.view==='tickets'){
     var t=S.torreVista||'panel360';
-    k=(t==='panel360'||t==='dashboard'||t==='materiales') ? 'panel360' : (t==='tickets' ? t : 'mas');
+    k=(t==='panel360') ? 'panel360' : ((t==='tickets'||t==='bandeja') ? t : 'mas');
   }
+  try{ var bn=document.getElementById('cel-bandeja-n'); if(bn){ var n=bandejaCuentas().total; bn.textContent=n||''; bn.style.display=n?'':'none'; } }catch(e){}
   barra.querySelectorAll('button').forEach(function(b){
     b.classList.toggle('on', b.dataset.k===k);
     b.setAttribute('aria-current', b.dataset.k===k ? 'page' : 'false');
@@ -45741,6 +45762,32 @@ function p360Html(){
   /* Cabecera del Pipeline (Angie, 22/11/2026: «cambiá así el diseño»): título,
      buscador, vistas, filtros y Nuevo cliente arriba; antes iban en una isla
      flotante al pie. «Ocultar etapas de venta» pasó al menú de filtros. */
+  /* Clientes en el celu (diseño 14, Angie, 22/11/2026): las etapas en pestañas y
+     una lista con un punto de color y lo que pasa con cada uno. */
+  if(typeof esCelular==='function' && esCelular() && vista==='etapas'){
+    var _cc=cols.filter(function(x){ return x.cards.length; });
+    var _sel=_cc.filter(function(x){ return x.l===S.p360CelCol; })[0]||_cc.filter(function(x){ return /lanzamiento/i.test(x.l); })[0]||_cc[0];
+    var _fila=function(d){ var c=d.c, r='', col='var(--text3)', dot='var(--text3)';
+      try{ var qq=(typeof _yaLanzo==='function'&&_yaLanzo(c))?null:((typeof _lanzaCuenta==='function')?_lanzaCuenta(c):null);
+        var conG=c.ghl&&((c.ghl.opportunities||[]).length);
+        if(qq&&qq.faltan>=0&&qq.faltan<=7){ r=qq.faltan===0?'Lanza hoy':('Lanza en '+qq.faltan+' d'); col=dot='var(--amberx)'; }
+        else if(conG&&_cierresDe(c,30)===0){ r='Sin cierres'; col=dot='var(--redx)'; }
+        else if(conG){ r=_cierresDe(c,30)+' cierre'+(_cierresDe(c,30)===1?'':'s'); col=dot='var(--accent)'; }
+        else if(d.et&&d.et.fecha){ r=Math.max(0,Math.round((Date.now()-d.et.fecha.getTime())/864e5))+' d en etapa'; }
+      }catch(e){}
+      return '<div class="p3cel-it" onclick="fichaCliente('+c.id+')"><span class="d" style="background:'+dot+'"></span><span style="min-width:0"><b>'+esc(c.name||'')+'</b>'
+        +(c.contacto?'<small>'+esc(c.contacto)+'</small>':'<small style="color:var(--amberx)">Sin contacto asignado</small>')+'</span><span class="r" style="color:'+col+'">'+r+'</span></div>'; };
+    var _act=(DB.clients||[]).filter(function(c){ return !c.archived; }).length;
+    return '<div class="tk-card p360-wrap" style="padding:0;background:none;border:0">'
+      +'<div class="p3cel-cab"><div><div class="p3-tit">Clientes</div><div class="p3-sub">'+_act+' activos</div></div>'
+        +'<div style="display:flex;gap:8px"><button class="bt" aria-label="Buscar" onclick="var q=prompt(\'Buscar cliente\', S.p360Q||\'\'); if(q!==null) p360BuscarTexto(q)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>'
+        +'<button class="bt mas" aria-label="Nuevo cliente" onclick="openNewClientModal()">+</button></div></div>'
+      +((typeof _overviewMetricsHtml==='function')?_overviewMetricsHtml(null, sel):'')
+      +(q?('<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Buscando «'+esc(S.p360Q||'')+'» · <a href="javascript:void(0)" onclick="p360BuscarTexto(\'\')" style="color:var(--accent)">borrar</a></div>'):'')
+      +'<div class="p3cel-tabs">'+_cc.map(function(x){ return '<button class="'+(x===_sel?'on':'')+'" onclick="S.p360CelCol=\''+esc(x.l).replace(/'/g,"\\'")+'\';showTickets()">'+esc(x.l)+' '+x.cards.length+'</button>'; }).join('')+'</div>'
+      +(_sel?_sel.cards.map(_fila).join(''):'<div style="font-size:13px;color:var(--text3)">No hay clientes.</div>')
+    +'</div>';
+  }
   var _p3Isla=''
     +'<div class="p3-ctrl"><div class="emb-isla p3-ctrl-isla">'
       // El buscador va primero y siempre visible: es lo que se usa cuando ya
