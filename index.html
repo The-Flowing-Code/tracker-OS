@@ -221,6 +221,20 @@ body.light .client-state.live{text-shadow:none}
 .sb-yo-menu button span{grid-row:span 2;font-size:15px;text-align:center}
 .sb-yo-menu small{grid-column:2;color:var(--text3);font-size:11.5px;line-height:1.35}
 .sidebar.collapsed .sb-yo-menu{left:0}
+.sb-yo-cab{display:flex;gap:10px;align-items:center;padding:8px 10px 10px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.sb-yo-cab b{display:block;font-size:13px;color:var(--strong)}.sb-yo-cab small{display:block;font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-yo-av{flex:none;width:30px;height:30px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:600 11px var(--font);display:flex;align-items:center;justify-content:center}
+.sb-yo-av-s{width:24px;height:24px;font-size:10px;border-radius:7px}
+.sb-yo-sec{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:6px 10px 2px}
+.sb-yo-sep{height:1px;background:var(--border);margin:4px 0}
+.sb-yo-tema{display:grid;grid-template-columns:22px 1fr auto;column-gap:8px;align-items:center;padding:9px 10px;border-radius:9px;font-size:13px;color:var(--text);cursor:pointer}
+.sb-yo-tema span{text-align:center}.sb-yo-salir{color:var(--redx) !important}
+.p3-bd,.p3-mas{border:1px solid var(--border2);background:transparent;color:var(--text);border-radius:9px;padding:6px 12px;font:500 12.5px var(--font);cursor:pointer;white-space:nowrap}
+.p3-mas{padding:6px 10px;font-size:15px;line-height:1}
+.p3-bd:hover,.p3-mas:hover{background:var(--bg3)}
+.p3-ctrl-isla .eb.on{background:var(--bg3) !important;color:var(--strong) !important;border-color:var(--border2) !important}
+.tk-menu-sec{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);padding:8px 12px 4px}
+.tk-menu-2{align-items:flex-start !important}.tk-menu-2 b{display:block;font-weight:500}.tk-menu-2 small{display:block;font-size:11.5px;color:var(--text3);line-height:1.35;margin-top:2px;white-space:normal}
 
 .topbar{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
 .page-title{font-size:16px;font-weight:500;color:var(--strong)}
@@ -3074,14 +3088,10 @@ table,.vh-cost,.metric-value,.vh-costs,.metrics-row{font-variant-numeric:tabular
         <!-- El usuario va al lado de EVOLVE (Angie, 22/11/2026). -->
         <div class="logo-text sb-marca">EVOLVE</div>
         <span class="sb-yo-w">
-          <button class="sb-tema sb-yo" id="sb-yo-btn" onclick="event.stopPropagation();this.parentNode.classList.toggle('on')" title="Tu día" aria-label="Tu día" aria-haspopup="menu">
+          <button class="sb-tema sb-yo" id="sb-yo-btn" onclick="event.stopPropagation();sbYoArmar();this.parentNode.classList.toggle('on')" title="Tu usuario" aria-label="Tu usuario" aria-haspopup="menu">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
           </button>
-          <div class="sb-yo-menu" role="menu">
-            <button role="menuitem" onclick="sbYoCerrar();bienvenidaMostrar()"><span>&#9749;</span>Buen día<small>Lo de hoy: no negociables, reuniones y pendientes</small></button>
-            <button role="menuitem" onclick="sbYoCerrar();buenasNochesMostrar()"><span>&#9790;</span>Cierre del día<small>Lo que quedó y lo de mañana</small></button>
-            <button role="menuitem" onclick="sbYoCerrar();toggleTheme()"><span>&#9788;</span>Cambiar tema<small>Claro u oscuro</small></button>
-          </div>
+          <div class="sb-yo-menu" role="menu" id="sb-yo-menu"></div>
         </span>
       </div>
     </div>
@@ -13975,17 +13985,25 @@ function toggleTicketsMenu(btn){
   } else if((S.torreVista||'mirador')!=='tickets'){
     // El Panel 360 cae aca. Las etapas son las columnas de esta pantalla, asi
     // que su editor va en el menu de esta pantalla y no escondido en un link.
+    /* Diseño 8 (Angie, 22/11/2026): acciones separadas de la configuración,
+       cada acción con una línea de qué hace. */
+    var sec=function(t){ return '<div class="tk-menu-sec">'+t+'</div>'; };
+    var acc=function(fn,ic,txt,sub){
+      return '<div class="tk-menu-item tk-menu-2" onclick="document.getElementById(\'tk-actions-menu\').remove();'+fn+'"><i class="ti '+ic+'"></i><span><b>'+txt+'</b><small>'+sub+'</small></span></div>'; };
+    m.style.minWidth='300px';
+    if(btn.classList.contains('p3-mas')){ m.style.top='44px'; }
     m.innerHTML=''
       +(((S.torreVista||'mirador')==='panel360')
-        ? (it('rutaModal()','ti-layout-columns','Editar las etapas')
-           +it('citasRehacerTodos()','ti-refresh','Rehacer el reparto de citas')
+        ? (sec('Acciones')
+           +acc('citasRehacerTodosPedir()','ti-refresh','Rehacer el reparto de citas','Vuelve a repartir las citas pendientes entre el equipo.')
            // Vivia en el renglon de Prendidos, que se saco el 06/10. Es la
            // unica forma de emparejar la ventana de Meta de toda la cartera.
-           +it('embudoEmparejar()','ti-adjustments','Emparejar la ventana de Meta')
-           +'<div style="height:1px;background:var(--border);margin:4px 0"></div>')
+           +acc('embudoEmparejar()','ti-adjustments','Emparejar la ventana de Meta','Alinea el período de los datos de Meta con el del panel.')
+           +sec('Configuración')
+           +it('rutaModal()','ti-layout-columns','Editar las etapas'))
         : '')
-      +it('abrirConfigAgencia()','ti-building','Configuracion de agencia')
-      +it('abrirEquipo()','ti-users','Quien tiene acceso');
+      +it('abrirConfigAgencia()','ti-building','Configuración de agencia')
+      +it('abrirEquipo()','ti-users','Quién tiene acceso');
   } else {
     m.innerHTML=''
       +it('openNewTicketModal()','ti-plus','Crear tarea')
@@ -19654,6 +19672,27 @@ function _matInstructivo(m, n){
   document.addEventListener('click', function(e){ if(!e.target.closest('.mi-pop')) document.querySelectorAll('.mi-card.on').forEach(function(x){ x.classList.remove('on'); }); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.querySelectorAll('.mi-card.on').forEach(function(x){ x.classList.remove('on'); }); });
 }catch(e){} })();
+/* Menú de usuario (diseño 8, D): quién sos, rutinas, tema y salir. Se arma al abrir. */
+function sbYoIniciales(){
+  var mail=(typeof SB==='object'&&SB.email)||'';
+  var nom=(typeof _calNombreDe==='function'&&mail)?_calNombreDe(mail):'';
+  var base=(nom&&nom!==mail)?nom:(mail.split('@')[0]||'?');
+  var p=base.replace(/[._-]+/g,' ').trim().split(/\s+/);
+  return {mail:mail, nombre:(nom&&nom!==mail)?nom:base, ini:((p[0]||'?')[0]+((p[1]||'')[0]||'')).toUpperCase()};
+}
+function sbYoArmar(){
+  var m=document.getElementById('sb-yo-menu'); if(!m) return;
+  var y=sbYoIniciales(), oscuro=!document.body.classList.contains('light');
+  m.innerHTML='<div class="sb-yo-cab"><span class="sb-yo-av">'+esc(y.ini)+'</span><span style="min-width:0"><b>'+esc(y.nombre)+'</b><small>'+esc(y.mail||'Sin sesión')+' · Evolve</small></span></div>'
+    +'<div class="sb-yo-sec">Rutinas</div>'
+    +'<button role="menuitem" onclick="sbYoCerrar();bienvenidaMostrar()"><span>&#9788;</span>Buen día<small>Lo de hoy: no negociables, reuniones y pendientes</small></button>'
+    +'<button role="menuitem" onclick="sbYoCerrar();buenasNochesMostrar()"><span>&#9790;</span>Cierre del día<small>Lo que quedó y lo de mañana</small></button>'
+    +'<div class="sb-yo-sep"></div>'
+    +'<label class="sb-yo-tema" onclick="event.stopPropagation()"><span>&#9790;</span>Tema oscuro<input type="checkbox" class="sw"'+(oscuro?' checked':'')+' onchange="toggleTheme()"></label>'
+    +(y.mail?'<button role="menuitem" class="sb-yo-salir" onclick="sbYoCerrar();if(confirm(\'¿Cerrar sesión? Tus datos quedan guardados en este navegador.\'))sbCerrarSesion()"><span>&#8617;</span>Cerrar sesión</button>':'');
+  var b=document.getElementById('sb-yo-btn'); if(b) b.innerHTML='<span class="sb-yo-av sb-yo-av-s">'+esc(y.ini)+'</span>';
+}
+setTimeout(function(){ try{ sbYoArmar(); }catch(e){} }, 3000);
 function sbYoCerrar(){ document.querySelectorAll('.sb-yo-w.on').forEach(function(x){ x.classList.remove('on'); }); }
 document.addEventListener('click', function(e){ if(!e.target.closest('.sb-yo-w')) sbYoCerrar(); });
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') sbYoCerrar(); });
@@ -20173,9 +20212,9 @@ function showTickets(){
     +'<button id="tk-bell" class="btn btn-sm" style="border:none;padding:4px 8px;position:relative;color:var(--text3);display:none" aria-label="Avisos de esta pantalla" onclick="convAbrirDesdeBell()" title="Avisos de esta pantalla"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M12 3a6 6 0 016 6v3l2 4H4l2-4V9a6 6 0 016-6zm-2 15a2 2 0 004 0"/></svg></button>'
     // El menu cambia segun la seccion: en Tickets estan las acciones de tickets,
     // en el resto solo la configuracion de agencia.
-    +'<div style="position:relative">'
+    +(_torre==='panel360'?'':('<div style="position:relative">'
     +'<button class="btn btn-sm" style="border:none;font-size:17px;padding:4px 8px;color:var(--text2)" aria-label="Acciones" onclick="event.stopPropagation();toggleTicketsMenu(this)">&#8942;</button>'
-    +'</div>'))
+    +'</div>'))))
     +'</div>'
     +'</div>'
     // El calendario no lleva renglon de explicacion: dice siempre lo mismo y
@@ -40808,6 +40847,20 @@ function p360Archivar(clientId){
    El de a uno esta adentro de la agenda de cada ficha, que ahora ademas hay
    que abrir a proposito. Esto lo hace para todos de una. No baja nada: usa la
    agenda que ya esta guardada, asi que es barato y repetible. */
+/* Confirmación antes de rehacer el reparto (diseño 8, C). */
+function citasRehacerTodosPedir(){
+  document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
+    +'<div class="modal" style="max-width:420px">'
+      +'<div style="width:34px;height:34px;border-radius:50%;background:rgba(255,181,71,.12);color:var(--amberx);display:flex;align-items:center;justify-content:center;margin-bottom:12px">'
+        +'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div>'
+      +'<div style="font-size:16px;font-weight:600;color:var(--strong)">¿Rehacer el reparto de citas?</div>'
+      +'<div style="font-size:13px;color:var(--text2);line-height:1.55;margin-top:6px">Las citas pendientes se van a reasignar entre el equipo. Las que ya tienen responsable pueden cambiar de manos. Lo que asignaste a mano no se toca.</div>'
+      +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">'
+        +'<button class="btn btn-sm" onclick="closeModal()">Cancelar</button>'
+        +'<button class="btn btn-sm btn-primary" onclick="closeModal();window._rehacerSinPreguntar=true;try{citasRehacerTodos()}finally{window._rehacerSinPreguntar=false}">Rehacer reparto</button>'
+      +'</div>'
+    +'</div></div>';
+}
 function citasRehacerTodos(){
   var ev=_agendaGhl()||[];
   if(!ev.length){ toast('Todavia no hay agenda bajada. Toca Actualizar arriba.','amber'); return; }
@@ -40816,7 +40869,7 @@ function citasRehacerTodos(){
   if(!cls.length) return;
   var cuando=(DB.agendaGhl&&DB.agendaGhl.at)
     ? new Date(DB.agendaGhl.at).toLocaleString('es-AR') : 'la ultima bajada';
-  if(!confirm('Rehacer el reparto de citas de '+cls.length+' cliente'
+  if(!window._rehacerSinPreguntar && !confirm('Rehacer el reparto de citas de '+cls.length+' cliente'
       +(cls.length===1?'':'s')+' con la agenda de '
       +cuando+'.\n\nNo baja nada nuevo ni toca lo que asignaste a mano: vuelve a pasar '
       +'las reuniones ya bajadas por el reconocimiento, que es lo que hay que hacer '
@@ -45628,7 +45681,11 @@ function p360Html(){
       +'<span class="ebsep"></span>'
       +filtrosIsla
       +'</div>'
+      /* Diseño 8 (Angie, 22/11/2026): «Buen día» a mano en la cabecera (de tarde dice «Cierre del día») y el ⋮ junto a las acciones. */
+      +(function(){ var tarde=new Date().getHours()>=17;
+          return '<button class="p3-bd" onclick="'+(tarde?'buenasNochesMostrar()':'bienvenidaMostrar()')+'">'+(tarde?'&#9790; Cierre del día':'&#9788; Buen día')+'</button>'; })()
       +'<button class="btn btn-primary p3-nuevo" onclick="openNewClientModal()">+ Nuevo cliente</button>'
+      +'<span style="position:relative"><button class="p3-mas" aria-label="Acciones y configuración" onclick="event.stopPropagation();toggleTicketsMenu(this)">&#8942;</button></span>'
     +'</div>';
   return '<div class="tk-card p360-wrap" style="padding:18px 20px 22px">'
     +'<div class="p3-cab"><div style="min-width:0"><div class="p3-tit">Pipeline de clientes</div>'
