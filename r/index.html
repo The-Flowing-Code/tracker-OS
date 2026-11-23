@@ -36,7 +36,10 @@
     var f=document.createElement('iframe');
     f.id='marco'; f.title='Resumen de la semana';
     f.setAttribute('sandbox','allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation');
-    f.srcdoc=rows[0].html;
+    /* En la compu el reporte usa más ancho (Angie, 23/11/2026). Se suma acá para que
+       valga también para los reportes que ya se subieron. */
+    var COMPU='<style>  @media (min-width:900px) { main { max-width:860px; padding:56px 40px 64px; } .top { font-size:14px; } .titular { font-size:46px; max-width:760px; margin-top:20px; } .chart { height:170px; gap:12px; margin-top:44px; } .chart div span { font-size:13px; top:-22px; } .eje { gap:12px; font-size:12px; } .nums { gap:14px; margin-top:32px; } .n { padding:20px 18px; } .n .v { font-size:36px; } .n .l { font-size:13.5px; } .n .d { font-size:13px; } .significa { font-size:17px; padding:20px 22px; } .semana li { grid-template-columns:200px 1fr; gap:16px; padding:16px 0; font-size:16px; } .semana li span { padding-top:3px; } .vos { font-size:16px; padding:18px 20px; } .cliente { font-size:22px; } }</style>';
+    var h=rows[0].html; f.srcdoc=(h.indexOf('</head>')>=0)?h.replace('</head>',COMPU+'</head>'):(COMPU+h);
     msg.replaceWith(f);
   })
   .catch(function(){ error('No se pudo cargar el resumen','Revisá la conexión y volvé a abrir el link.'); });
