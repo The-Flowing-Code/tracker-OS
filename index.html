@@ -31180,19 +31180,12 @@ function renderTab(){
     // En el embudo el guionizador es una hoja mas, no toma la pestana entera.
     if(S.adsSub==='lab' && S.tab!=='embudo'){ renderGuionLab(c, el); return; }
     if(!activeLine||!(activeLine.metaCampaigns&&activeLine.metaCampaigns.length)){
-      el.innerHTML=adsSubNav()+'<div style="padding:20px 0">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-        +'<div style="font-size:13px;color:var(--text2)">No hay ads cargados en la linea activa.</div>'
-        +'<div style="display:flex;gap:8px">'
-        +(metaTokenCheck&&metaAccountIdCheck
-          ?'<button class="btn btn-sm btn-primary" onclick="syncMetaAds('+c.id+')" id="meta-sync-btn">Sincronizar Meta</button>'
-           +'<button class="btn btn-sm" onclick="openMetaConfig('+c.id+')" style="color:var(--text3);border-color:var(--border)">Editar token</button>'
-          :'<button class="btn btn-sm" onclick="openMetaConfig('+c.id+')" style="color:var(--amberx);border-color:rgba(240,138,40,0.4)">Conectar Meta</button>')
-        +(function(){var st=alarmStatus(c);var dot=st.breached?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--redx);margin-left:5px"></span>':'';var n=st.active?' ('+st.active+')':'';return '<button class="btn btn-sm" onclick="openAlarmsModal('+c.id+')">Alarmas'+n+dot+'</button>';})()
-        +'</div></div>'
-        +(metaTokenCheck&&metaAccountIdCheck&&c.conversionLines&&c.conversionLines.length
-          ?'<div id="meta-data-container"></div>'
-          :'<div class="empty" style="margin-top:0"><div class="empty-icon"></div><div>Conecta Meta o agrega ads a la linea activa.</div></div>')
+      /* Estado vacío (Angie, 23/11/2026, Metrodev): antes decía «No hay ads
+         cargados», dos botones sueltos y dejaba un hueco grande. Ahora dice qué
+         falta, qué no se puede ver por eso, quién lo destraba y el botón. */
+      el.innerHTML=adsSubNav()+'<div style="padding:16px 0 8px">'
+        +_embVacioHtml(c, !!(metaTokenCheck&&metaAccountIdCheck), activeLine)
+        +(metaTokenCheck&&metaAccountIdCheck?'<div id="meta-data-container"></div>':'')
         +'</div>';
       if(!_sinInformes){ el.innerHTML+=liveSectionHtml(c); kickLiveRefresh(c); }
       else { el.innerHTML=embudoHojasHtml(el.innerHTML, c); montarHojas(c); }
@@ -72317,13 +72310,49 @@ function mmTopHtml(cache, c){
     +'</div>';
 }
 
+/* El bloque de «falta algo» del embudo completo. Meta sin conectar o la línea
+   activa sin anuncios: qué falta, qué no se ve por eso y quién lo destraba. */
+function _embVacioHtml(c, metaOk, al){
+  var ghlOk=!!(c.ghl&&c.ghl.token&&c.ghl.locationId);
+  var st=null; try{ st=alarmStatus(c); }catch(e){}
+  var alarmas=st?('<button class="btn btn-sm" onclick="openAlarmsModal('+c.id+')">Alarmas'+(st.active?' ('+st.active+')':'')
+    +(st.breached?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--redx);margin-left:5px"></span>':'')+'</button>'):'';
+  var fila=function(t, d){ return '<div style="display:grid;grid-template-columns:118px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--border)">'
+    +'<span style="font-size:12px;font-weight:600;color:var(--text3)">'+t+'</span><span style="font-size:13.5px;line-height:1.55;color:var(--text)">'+d+'</span></div>'; };
+  var tit, falta, noSeVe, quien, btns;
+  if(!metaOk){
+    tit='Meta no está conectado';
+    falta='El acceso a la cuenta publicitaria de '+esc(c.name||'el cliente')+' en Meta (la cuenta y el token).';
+    noSeVe='El gasto, el alcance, los clics y el costo de cada anuncio; el mes a mes; y los costos por registro, por agenda y por cierre de este embudo.';
+    quien='El cliente nos da acceso a su cuenta publicitaria desde su Business Manager, y Campañas la conecta acá.';
+    btns='<button class="btn btn-sm btn-primary" onclick="openMetaConfig('+c.id+')">Conectar Meta</button>';
+  }else{
+    tit='La línea activa no tiene anuncios';
+    falta=al?('La línea de conversión activa'+(al.name?(' («'+esc(al.name)+'»)'):'')+' no tiene campañas de Meta asignadas.'):'Todavía no hay una línea de conversión para este cliente.';
+    noSeVe='El rendimiento por campaña y por anuncio de esta línea, y los costos del embudo desde que empezó.';
+    quien='Campañas sincroniza Meta: las campañas activas de la cuenta se cargan en la línea. Si la cuenta no tiene campañas, todavía no se lanzó.';
+    btns='<button class="btn btn-sm btn-primary" onclick="syncMetaAds('+c.id+')" id="meta-sync-btn">Sincronizar Meta</button>'
+      +'<button class="btn btn-sm" onclick="openMetaConfig('+c.id+')">Editar token</button>';
+  }
+  return '<div id="emb-vacio" style="max-width:720px;border:1px solid rgba(240,138,40,0.35);background:var(--bg2);border-radius:var(--radius-lg);padding:16px 18px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
+      +'<div style="font-size:15px;font-weight:700;color:var(--amberx)">'+tit+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+btns+alarmas+'</div></div>'
+    +fila('Qué falta', falta)
+    +fila('Qué no se ve', noSeVe)
+    +fila('Quién lo destraba', quien)
+    +(ghlOk?'':fila('Además', 'GHL tampoco está conectado: sin eso no se ven registros, agendas ni cierres. <button class="btn btn-sm" style="margin-left:6px" onclick="ghlClienteModal('+c.id+')">Conectar GHL</button>'))
+  +'</div>';
+}
 function dibujarMmTop(c){
   var host=document.getElementById('mm-top-host');
   if(!host) return;
   if(!c){ host.innerHTML=''; return; }
   if(!c.metaToken||!c.metaAccountId){
-    host.innerHTML='<div class="mm"><div class="mm-title">Mes a mes</div>'
-      +'<div class="mm-foot" style="margin-top:10px">Conecta Meta para ver el desglose mensual.</div></div>';
+    // Si arriba ya está el bloque de «Meta no está conectado», repetirlo acá
+    // solo agrega un hueco: el mes a mes queda nombrado en «Qué no se ve».
+    host.innerHTML=document.getElementById('emb-vacio')?'':'<div class="mm"><div class="mm-title">Mes a mes</div>'
+      +'<div class="mm-foot" style="margin-top:10px">Conectá Meta para ver el desglose mensual.</div></div>';
     return;
   }
   // Con cache fresca se pinta directo; si no, se avisa que esta pidiendo.
