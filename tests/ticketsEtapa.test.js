@@ -55,16 +55,29 @@ describe('tickets que repiten una tarea de etapa', () => {
 
   it('lo que sale de una llamada con csmTarea no crea ticket: va como nota', () => {
     const c = { id: 1, name: 'A', tasks: [], cambiosPropuestos: { at: new Date().toISOString(), items: [
-      { id: 'cp1', crear: 'ticket', texto: 'La línea nueva de WhatsApp puede tardar un par de días', csmTarea: 'X' },
-      { id: 'cp2', crear: 'ticket', texto: 'Algo que ninguna tarea cubre' }] } };
+      { id: 'llamada-cp1', crear: 'ticket', texto: 'La línea nueva de WhatsApp puede tardar un par de días', csmTarea: 'X' },
+      { id: 'llamada-cp2', crear: 'ticket', texto: 'Algo que ninguna tarea cubre' }] } };
     const ctx = app([c]);
     const id = ctx.CSM_ETAPAS.flatMap((e) => e.tareas).find((t) => /^Conectó su WhatsApp/.test(t.t)).id;
     c.cambiosPropuestos.items[0].csmTarea = id;
     ctx.avisosACsm();
     expect(c.tasks.length).toBe(1);
-    expect(c.tasks[0].desdeCambio).toBe('cp2');
+    expect(c.tasks[0].desdeCambio).toBe('llamada-cp2');
     expect(c.csmNotas[id][0].t).toMatch(/línea nueva/);
-    expect(c.cambiosDecisiones.cp1.estado).toBe('nota');
+    expect(c.cambiosDecisiones['llamada-cp1'].estado).toBe('nota');
+  });
+
+  it('solo llamadas y reporte semanal crean tickets; el reporte diario y lo del cliente, no (23/11/2026)', () => {
+    const c = { id: 1, name: 'A', tasks: [], cambiosPropuestos: { at: new Date().toISOString(), items: [
+      { id: '2026-11-23-a-pausar', crear: 'ticket', texto: 'Del reporte diario' },
+      { id: 'aviso-a-pagar', para: 'csm', tipo: 'aviso', texto: 'Aviso del reporte diario' },
+      { id: 'llamada-2026-11-23-a-acceso', para: 'csm', tipo: 'cliente', texto: 'Que el cliente dé un acceso' },
+      { id: 'reporte-2026-11-23-a-publico', crear: 'ticket', texto: 'Ajustar el público' }] } };
+    const ctx = app([c]);
+    ctx.avisosACsm();
+    expect(c.tasks.length).toBe(1);
+    expect(c.tasks[0].desdeCambio).toBe('reporte-2026-11-23-a-publico');
+    expect(c.tasks[0].source).toBe('Reporte semanal');
   });
 
   it('antes de Recurrente no se arma el ticket de seguimiento al cliente', () => {
