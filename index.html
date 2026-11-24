@@ -4185,11 +4185,18 @@ var CLAVES_MAQUINA=['citasAt','citasIntento','metaPulso','metaPulsoAt',
                     'tiempoEquipo',
                     /* La métrica que manda de cada cliente (migracion 062): la propone y la
                        mide la rutina; se confirma o se cambia desde la ficha con rpc/set_metrica. */
-                    'metrica'];
+                    'metrica',
+                    /* La posibilidad de renovación de cada cliente (migracion 065): se
+                       cambia desde Rentabilidad con rpc/set_renovacion. Vivía en el artifact
+                       «Cobros low ticket». */
+                    'renovacion'];
 /* De esas, las que escriben funciones de la base desde el chat o la tarea de
    la mañana, y que la app solo lee. Al subir `maquina` gana lo de la nube:
    ver la fusion en el guardado. */
-var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1, contexto:1, tiempoEquipo:1};
+var CLAVES_DE_LA_BASE={reporteCampana:1, cambiosPropuestos:1, oferta:1, eod:1, carteraEstado:1, accionesTickets:1, guiaOnboarding:1, vigilancia:1, mensajesDia:1, hechos:1, contexto:1, tiempoEquipo:1,
+                       /* Se escriben solo por rpc (062 y 065): la copia de una pestaña
+                          vieja no pisa lo que se cambió en otra. */
+                       metrica:1, renovacion:1};
 
 // El cliente, partido en las dos columnas. En memoria sigue siendo un objeto
 // solo: el resto de la app lee `c.metaPulso` como siempre y no se entera.
@@ -18643,6 +18650,95 @@ function _rtRenovacion(c){
   if(alta && dur){ vence=new Date(new Date(alta).getTime()+dur*864e5); dias=Math.round((vence.getTime()-Date.now())/864e5); }
   return {pts:pts, nivel:nivel, por:por, vence:vence, dias:dias, sinDur:!dur};
 }
+/* La posibilidad de renovación que se trabajaba en el artifact «Cobros low ticket»
+   (17-20/11), ahora en el tracker (Angie, 24/11/2026: «que sea directo desde acá»).
+   La pone una persona, con lo que dijo el partner en la llamada: manda sobre la
+   lectura calculada, que queda abajo como dato de apoyo. */
+var RENOV_EST=[
+  ['si','Sí','var(--accent)'],
+  ['si_cuidado','Sí, con cuidado','#47FFC8'],
+  ['probable','Probable','#6FA8FF'],
+  ['solo_si_vende','Solo si vende','var(--amberx)'],
+  ['porcentaje','Porcentaje','#B58CFF'],
+  ['sin_datos','Sin datos','var(--text3)'],
+  ['no','No por ahora','var(--redx)']];
+function _renEst(k){ for(var i=0;i<RENOV_EST.length;i++) if(RENOV_EST[i][0]===k) return RENOV_EST[i]; return null; }
+function _rtRenovCelda(c){
+  var r=_rtRenovacion(c), rv=c.renovacion||{}, e=_renEst(rv.estado);
+  var cuando=r.vence?(r.dias<0?('plazo cumplido hace '+(-r.dias)+' d'):(r.dias===0?'el plazo termina hoy':('el plazo termina en '+r.dias+' d'))):(r.sinDur?'sin duración cargada':'');
+  var lect='lectura '+({alta:'alta',media:'media',baja:'baja'}[r.nivel])+' '+r.pts;
+  var tip=e
+    ? ((rv.dijo?'Dijo: '+rv.dijo+'\n':'')+(rv.nota?rv.nota+'\n':'')+(rv.cuota!=null?'Cuota propuesta: USD '+rv.cuota+(rv.cobrar?' · suma a la meta':' · no suma a la meta')+'\n':'')
+       +(rv.por?'Cargó: '+rv.por+(rv.at?' · '+rv.at:'')+'\n':'')+'Lectura del tracker '+r.pts+'/100: '+r.por.join(' · ')+'\nTocá para cambiarlo.')
+    : ('Todavía nadie cargó el estado. Lectura del tracker '+r.pts+'/100: '+r.por.join(' · ')+'\nTocá para cargarlo.');
+  var col=e?e[2]:({alta:'var(--accent)',media:'var(--amberx)',baja:'var(--redx)'}[r.nivel]);
+  return '<span style="width:150px;flex:none;display:flex;flex-direction:column;gap:2px;cursor:pointer" title="'+esc(tip)+'" '
+      +'onclick="event.stopPropagation();renEditar('+c.id+')">'
+    +'<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:'+col+'">'
+      +'<i style="width:7px;height:7px;border-radius:50%;flex:none;background:'+(e?col:'transparent')+';border:1px solid '+col+'"></i>'
+      +(e?esc(e[1])+(rv.cuota!=null&&rv.estado!=='no'?' <span style="font-weight:400;color:var(--text3);font-size:10.5px">'+(rv.cobrar?'':'· ')+'USD '+rv.cuota+'</span>':'')
+         :'<span style="font-weight:400;color:var(--text3)">Sin estado · '+lect+'</span>')
+    +'</span>'
+    +'<span style="font-size:10px;color:'+(r.dias!=null&&r.dias>=0&&r.dias<=14?'var(--amberx)':'var(--text3)')+'">'+esc((e?lect+(cuando?' · ':''):'')+cuando)+'</span>'
+  +'</span>';
+}
+function _rtRenovResumen(){
+  var cs=(DB.clients||[]).filter(function(c){ return c.renovacion&&c.renovacion.estado; });
+  if(!cs.length) return '';
+  var cuenta={}, suma=0, nCob=0;
+  cs.forEach(function(c){ var rv=c.renovacion; cuenta[rv.estado]=(cuenta[rv.estado]||0)+1;
+    if(rv.cobrar&&rv.estado!=='no'){ nCob++; suma+=Number(rv.cuota)||0; } });
+  return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:11.5px;color:var(--text2);margin:8px 0 4px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">'
+    +'<b style="color:var(--strong);font-weight:600">Renovación</b>'
+    +'<span>'+nCob+' para cobrar · <b style="color:var(--strong)">USD '+suma.toLocaleString('es-AR')+'</b>/mes antes de Stripe</span>'
+    +RENOV_EST.filter(function(x){ return cuenta[x[0]]; }).map(function(x){
+        return '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:7px;height:7px;border-radius:50%;background:'+x[2]+'"></i>'+esc(x[1])+' '+cuenta[x[0]]+'</span>'; }).join('')
+  +'</div>';
+}
+function renEditar(cid){
+  var c=(DB.clients||[]).find(function(x){ return x.id===+cid; }); if(!c) return;
+  var rv=c.renovacion||{}, old=document.getElementById('ren-modal'); if(old) old.remove();
+  var inp='width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font:inherit;font-size:13px;padding:8px 10px';
+  var lb='font-size:11px;color:var(--text3);margin:12px 0 5px';
+  var m=document.createElement('div'); m.id='ren-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.onclick=function(ev){ if(ev.target===m) m.remove(); };
+  m.innerHTML='<div style="width:100%;max-width:440px;max-height:90vh;overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 18px 16px">'
+    +'<div style="font-size:15px;font-weight:600;color:var(--strong)">Renovación · '+esc(c.name)+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-top:3px">'+(rv.por?'Último cambio: '+esc(rv.por)+(rv.at?' · '+esc(rv.at):''):'Todavía sin cargar')+'</div>'
+    +'<div style="'+lb+'">Estado</div><select id="ren-est" style="'+inp+'">'
+      +'<option value="">Elegí…</option>'+RENOV_EST.map(function(x){ return '<option value="'+x[0]+'"'+(rv.estado===x[0]?' selected':'')+'>'+esc(x[1])+'</option>'; }).join('')+'</select>'
+    +'<div style="display:flex;gap:12px;align-items:flex-end">'
+      +'<div style="flex:1"><div style="'+lb+'">Cuota por mes (USD)</div><input id="ren-cuota" type="number" min="0" step="1" value="'+(rv.cuota!=null?rv.cuota:'')+'" style="'+inp+'"></div>'
+      +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);padding-bottom:9px;cursor:pointer"><input id="ren-cob" type="checkbox"'+(rv.cobrar?' checked':'')+'> Suma a la meta</label>'
+    +'</div>'
+    +'<div style="'+lb+'">Lo que dijo en la llamada</div><textarea id="ren-dijo" rows="2" maxlength="300" style="'+inp+';resize:vertical">'+esc(rv.dijo||'')+'</textarea>'
+    +'<div style="'+lb+'">Nota y lo que pasó después</div><textarea id="ren-nota" rows="3" maxlength="500" style="'+inp+';resize:vertical">'+esc(rv.nota||'')+'</textarea>'
+    +'<div id="ren-err" style="font-size:12px;color:var(--redx);min-height:16px;margin-top:8px"></div>'
+    +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">'
+      +'<button class="btn" onclick="document.getElementById(\'ren-modal\').remove()">Cancelar</button>'
+      +'<button class="btn btn-primary" onclick="renGuardar('+c.id+')">Guardar</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+}
+async function renGuardar(cid){
+  var est=document.getElementById('ren-est').value, err=document.getElementById('ren-err');
+  if(!est){ err.textContent='Elegí un estado.'; return; }
+  var q=document.getElementById('ren-cuota').value.trim(), cuota=q===''?null:Number(q);
+  if(cuota!=null&&!(cuota>=0)){ err.textContent='La cuota tiene que ser un número.'; return; }
+  var hoy=new Date(), d=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+  var val={estado:est, cuota:cuota, cobrar:document.getElementById('ren-cob').checked,
+    dijo:document.getElementById('ren-dijo').value.trim().slice(0,300), nota:document.getElementById('ren-nota').value.trim().slice(0,500),
+    por:(personaNombre(SB.email)||SB.email||'').slice(0,60), at:d};
+  try{
+    var r=await sbFetch('rpc/set_renovacion',{method:'POST',body:JSON.stringify({p_id:+cid,p_val:val})});
+    var c=(DB.clients||[]).find(function(x){ return x.id===+cid; });
+    if(c) c.renovacion=(r&&typeof r==='object'&&!Array.isArray(r))?r:Object.assign({}, c.renovacion||{}, val);
+  }catch(e){ err.textContent='No se pudo guardar: '+((e&&e.message)||e); return; }
+  var m=document.getElementById('ren-modal'); if(m) m.remove();
+  toast('Renovación guardada');
+  if(typeof renderTab==='function') renderTab();
+}
 function rentabilidadHtml(){
   var filas=_rtFilas();
   var tira=(typeof _overviewMetricsHtml==='function')?_overviewMetricsHtml('comercial'):'';
@@ -18662,13 +18758,7 @@ function rentabilidadHtml(){
           +'onclick="selectClient('+c.id+');S.tab=\'ficha\';renderClient()">'
           +'<span style="flex:1;min-width:0;font-size:12.5px;color:var(--strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
             +esc(c.name)+'</span>'
-          +(function(){ var r=_rtRenovacion(c);
-              var col={alta:'var(--accent)',media:'var(--amberx)',baja:'var(--redx)'}[r.nivel];
-              var cuando=r.vence?(r.dias<0?('plazo cumplido hace '+(-r.dias)+' d'):(r.dias===0?'el plazo termina hoy':('el plazo termina en '+r.dias+' d'))):(r.sinDur?'sin duración cargada':'');
-              return '<span style="width:150px;flex:none;display:flex;flex-direction:column;gap:2px" title="'+esc('Lectura '+r.pts+'/100: '+r.por.join(' · '))+'">'
-                +'<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:'+col+'"><i style="width:7px;height:7px;border-radius:50%;background:'+col+'"></i>'
-                +({alta:'Alta',media:'Media',baja:'Baja'}[r.nivel])+' <span style="font-weight:400;color:var(--text3);font-size:10.5px">'+r.pts+'</span></span>'
-                +'<span style="font-size:10px;color:'+(r.dias!=null&&r.dias>=0&&r.dias<=14?'var(--amberx)':'var(--text3)')+'">'+esc(cuando)+'</span></span>'; })()
+          +_rtRenovCelda(c)
           +'<span style="width:130px;flex:none;text-align:right;font-size:12.5px;color:'
             +(f.fee?'var(--text)':'var(--amberx)')+'">'
             +(f.fee
@@ -18818,10 +18908,11 @@ function rentabilidadHtml(){
               : '')
           +'</div>';
         })()
+      +_rtRenovResumen()
       +'<div class="fin-fila fin-cab" style="display:flex;gap:12px;padding:8px 4px 6px;font-size:10px;color:var(--text3);'
         +'text-transform:uppercase;letter-spacing:.06em">'
         +'<span style="flex:1">Cliente</span>'
-        +'<span style="width:150px;text-align:left" title="Lectura con el estado del cliente, su métrica que manda y sus cierres. Pasá el mouse por cada una para ver por qué.">Renovación</span>'
+        +'<span style="width:150px;text-align:left" title="El estado que carga el equipo con lo que dijo el partner (tocalo para cambiarlo). Abajo, la lectura del tracker con su estado, su métrica que manda y sus cierres.">Renovación</span>'
         +'<span style="width:130px;text-align:right">Este mes</span>'
         +'<span style="width:96px;text-align:right">30 dias</span>'
         +'<span style="width:86px;text-align:right">Pendientes</span>'
