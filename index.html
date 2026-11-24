@@ -18613,6 +18613,36 @@ function _rtTarjetasGrandes(mesK, rotMes, nuevosAnio){
       : grande('Ticket promedio', '&mdash;', 'sin ventas con monto en '+anio, 'var(--text3)'))
   +'</div>';
 }
+/* Posibilidad de renovación de cada cliente (Angie, 24/11/2026: «me serviría saber las
+   posibilidades de renovación que veníamos trabajando en el Excel, pero directo desde acá»).
+   No es una probabilidad calculada: es una lectura con lo que el tracker ya sabe, y cada
+   punto dice de dónde sale. Empieza en 50 y suma o resta:
+   - el estado del cliente de los últimos 15 días (contexto.estado): bien +25, mirar -10, riesgo -35;
+   - la métrica que manda contra su base, con 3 casos o más: 10 % o más abajo +15, 50 % o más arriba -15;
+   - cierres de los últimos 30 días: +10 si hubo;
+   - pipeline sin movimiento: no se suma ni resta, pero se dice.
+   Alta 65 o más, media 40 a 64, baja menos de 40. La fecha es el fin de su plazo
+   (alta + duración del contrato); sin duración cargada, se dice. */
+function _rtRenovacion(c){
+  var pts=50, por=[];
+  var sl=(typeof satLectura==='function')?satLectura(c):{est:'sin'};
+  if(sl.est==='bien'){ pts+=25; por.push('conforme ('+(sl.animo||'estado')+')'); }
+  else if(sl.est==='mirar'){ pts-=10; por.push('para mirar: '+(sl.animo||'')); }
+  else if(sl.est==='riesgo'){ pts-=35; por.push('en riesgo: '+(sl.animo||'')); }
+  else por.push('sin lectura de estado reciente');
+  var m=c.metrica||{}, ac=m.actual||{};
+  if(m.escalon && ac.casos>=3 && ac.vs_base_pct!=null){
+    if(ac.vs_base_pct<=-10){ pts+=15; por.push((typeof _metNombre==='function'?_metNombre(m.escalon):m.escalon).toLowerCase()+' '+ac.vs_base_pct+' % vs base'); }
+    else if(ac.vs_base_pct>=50){ pts-=15; por.push((typeof _metNombre==='function'?_metNombre(m.escalon):m.escalon).toLowerCase()+' +'+ac.vs_base_pct+' % vs base'); }
+  } else por.push('métrica que manda sin casos suficientes');
+  var cie=0; try{ cie=(typeof _cierresDe==='function')?_cierresDe(c,30):0; }catch(e){}
+  if(cie>0){ pts+=10; por.push(cie+' cierre'+(cie===1?'':'s')+' en 30 días'); }
+  pts=Math.max(0,Math.min(100,pts));
+  var nivel=pts>=65?'alta':(pts>=40?'media':'baja');
+  var alta=c.altaAt||c.createdAt, dur=Number(c.contract&&c.contract.durationDays)||0, vence=null, dias=null;
+  if(alta && dur){ vence=new Date(new Date(alta).getTime()+dur*864e5); dias=Math.round((vence.getTime()-Date.now())/864e5); }
+  return {pts:pts, nivel:nivel, por:por, vence:vence, dias:dias, sinDur:!dur};
+}
 function rentabilidadHtml(){
   var filas=_rtFilas();
   var tira=(typeof _overviewMetricsHtml==='function')?_overviewMetricsHtml('comercial'):'';
@@ -18632,6 +18662,13 @@ function rentabilidadHtml(){
           +'onclick="selectClient('+c.id+');S.tab=\'ficha\';renderClient()">'
           +'<span style="flex:1;min-width:0;font-size:12.5px;color:var(--strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
             +esc(c.name)+'</span>'
+          +(function(){ var r=_rtRenovacion(c);
+              var col={alta:'var(--accent)',media:'var(--amberx)',baja:'var(--redx)'}[r.nivel];
+              var cuando=r.vence?(r.dias<0?('venció hace '+(-r.dias)+' d'):(r.dias===0?'vence hoy':('vence en '+r.dias+' d'))):(r.sinDur?'sin duración cargada':'');
+              return '<span style="width:150px;flex:none;display:flex;flex-direction:column;gap:2px" title="'+esc('Lectura '+r.pts+'/100: '+r.por.join(' · '))+'">'
+                +'<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:'+col+'"><i style="width:7px;height:7px;border-radius:50%;background:'+col+'"></i>'
+                +({alta:'Alta',media:'Media',baja:'Baja'}[r.nivel])+' <span style="font-weight:400;color:var(--text3);font-size:10.5px">'+r.pts+'</span></span>'
+                +'<span style="font-size:10px;color:'+(r.dias!=null&&r.dias>=0&&r.dias<=14?'var(--amberx)':'var(--text3)')+'">'+esc(cuando)+'</span></span>'; })()
           +'<span style="width:130px;flex:none;text-align:right;font-size:12.5px;color:'
             +(f.fee?'var(--text)':'var(--amberx)')+'">'
             +(f.fee
@@ -18784,6 +18821,7 @@ function rentabilidadHtml(){
       +'<div class="fin-fila fin-cab" style="display:flex;gap:12px;padding:8px 4px 6px;font-size:10px;color:var(--text3);'
         +'text-transform:uppercase;letter-spacing:.06em">'
         +'<span style="flex:1">Cliente</span>'
+        +'<span style="width:150px;text-align:left" title="Lectura con el estado del cliente, su métrica que manda y sus cierres. Pasá el mouse por cada una para ver por qué.">Renovación</span>'
         +'<span style="width:130px;text-align:right">Este mes</span>'
         +'<span style="width:96px;text-align:right">30 dias</span>'
         +'<span style="width:86px;text-align:right">Pendientes</span>'
