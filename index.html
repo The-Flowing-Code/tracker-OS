@@ -75852,15 +75852,31 @@ function _repCampana(c){
   return {url:String(r.url), at:isFinite(t)?new Date(t):null,
           dias:isFinite(t)?Math.floor((Date.now()-t)/86400000):null};
 }
+/* Atajo al Administrador de anuncios de la cuenta del cliente (Angie, 24/11/2026:
+   «me ponés un atajo para ir al Ads Manager?»). Sale de la cuenta de Meta cargada. */
+function _adsManagerUrl(c){
+  var acc=String((c&&c.metaAccountId)||'').replace(/^act_/,'').trim();
+  return /^\d+$/.test(acc)?('https://adsmanager.facebook.com/adsmanager/manage/campaigns?act='+acc):'';
+}
+function _adsManagerBtn(c){
+  var u=_adsManagerUrl(c);
+  return u?('<a href="'+esc(u)+'" target="_blank" rel="noopener" class="btn btn-sm" title="Abrir sus campañas en el Administrador de anuncios de Meta" '
+    +'style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">Ads Manager '
+    +'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>'):'';
+}
 function _repCampanaHtml(c){
-  var r=_repCampana(c);
-  if(!r) return '';
-  var viejo=(r.dias===null)||(r.dias>3);
+  var r=_repCampana(c), am=_adsManagerBtn(c);
+  if(!r && !am) return '';
+  var viejo=r&&((r.dias===null)||(r.dias>3));
+  if(!r) return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+      +'margin-bottom:14px;padding:11px 13px;border:1px solid var(--border);'
+      +'border-radius:var(--radius);background:var(--bg2)">'+am+'</div>';
   return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
       +'margin-bottom:14px;padding:11px 13px;border:1px solid var(--border);'
       +'border-radius:var(--radius);background:var(--bg2)">'
     +'<a href="'+esc(r.url)+'" target="_blank" rel="noopener" class="btn btn-sm btn-primary" '
       +'style="text-decoration:none">Ver el reporte de campa\u00f1a</a>'
+    +am
     +'<span style="font-size:11.5px;color:'+(viejo?'var(--amberx)':'var(--text3)')+'">'
       +(r.at
         ? ('actualizado el '+r.at.toLocaleDateString('es-AR')
