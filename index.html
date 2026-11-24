@@ -33575,7 +33575,35 @@ function _fichaKpis(c){
     +k('Días en '+esc((et&&et.l)||'la etapa'), dias!=null?dias:'—', '', dias!=null?'':'Sin fecha de entrada')
     +k('Ruta de la etapa', (et&&et.total)?((et.hechas||0)+' de '+et.total):'—', '', (function(){ var n=_fichaTuyas(c); return n==null?'':(n===1?'1 es tuya':n+' son tuyas'); })())
     +k('Próxima reunión', prox?f(prox):'Sin agendar', prox?'':'var(--amberx)')
-  +'</div>';
+  +'</div>'
+  /* Segunda fila (Angie, 24/11/2026: «faltaría fecha de ingreso, lanzamiento y días
+     de campañas activas? y cliente activo?»). El ingreso es el alta del cliente; el
+     lanzamiento, la campaña nuestra prendida más vieja (las mismas que cuentan en la
+     inversión); los días, desde ese arranque. */
+  +(function(){
+    var fd=function(d){ return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); };
+    var ai=(typeof clienteAltaInfo==='function')?clienteAltaInfo(c):{fecha:null};
+    var alta=ai.fecha, dAlta=alta?Math.max(0,Math.floor((Date.now()-alta.getTime())/864e5)):null;
+    var yl=null; try{ yl=(typeof _yaLanzo==='function')?_yaLanzo(c):null; }catch(e){}
+    var lc=null; try{ lc=(!yl&&typeof _lanzaCuenta==='function')?_lanzaCuenta(c):null; }catch(e){}
+    var lanz, lanzSub='', lanzCol='';
+    if(yl&&yl.dias!=null){ lanz=fd(new Date(Date.now()-yl.dias*864e5)); lanzSub='Primera campaña nuestra prendida'; }
+    else if(yl){ lanz='Lanzado'; lanzSub='Falta sincronizar la fecha de Meta'; }
+    else if(lc){ lanz='Sin lanzar'; lanzCol='var(--amberx)'; lanzSub=lc.faltan>=0?('Lanza en '+lc.faltan+' d · el '+fd(lc.fin)):('Debía lanzar el '+fd(lc.fin)+' · '+(-lc.faltan)+' d tarde'); if(lc.faltan<0) lanzCol='var(--redx)'; }
+    else { lanz='Sin lanzar'; lanzCol='var(--text3)'; }
+    var camp=yl?(yl.dias!=null?yl.dias:'—'):0;
+    var campSub=yl?((yl.cuantas||0)+' campaña'+(yl.cuantas===1?'':'s')+' prendida'+(yl.cuantas===1?'':'s')):'Ninguna campaña nuestra prendida';
+    var baja=c.bajaAt?_fecha(c.bajaAt):null;
+    var est=baja?'De baja':(c.archived?'Archivado':'Activo');
+    var estCol=baja||c.archived?'var(--redx)':'var(--accent)';
+    var estSub=baja?('Desde el '+fd(baja)+(c.bajaMotivo?' · '+esc(c.bajaMotivo):'')):(dAlta!=null?(dAlta+' días como cliente'):'Sin fecha de ingreso');
+    return '<div class="fk" style="margin-top:10px">'
+      +k('Fecha de ingreso', alta?fd(alta):'—', alta?'':'var(--text3)', alta?(ai.fuente==='app'?'Estimada: cargala en la ficha':('Hace '+dAlta+' días')):'Sin cargar')
+      +k('Lanzamiento', lanz, lanzCol, lanzSub)
+      +k('Días con campañas activas', camp, yl?'':'var(--text3)', campSub)
+      +k('Cliente', est, estCol, estSub)
+    +'</div>';
+  })();
 }
 function _fichaQuien(c){
   var q=(typeof _queHace==='function')?_queHace(c):null;
