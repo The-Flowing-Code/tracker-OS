@@ -3555,6 +3555,7 @@ function _posLeer(){
 }
 // Devuelve true si pudo restaurar. Se llama despues de cargar DB.
 function _posRestaurar(){
+  if(_detDesdeLink()) return true;
   var d=_posLeer(); if(!d) return false;
   try{
     if(d.view==='client'){
@@ -7698,7 +7699,8 @@ function renderClient(){
         <div class="metric-card"><div class="metric-label">Costo / llamada calif. en vivo</div><div class="metric-value">${_money(costoPorLlamadaCalificadaAll)}</div></div>
       </div>
       `}
-      <div class="fic-cab" style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:16px">
+      ${(S.tab==='embudo'||S.tab==='integraciones')?_detCabHtml(c):''}
+      <div class="fic-cab" style="display:${(S.tab==='embudo'||S.tab==='integraciones')?'none':'flex'};align-items:center;justify-content:space-between;padding-bottom:12px;margin-bottom:16px">
         <span style="display:flex;align-items:center;gap:9px">
           <button onclick="${c.archived?'backToFicha()':'showOverview()'}" title="Volver al inicio" aria-label="Volver al inicio"
             style="background:none;border:none;padding:0;cursor:pointer;color:var(--strong);display:flex;align-items:center;transition:opacity .15s"
@@ -33253,7 +33255,7 @@ function _fichaEmbudo(c){
   };
   var pasoIzq=function(x, t){ return '<span class="fe-pz">'+(x==null?'':('<b>'+fp(x)+'</b>'+t))+'</span>'; };
   var hero='<div class="fe-hero">'
-    +'<button type="button" class="fe-full" onclick="fichaCerrar();cliMenuIr('+c.id+',\'top\')">Ver el embudo completo →</button>'
+    +'<button type="button" class="fe-full" onclick="fichaIrDetalle('+c.id+',\'top\')">Ver el embudo completo →</button>'
     +'<div class="fe-g">'
       +'<span class="fe-pz"></span><div class="fe-fr">'+franja('top',100,74)+'</div>'
       +bloque('top','Atracción · Meta',[['alcance',dato(F.alcance.v)],['clics',dato(F.clics.v)],['inversión',dato(F.gasto.v,plata)]], metaFalta)
@@ -33277,7 +33279,7 @@ function _fichaEmbudo(c){
     +'</div>';
   };
   var seccion=function(tit, hoja, ver, filas, falta, btn){
-    return '<section class="fe-sec"><div class="fe-sh"><span>'+tit+'</span><button type="button" onclick="fichaCerrar();cliMenuIr('+c.id+',\''+hoja+'\')">'+ver+' →</button></div>'
+    return '<section class="fe-sec"><div class="fe-sh"><span>'+tit+'</span><button type="button" onclick="fichaIrDetalle('+c.id+',\''+hoja+'\')">'+ver+' →</button></div>'
       +((falta&&btn)?('<div class="fe-falta">'+esc(falta)+' <button type="button" class="btn btn-sm" onclick="fichaCerrar();selectClient('+c.id+');openClientTab(\'integraciones\')">Conectar</button></div>'):'')
       +filas+'</section>';
   };
@@ -33727,6 +33729,109 @@ function _cliVentanaRefrescar(){
   renderTab=function(){ var r=orig.apply(this, arguments); try{ _cliVentanaRefrescar(); }catch(e){} return r; };
   renderTab._conVentana=true;
 })();
+/* ── Recorrido pipeline → ficha → detalle → vuelta (Angie, 24/11/2026, diseño 25) ──
+   - Desde la ficha, «Ver … en detalle» abre el detalle a pantalla completa y se
+     acuerda de la pestaña y del lugar de la página (S._volverFicha).
+   - Arriba: «← Volver a la ficha», el nombre, las tres partes como pestañas con su
+     número clave (siempre visibles al bajar) y la × que deja en el Pipeline con la
+     tarjeta resaltada. Sin barra flotante abajo.
+   - Volver: el botón, la tecla Esc o la flecha atrás del navegador.
+   - Cada parte tiene su dirección (#atraccion, #conversion, #cierre, con ?c=<id>
+     del cliente): se manda el link y abre ahí. */
+var DET_PARTES=[['top','atraccion','Atracción'],['middle','conversion','Conversión'],['bottom','cierre','Cierre']];
+function _detParte(h){ h=_embHojaViva(h); if(h==='records'||h==='cap') h='bottom'; for(var i=0;i<DET_PARTES.length;i++) if(DET_PARTES[i][0]===h) return DET_PARTES[i]; return DET_PARTES[0]; }
+function _detHash(cid, hoja){ return '#'+_detParte(hoja)[1]+'?c='+cid; }
+function fichaIrDetalle(cid, hoja){
+  var v=document.getElementById('cli-ventana'), b=document.querySelector('#cli-ventana .fl-body');
+  S._volverFicha={cid:+cid, tab:(v&&v.dataset.tab)||'resultados', top:(b&&b.scrollTop)||0};
+  fichaCerrar();
+  cliMenuIr(cid, hoja);
+  try{ history.pushState({det:1}, '', location.pathname+location.search+_detHash(cid, hoja)); }catch(e){}
+  try{ var mc=document.getElementById('main-content'); if(mc) mc.scrollTop=0; window.scrollTo(0,0); }catch(e){}
+}
+function detVolver(desdeAtras){
+  var o=S._volverFicha||{cid:S.clientId, tab:'resultados', top:0};
+  var cid=o.cid||S.clientId; if(!cid) return showTickets();
+  S._volverFicha=null;
+  if(!desdeAtras){ try{ if(history.state&&history.state.det) history.back(); else history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
+  S.torreVista='panel360'; S.p360Abierto=cid; showTickets();
+  fichaCliente(cid, o.tab||'resultados');
+  var b=document.querySelector('#cli-ventana .fl-body'); if(b&&o.top) b.scrollTop=o.top;
+}
+function detSalir(){
+  var cid=S.clientId; S._volverFicha=null;
+  try{ if(history.state&&history.state.det) history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  S.torreVista='panel360'; S.p360Abierto=cid; showTickets();
+  setTimeout(function(){ var el=document.querySelector('.p3tk2.sel'); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('p3-flash'); setTimeout(function(){ el.classList.remove('p3-flash'); },1800); } }, 60);
+}
+function detParte(hoja){
+  if(S.tab!=='embudo'){ S.tab='embudo'; S._hoja=hoja; renderClient(); }
+  else setHoja(hoja);
+  try{ history.replaceState(history.state, '', location.pathname+location.search+_detHash(S.clientId, hoja)); }catch(e){}
+  var cab=document.getElementById('det-cab'); if(cab) cab.outerHTML=_detCabHtml((DB.clients||[]).find(function(x){ return x.id===S.clientId; }));
+}
+function _detNumero(c, k){
+  try{
+    if(k==='top'){ var y=(typeof _yaLanzo==='function')?_yaLanzo(c):null; return y?((y.cuantas||0)+' activa'+(y.cuantas===1?'':'s')):'sin campañas'; }
+    var ops=(c.ghl&&c.ghl.opportunities)||[];
+    if(k==='middle') return ops.length?(ops.length+' registro'+(ops.length===1?'':'s')):'—';
+    if(k==='bottom'){ if(!ops.length) return '—'; var n=(typeof _cierresDe==='function')?_cierresDe(c,30):0; return n+' cierre'+(n===1?'':'s')+' · 30d'; }
+  }catch(e){}
+  return '';
+}
+function _detCabHtml(c){
+  if(!c) return '';
+  _detCss();
+  var sel=(S.tab==='embudo')?_detParte(S._hoja)[0]:'';
+  return '<div id="det-cab" class="det-cab">'
+    +'<div class="det-f1">'
+      +'<button type="button" class="det-volver" onclick="detVolver()" title="Volver a la ficha (Esc)">← Volver a la ficha</button>'
+      +'<span class="det-nom">'+esc(c.name||'')+'</span>'
+      +(S.tab==='integraciones'?'<span class="det-sub">Integraciones</span>':'')
+      +'<span style="flex:1"></span>'
+      +'<button type="button" class="det-x" onclick="detSalir()" aria-label="Salir al Pipeline" title="Salir al Pipeline"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'
+    +'</div>'
+    +'<div class="det-tabs" role="tablist">'+DET_PARTES.map(function(p){
+        return '<button type="button" role="tab" aria-selected="'+(p[0]===sel)+'" class="'+(p[0]===sel?'on':'')+'" onclick="detParte(\''+p[0]+'\')">'+p[2]+'<small>'+esc(_detNumero(c,p[0]))+'</small></button>'; }).join('')
+    +'</div>'
+  +'</div>';
+}
+function _detCss(){
+  if(document.getElementById('det-css')) return;
+  var s=document.createElement('style'); s.id='det-css';
+  s.textContent='.det-cab{position:sticky;top:0;z-index:20;background:var(--bg);margin:-4px 0 18px;padding:6px 0 0}'
+    +'.det-f1{display:flex;align-items:center;gap:14px;padding-bottom:10px}'
+    +'.det-volver{font:500 13px var(--font);color:var(--strong);background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:7px 12px;cursor:pointer}'
+    +'.det-volver:hover{border-color:var(--accent)}'
+    +'.det-nom{font-size:17px;font-weight:600;color:var(--strong)}.det-sub{font-size:13px;color:var(--text3)}'
+    +'.det-x{width:34px;height:34px;border-radius:9px;border:1px solid var(--border2);background:transparent;color:var(--text2);display:grid;place-items:center;cursor:pointer}'
+    +'.det-tabs{display:flex;gap:26px;border-bottom:1px solid var(--border)}'
+    +'.det-tabs button{font:500 14px var(--font);color:var(--text3);background:none;border:0;border-bottom:2px solid transparent;padding:8px 2px 10px;cursor:pointer;display:flex;align-items:baseline;gap:8px}'
+    +'.det-tabs button small{font-size:11.5px;color:var(--text3);font-weight:400}'
+    +'.det-tabs button.on{color:var(--strong);font-weight:600;border-bottom-color:var(--accent)}'
+    +'.det-tabs button.on small{color:var(--accent)}'
+    +'.p3-flash{animation:p3flash 1.6s ease-out}@keyframes p3flash{0%,40%{box-shadow:0 0 0 2px var(--accent),0 0 24px rgba(200,255,71,.35)}100%{box-shadow:none}}';
+  document.head.appendChild(s);
+}
+function _detEnPantalla(){ return S.view==='client' && (S.tab==='embudo'||S.tab==='integraciones') && !!document.getElementById('det-cab'); }
+document.addEventListener('keydown', function(e){
+  if(e.key!=='Escape' || !_detEnPantalla()) return;
+  var r=document.getElementById('modal-root');
+  if(r && r.innerHTML.trim()) return;           // primero se cierra lo que esté abierto encima
+  if(/input|textarea|select/i.test((e.target&&e.target.tagName)||'')) return;
+  detVolver();
+}, true);
+window.addEventListener('popstate', function(){ if(_detEnPantalla()) detVolver(true); });
+function _detDesdeLink(){
+  var m=String(location.hash||'').match(/^#(atraccion|conversion|cierre)\?c=(\d+)/);
+  if(!m) return false;
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===m[2]; });
+  if(!c) return false;
+  var hoja={atraccion:'top',conversion:'middle',cierre:'bottom'}[m[1]];
+  S._volverFicha={cid:c.id, tab:'resultados', top:0};
+  cliMenuIr(c.id, hoja);
+  return true;
+}
 function cliMenuIr(clientId, hoja){
   cliMenuCerrar();
   selectClient(clientId);
@@ -69977,7 +70082,7 @@ function embudoHojasHtml(topHtml, c){
   // armado que usa el Success tracker.
   // El padding de abajo es el lugar de la isla: como esta fija, sin eso tapaba
   // las ultimas filas de las tablas largas y no habia forma de leerlas.
-  return '<div class="emb-wrap" style="padding-bottom:74px">'
+  return '<div class="emb-wrap" style="padding-bottom:24px">'
     +embudoCtrlHtml()
     +'<div>'
     +'<div id="hoja-top-body" style="display:'+(sel==='top'?'block':'none')+'">'+topHtml+'<div id="mm-top-host"></div></div>'
@@ -69989,7 +70094,8 @@ function embudoHojasHtml(topHtml, c){
     +'<div id="hoja-mercado-body" style="display:'+(sel==='mercado'?'block':'none')+'"></div>'
     +'<div id="hoja-vacio" style="display:'+(sel==='informes'?'block':'none')+'">'+liveSectionHtml(c)+'</div>'
     +'</div>'
-    +embudoSubNav()
+    /* La barra flotante de abajo se fue (Angie, 24/11/2026, diseño 25): las tres
+       partes van como pestañas arriba (_detCabHtml). embudoSubNav queda definida. */
   +'</div>';
 }
 
