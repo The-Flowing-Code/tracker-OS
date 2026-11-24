@@ -46525,8 +46525,9 @@ function p360Html(){
            El punto lima de los mensajes para mandar hoy queda al lado del nombre. */
         +'<div class="p3knom"><span class="p3knomlk">'
           +esc(d.c.name||'')+'</span>'
-          +(((typeof _mensDe==='function') && _mensDe(d.c).some(function(m){ return !m.listo; }))
-            ?'<span title="Hay mensajes para mandar hoy" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px rgba(200,255,71,.7);margin-left:7px;vertical-align:middle"></span>':'')
+          /* El punto lima de «mensajes para mandar hoy» se sacó (Angie, 24/11/2026: «lo
+             podremos borrar por el momento?»). Para volverlo: la condición era
+             _mensDe(d.c).some(function(m){ return !m.listo; }). */
           +'</div>'
         // Abajo del nombre, la persona de contacto (Angie, 20/11/2026).
         // Siempre el renglón, aunque no haya contacto: así miden todas lo mismo (20/11/2026).
