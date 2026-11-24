@@ -176,7 +176,8 @@ function _lzCelda(c, col){
 
 /* `ver` y `cols` vienen ya armados por p360Html: mismos filtros de producto y
    de búsqueda que el tablero, mismas columnas. */
-function p360ListaHtml(ver, cols){
+/* La planilla completa de antes: queda para «Completar» de cada cliente. */
+function p360PlanillaHtml(ver, cols){
   var activos=(ver||[]).filter(function(d){ return !esProspecto(d.c); });
   var filas=activos.filter(function(d){ return !_lzYaLanzo(d, cols); });
   var orden={}; (cols||[]).forEach(function(x,i){ orden[x.l]=i; });
@@ -374,3 +375,110 @@ function _lzOkAvisar(c, t){
     return true;
   }catch(e){ return false; }
 }
+
+
+/* ── Diseño 24 · «Pipeline en lista: por lanzar» (Angie, 24/11/2026: «te pido
+   este cambio», artifact Panel 360 — Rediseño) ─────────────────────────────
+   En vez de la planilla de 15 columnas: tres grupos (listos, les falta poco,
+   les falta bastante), cinco cosas con su tilde (Meta, CRM, Dataset, Embudo,
+   Pago), el avance, qué falta en chips y un solo botón: «Pedir OK» si está
+   listo, «Completar» si no. «Completar» abre la planilla de ese cliente. */
+function _lzReq(c){
+  var v=function(k){ return _lzV(c,k); }, r=[];
+  r.push({k:'accesosMeta', l:'accesos meta', ok:_lzSi(v('accesosMeta'))});
+  r.push({k:'invitadoCrm', l:'invitado al crm', ok:_lzSi(v('invitadoCrm'))});
+  r.push({k:'dataset', l:'dataset', ok:_lzSi(v('dataset'))});
+  r.push({k:'pago', l:'método de pago', ok:_lzSi(v('pago'))});
+  var emb=v('embudo');
+  r.push({k:'embudo', l:'tipo de embudo', ok:!!emb});
+  var abierto=!emb;
+  if(/whatsapp/i.test(emb)) r.push({k:'waCrm', l:'WhatsApp conectado', ok:_lzSi(v('waMeta'))||_lzSi(v('waCrm'))});
+  else if(/formulario|agenda/i.test(emb)){
+    r.push({k:'dominio', l:'dominio', ok:_lzOkONa(v('dominio'))});
+    r.push({k:'landing', l:'landing', ok:_lzOkONa(v('landing'))});
+  }
+  r.push({k:'estaticos', l:'estáticos o videos', ok:_lzSi(v('estaticos'))||_lzSi(v('videos'))});
+  var hechas=r.filter(function(x){ return x.ok; }).length;
+  return {req:r, hechas:hechas, total:r.length, abierto:abierto, faltan:r.filter(function(x){ return !x.ok; })};
+}
+function _lzIco(estado, txt){
+  var s={ok:'<span class="lz2-i ok" aria-label="Listo"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>',
+    no:'<span class="lz2-i no" aria-label="Falta"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>',
+    proc:'<span class="lz2-i proc" aria-label="En proceso"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg></span>'}[estado];
+  return '<span class="lz2-c">'+s+(txt?'<span class="lz2-ct'+(estado==='proc'?' proc':'')+'">'+esc(txt)+'</span>':'')+'</span>';
+}
+function _lzEst(v){ return v==='Sí'?'ok':((v==='En proceso'||v==='Parcial'||v==='Esperando confirmación')?'proc':'no'); }
+function p360ListaHtml(ver, cols){
+  var activos=(ver||[]).filter(function(d){ return !esProspecto(d.c); });
+  var porLanzar=activos.filter(function(d){ return !_lzYaLanzo(d, cols); });
+  var f=S.lz2Filtro||'porlanzar';
+  var filas=f==='porlanzar'?porLanzar:(f==='todos'?activos:activos.filter(function(d){ return d.et&&d.et.l===f; }));
+  var orden={}; (cols||[]).forEach(function(x,i){ orden[x.l]=i; });
+  filas.forEach(function(d){ d._r=_lzReq(d.c); });
+  filas.sort(function(a,b){ return (b._r.hechas/b._r.total)-(a._r.hechas/a._r.total) || String(a.c.name||'').localeCompare(String(b.c.name||'')); });
+  var id=function(c){ return String(c.id).replace(/'/g,''); };
+  // Las pastillas: «Por lanzar», «Todos» y cada etapa con su cantidad.
+  var pill=function(k,l,n){ return '<button class="lz2-p'+(f===k?' on':'')+'" onclick="S.lz2Filtro=\''+esc(k).replace(/'/g,"\\'")+'\';showTickets()">'+esc(l)+' <span>'+n+'</span></button>'; };
+  var pills='<div class="lz2-pills">'
+    +pill('porlanzar','Por lanzar',porLanzar.length)+pill('todos','Todos',activos.length)
+    +(cols||[]).map(function(x){ var n=x.cards.filter(function(d){ return !esProspecto(d.c); }).length; return pill(x.l,x.l,n); }).join('')
+    +'<span class="lz2-ley">'+_lzIco('ok','Listo')+_lzIco('proc','En proceso')+'<span class="lz2-c"><span class="lz2-i no"></span><span class="lz2-ct">Falta · tocá Completar</span></span></span>'
+  +'</div>';
+  var cab='<div class="lz2-row lz2-h"><span>Cliente</span><span>Avance</span><span>Meta</span><span>CRM</span><span>Dataset</span><span>Embudo</span><span>Pago</span><span>Qué falta</span><span>Dataset</span><span></span></div>';
+  var fila=function(d){
+    var c=d.c, r=d._r, v=function(k){ return _lzV(c,k); }, listo=!r.faltan.length;
+    var pct=Math.round(100*r.hechas/r.total), col=listo?'var(--accent)':(r.faltan.length<=2?'var(--amberx)':'var(--redx)');
+    var emb=v('embudo'), pago=v('pago'), url=_lzOfertaUrl(c)||(/^https?:\/\//i.test(v('linkDataset'))?v('linkDataset'):'');
+    var chips=r.faltan.slice(0,listo?0:(r.faltan.length>3?2:3)).map(function(x){ return '<span class="lz2-chip">'+esc(x.l)+'</span>'; }).join('')
+      +(r.faltan.length>3?'<span class="lz2-mas" title="'+esc(r.faltan.slice(2).map(function(x){return x.l;}).join(', '))+'">+ otros</span>':'');
+    return '<div class="lz2-row'+(listo?' listo':'')+'">'
+      +'<span class="lz2-cli" onclick="fichaCliente('+c.id+')"><b>'+esc(c.name||'')+'</b><small>'+esc((d.et&&d.et.l)||'—')+'</small></span>'
+      +'<span class="lz2-av"><b style="color:'+col+'">'+(listo?'Listo':(r.hechas+' de '+r.total+(r.abierto?'+':'')))+'</b><i><em style="width:'+pct+'%;background:'+col+'"></em></i></span>'
+      +'<span>'+_lzIco(_lzSi(v('accesosMeta'))?'ok':'no')+'</span>'
+      +'<span>'+_lzIco(_lzSi(v('invitadoCrm'))?'ok':'no')+'</span>'
+      +'<span>'+_lzIco(_lzSi(v('dataset'))?'ok':'no')+'</span>'
+      +'<span>'+_lzIco(emb?'ok':'no', emb)+'</span>'
+      +'<span>'+_lzIco(_lzEst(pago), pago&&_lzEst(pago)==='proc'?pago:'')+'</span>'
+      +'<span class="lz2-falta">'+(listo?'<span style="color:var(--accent)">Nada pendiente</span>':chips)+'</span>'
+      +'<span>'+(url?'<a class="lz2-ds" href="'+esc(url)+'" target="_blank" rel="noopener" title="Abrir el dataset" onclick="event.stopPropagation()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>'
+        :'<button class="lz2-ds" title="Cargar el link del dataset" onclick="lz2Completar(\''+id(c)+'\')">+<small>link</small></button>')+'</span>'
+      +'<span>'+(listo
+        ?((function(){ var t=_lzOkTarea(c); if(t&&(t.estado==='revision')) return '<button class="lz2-b" onclick="ticketEditarModal('+c.id+','+t.id+')">Esperando OK</button>';
+            if(t&&(t.done||t.estado==='revisada'||t.estado==='finalizada')) return '<button class="lz2-b" onclick="ticketEditarModal('+c.id+','+t.id+')">Aprobado ✓</button>';
+            return '<button class="lz2-b pri" onclick="lzOkModal(\''+id(c)+'\')">Pedir OK</button>'; })())
+        :'<button class="lz2-b" onclick="lz2Completar(\''+id(c)+'\')">Completar</button>')+'</span>'
+    +'</div>';
+  };
+  var grupo=function(tit, sub, dot, arr, ok){
+    if(!arr.length) return '';
+    return '<div class="lz2-g'+(ok?' ok':'')+'"><div class="lz2-gt"><i style="background:'+dot+'"></i><b>'+tit+'</b><span>'+arr.length+' · '+sub+'</span></div>'
+      +'<div class="lz2-scroll">'+cab+arr.map(fila).join('')+'</div></div>';
+  };
+  if(!filas.length) return pills+'<div style="font-size:12px;color:var(--text3);margin-top:10px">No hay clientes con este filtro.</div>';
+  return pills
+    +grupo('Listos para lanzar','solo falta el OK','var(--accent)',filas.filter(function(d){ return !d._r.faltan.length; }),true)
+    +grupo('Les falta poco','una o dos cosas','var(--amberx)',filas.filter(function(d){ var n=d._r.faltan.length; return n>=1&&n<=2; }))
+    +grupo('Les falta bastante','arrancar por los accesos','var(--redx)',filas.filter(function(d){ return d._r.faltan.length>=3; }));
+}
+/* «Completar»: la planilla de ese cliente, con todas sus columnas editables. */
+function lz2Completar(clientId){
+  var c=(DB.clients||[]).find(function(x){ return String(x.id)===String(clientId); });
+  if(!c) return;
+  S.lz2Edit=String(c.id);
+  var r=_lzReq(c);
+  document.getElementById('modal-root').innerHTML=''
+    +'<div class="modal-overlay" onclick="if(event.target===this){S.lz2Edit=null;closeModal()}">'
+    +'<div class="modal" style="max-width:560px;width:92%">'
+    +'<div style="font-size:15px;font-weight:600;color:var(--strong)">Para lanzar · '+esc(c.name||'')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin:3px 0 12px">'+(r.faltan.length?('Falta: '+esc(r.faltan.map(function(x){return x.l;}).join(', '))):'No falta nada: ya se puede pedir el OK.')+'</div>'
+    +'<table class="lz-tab" style="width:100%"><tbody>'
+    +LANZ_COLS.map(function(col){ return '<tr><td style="color:var(--text2);width:45%">'+esc(col.l)+'</td>'+_lzCelda(c,col)+'</tr>'; }).join('')
+    +'</tbody></table>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-sm btn-primary" onclick="S.lz2Edit=null;closeModal();showTickets()">Listo</button></div>'
+    +'</div></div>';
+}
+/* Al guardar una celda desde «Completar», la ventana se vuelve a abrir con lo nuevo. */
+(function(){
+  var orig=lanzGuardar;
+  lanzGuardar=function(clientId,k,v){ orig(clientId,k,v); if(S.lz2Edit&&String(S.lz2Edit)===String(clientId)) lz2Completar(clientId); };
+})();
