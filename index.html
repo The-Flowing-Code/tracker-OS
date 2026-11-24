@@ -18668,7 +18668,7 @@ function _rtRenovCelda(c){
   var cuando=r.vence?(r.dias<0?('plazo cumplido hace '+(-r.dias)+' d'):(r.dias===0?'el plazo termina hoy':('el plazo termina en '+r.dias+' d'))):(r.sinDur?'sin duración cargada':'');
   var lect='lectura '+({alta:'alta',media:'media',baja:'baja'}[r.nivel])+' '+r.pts;
   var tip=e
-    ? ((rv.dijo?'Dijo: '+rv.dijo+'\n':'')+(rv.nota?rv.nota+'\n':'')+(rv.cuota!=null?'Cuota propuesta: USD '+rv.cuota+(rv.cobrar?' · suma a la meta':' · no suma a la meta')+'\n':'')
+    ? ((rv.dijo?'Dijo: '+rv.dijo+'\n':'')+(rv.nota?rv.nota+'\n':'')+(rv.cuota!=null?'Cuota propuesta: USD '+rv.cuota+(rv.cobrar?' · suma a la meta':' · no suma a la meta')+(rv.cupo?' · ocupa cupo':'')+'\n':'')
        +(rv.por?'Cargó: '+rv.por+(rv.at?' · '+rv.at:'')+'\n':'')+'Lectura del tracker '+r.pts+'/100: '+r.por.join(' · ')+'\nTocá para cambiarlo.')
     : ('Todavía nadie cargó el estado. Lectura del tracker '+r.pts+'/100: '+r.por.join(' · ')+'\nTocá para cargarlo.');
   var col=e?e[2]:({alta:'var(--accent)',media:'var(--amberx)',baja:'var(--redx)'}[r.nivel]);
@@ -18680,20 +18680,99 @@ function _rtRenovCelda(c){
          :'<span style="font-weight:400;color:var(--text3)">Sin estado · '+lect+'</span>')
     +'</span>'
     +'<span style="font-size:10px;color:'+(r.dias!=null&&r.dias>=0&&r.dias<=14?'var(--amberx)':'var(--text3)')+'">'+esc((e?lect+(cuando?' · ':''):'')+cuando)+'</span>'
+    +(rv.propuesta&&_renEst(rv.propuesta.estado)
+      ? '<span style="font-size:10.5px;color:var(--amberx);line-height:1.4" title="'+esc((rv.propuesta.motivo||'')+(rv.propuesta.fecha?' ('+rv.propuesta.fecha+')':''))+'">Propone: '+esc(_renEst(rv.propuesta.estado)[1])+' '
+        +'<a href="#" onclick="event.preventDefault();event.stopPropagation();renPropuesta('+c.id+',true)" style="color:var(--accent)">Aceptar</a> · '
+        +'<a href="#" onclick="event.preventDefault();event.stopPropagation();renPropuesta('+c.id+',false)" style="color:var(--text3)">Descartar</a></span>'
+      : '')
   +'</span>';
+}
+/* Los números de arriba de la hoja (meta neta, Stripe, cupos, sprints): viven en
+   la tabla `ajustes` (migración 066) y se cambian con «Ajustar». */
+function _renAjustes(){
+  S._renAj=S._renAj||{};
+  if(!S._renAj.cargando && (!S._renAj.at || Date.now()-S._renAj.at>300000) && SB.listo){
+    S._renAj.cargando=true;
+    sbFetch('ajustes?select=valor&clave=eq.renovacion')
+      .then(function(r){ S._renAj={v:(r&&r[0]&&r[0].valor)||{}, at:Date.now()}; })
+      .catch(function(){ S._renAj={v:S._renAj.v||{}, at:Date.now()}; })
+      .then(function(){ if(typeof renderTab==='function') renderTab(); });
+  }
+  return S._renAj.v||null;
 }
 function _rtRenovResumen(){
   var cs=(DB.clients||[]).filter(function(c){ return c.renovacion&&c.renovacion.estado; });
   if(!cs.length) return '';
-  var cuenta={}, suma=0, nCob=0;
+  var aj=_renAjustes()||{}, cuenta={}, cuotas=0, nCob=0, cupos=0, props=0;
   cs.forEach(function(c){ var rv=c.renovacion; cuenta[rv.estado]=(cuenta[rv.estado]||0)+1;
-    if(rv.cobrar&&rv.estado!=='no'){ nCob++; suma+=Number(rv.cuota)||0; } });
-  return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:11.5px;color:var(--text2);margin:8px 0 4px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">'
-    +'<b style="color:var(--strong);font-weight:600">Renovación</b>'
-    +'<span>'+nCob+' para cobrar · <b style="color:var(--strong)">USD '+suma.toLocaleString('es-AR')+'</b>/mes antes de Stripe</span>'
+    if(rv.cobrar&&rv.estado!=='no'){ nCob++; cuotas+=Number(rv.cuota)||0; }
+    if(rv.cupo) cupos++; if(rv.propuesta) props++; });
+  var sprints=(Number(aj.sprint_precio)||0)*(Number(aj.sprints_mes)||0), total=cuotas+sprints;
+  var neto=total*(1-(Number(aj.stripe)||0)), meta=Number(aj.meta_neta)||0;
+  var usd=function(n){ return 'USD '+Math.round(n).toLocaleString('es-AR'); };
+  var dato=function(rot,val,col){ return '<span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">'+rot+'</span><b style="font-size:14px;font-weight:600;color:'+(col||'var(--strong)')+'">'+val+'</b></span>'; };
+  return '<div style="margin:8px 0 4px;padding:11px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)">'
+    +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px">'
+      +'<b style="color:var(--strong);font-weight:600;font-size:12.5px">Renovación'+(props?' <span style="font-weight:500;font-size:11px;color:var(--amberx)">· '+props+' propuesta'+(props===1?'':'s')+' de la rutina para revisar</span>':'')+'</b>'
+      +'<a href="#" onclick="event.preventDefault();renAjustesEditar()" style="font-size:11px;color:var(--text3)">Ajustar meta y cupos</a></div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:10px 22px">'
+      +dato('Cuotas que suman ('+nCob+')', usd(cuotas))
+      +(sprints?dato('Sprints del mes', usd(sprints)):'')
+      +dato('Neto después de Stripe', usd(neto), meta?(neto>=meta?'var(--accent)':'var(--amberx)'):null)
+      +(meta?dato(neto>=meta?'Meta '+usd(meta):'Falta para '+usd(meta), neto>=meta?'Se llega':usd(meta-neto), neto>=meta?'var(--accent)':'var(--amberx)'):'')
+      +(aj.cupos?dato('Cupos de la grupal', cupos+' de '+aj.cupos+' · '+Math.max(0,aj.cupos-cupos)+' libres', cupos>aj.cupos?'var(--redx)':null):'')
+    +'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--text2);margin-top:9px">'
     +RENOV_EST.filter(function(x){ return cuenta[x[0]]; }).map(function(x){
         return '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:7px;height:7px;border-radius:50%;background:'+x[2]+'"></i>'+esc(x[1])+' '+cuenta[x[0]]+'</span>'; }).join('')
+    +'</div>'
+    +(aj.nota?'<div style="font-size:10.5px;color:var(--text3);margin-top:7px">'+esc(aj.nota)+'</div>':'')
   +'</div>';
+}
+function renAjustesEditar(){
+  var aj=_renAjustes()||{}, old=document.getElementById('ren-modal'); if(old) old.remove();
+  var inp='width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font:inherit;font-size:13px;padding:8px 10px';
+  var campo=function(id,rot,val,step){ return '<div style="flex:1;min-width:150px"><div style="font-size:11px;color:var(--text3);margin:12px 0 5px">'+rot+'</div><input id="'+id+'" type="number" min="0" step="'+(step||1)+'" value="'+(val!=null?val:'')+'" style="'+inp+'"></div>'; };
+  var m=document.createElement('div'); m.id='ren-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.onclick=function(ev){ if(ev.target===m) m.remove(); };
+  m.innerHTML='<div style="width:100%;max-width:440px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px">'
+    +'<div style="font-size:15px;font-weight:600;color:var(--strong)">Meta y cupos de la renovación</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-top:3px">'+(aj.por?'Último cambio: '+esc(aj.por)+(aj.at?' · '+esc(aj.at):''):'')+'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:0 12px">'
+      +campo('raj-cuota','Cuota mensual de referencia (USD)',aj.cuota)
+      +campo('raj-meta','Meta mensual neta (USD)',aj.meta_neta)
+      +campo('raj-stripe','Comisión de Stripe (%)',aj.stripe!=null?Math.round(aj.stripe*1000)/10:null,0.1)
+      +campo('raj-cupos','Cupos por grupal',aj.cupos)
+      +campo('raj-sprint','Precio del sprint (USD)',aj.sprint_precio)
+      +campo('raj-sprints','Sprints nuevos por mes',aj.sprints_mes)
+    +'</div>'
+    +'<div id="raj-err" style="font-size:12px;color:var(--redx);min-height:16px;margin-top:8px"></div>'
+    +'<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" onclick="document.getElementById(\'ren-modal\').remove()">Cancelar</button>'
+    +'<button class="btn btn-primary" onclick="renAjustesGuardar()">Guardar</button></div></div>';
+  document.body.appendChild(m);
+}
+async function renAjustesGuardar(){
+  var n=function(id){ var v=document.getElementById(id).value.trim(); return v===''?null:Number(v); };
+  var hoy=new Date(), d=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+  var st=n('raj-stripe');
+  var val={cuota:n('raj-cuota'), meta_neta:n('raj-meta'), stripe:st==null?null:st/100, cupos:n('raj-cupos'),
+    sprint_precio:n('raj-sprint'), sprints_mes:n('raj-sprints'), por:(personaNombre(SB.email)||SB.email||'').slice(0,60), at:d};
+  try{ var r=await sbFetch('rpc/set_ajuste',{method:'POST',body:JSON.stringify({p_clave:'renovacion',p_val:val})}); S._renAj={v:r||val, at:Date.now()}; }
+  catch(e){ document.getElementById('raj-err').textContent='No se pudo guardar: '+((e&&e.message)||e); return; }
+  document.getElementById('ren-modal').remove(); toast('Guardado'); if(typeof renderTab==='function') renderTab();
+}
+/* La propuesta de la rutina C1 (cuando cree que el estado cambió): se acepta o se
+   descarta con un toque; el estado nunca lo cambia sola. */
+async function renPropuesta(cid, aceptar){
+  var c=(DB.clients||[]).find(function(x){ return x.id===+cid; }); if(!c||!c.renovacion||!c.renovacion.propuesta) return;
+  var pr=c.renovacion.propuesta, hoy=new Date(), d=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
+  var val={propuesta:null};
+  if(aceptar){ val.estado=pr.estado; val.por=(personaNombre(SB.email)||SB.email||'').slice(0,60); val.at=d; }
+  try{ var r=await sbFetch('rpc/set_renovacion',{method:'POST',body:JSON.stringify({p_id:+cid,p_val:val})});
+    c.renovacion=(r&&typeof r==='object'&&!Array.isArray(r))?r:Object.assign({}, c.renovacion, val); }
+  catch(e){ toast('No se pudo guardar: '+((e&&e.message)||e)); return; }
+  toast(aceptar?'Estado actualizado':'Propuesta descartada'); if(typeof renderTab==='function') renderTab();
 }
 function renEditar(cid){
   var c=(DB.clients||[]).find(function(x){ return x.id===+cid; }); if(!c) return;
@@ -18710,10 +18789,12 @@ function renEditar(cid){
       +'<option value="">Elegí…</option>'+RENOV_EST.map(function(x){ return '<option value="'+x[0]+'"'+(rv.estado===x[0]?' selected':'')+'>'+esc(x[1])+'</option>'; }).join('')+'</select>'
     +'<div style="display:flex;gap:12px;align-items:flex-end">'
       +'<div style="flex:1"><div style="'+lb+'">Cuota por mes (USD)</div><input id="ren-cuota" type="number" min="0" step="1" value="'+(rv.cuota!=null?rv.cuota:'')+'" style="'+inp+'"></div>'
-      +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);padding-bottom:9px;cursor:pointer"><input id="ren-cob" type="checkbox"'+(rv.cobrar?' checked':'')+'> Suma a la meta</label>'
+      +'<div style="display:flex;flex-direction:column;gap:5px;padding-bottom:3px">'
+        +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);cursor:pointer"><input id="ren-cob" type="checkbox"'+(rv.cobrar?' checked':'')+'> Suma a la meta</label>'
+        +'<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);cursor:pointer"><input id="ren-cupo" type="checkbox"'+(rv.cupo?' checked':'')+'> Ocupa cupo</label></div>'
     +'</div>'
     +'<div style="'+lb+'">Lo que dijo en la llamada</div><textarea id="ren-dijo" rows="2" maxlength="300" style="'+inp+';resize:vertical">'+esc(rv.dijo||'')+'</textarea>'
-    +'<div style="'+lb+'">Nota y lo que pasó después</div><textarea id="ren-nota" rows="3" maxlength="500" style="'+inp+';resize:vertical">'+esc(rv.nota||'')+'</textarea>'
+    +'<div style="'+lb+'">Nota y lo que pasó después</div><textarea id="ren-nota" rows="4" maxlength="1500" style="'+inp+';resize:vertical">'+esc(rv.nota||'')+'</textarea>'
     +'<div id="ren-err" style="font-size:12px;color:var(--redx);min-height:16px;margin-top:8px"></div>'
     +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">'
       +'<button class="btn" onclick="document.getElementById(\'ren-modal\').remove()">Cancelar</button>'
@@ -18727,8 +18808,8 @@ async function renGuardar(cid){
   var q=document.getElementById('ren-cuota').value.trim(), cuota=q===''?null:Number(q);
   if(cuota!=null&&!(cuota>=0)){ err.textContent='La cuota tiene que ser un número.'; return; }
   var hoy=new Date(), d=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
-  var val={estado:est, cuota:cuota, cobrar:document.getElementById('ren-cob').checked,
-    dijo:document.getElementById('ren-dijo').value.trim().slice(0,300), nota:document.getElementById('ren-nota').value.trim().slice(0,500),
+  var val={estado:est, cuota:cuota, cobrar:document.getElementById('ren-cob').checked, cupo:document.getElementById('ren-cupo').checked,
+    dijo:document.getElementById('ren-dijo').value.trim().slice(0,300), nota:document.getElementById('ren-nota').value.trim().slice(0,1500),
     por:(personaNombre(SB.email)||SB.email||'').slice(0,60), at:d};
   try{
     var r=await sbFetch('rpc/set_renovacion',{method:'POST',body:JSON.stringify({p_id:+cid,p_val:val})});
