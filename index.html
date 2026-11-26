@@ -6233,6 +6233,29 @@ function avisarLuzVerde(c, t){
     +'&texto='+encodeURIComponent(txt)).catch(function(){});
 }
 
+// Angie revisa las aprobaciones en dos momentos fijos, a las 10 y a las 17
+// hora de Argentina, de lunes a viernes (Angie, 25/11/2026). La rutina
+// «Aprobaciones de Angie» le avisa por WhatsApp si hay algo; acá se le dice a
+// quien pide el OK para cuándo lo va a tener.
+var REVISION_HORAS=[10,17];
+function proximaRevision(desde){
+  var ahora=desde?new Date(desde):new Date();
+  var art=new Date(ahora.getTime()-3*3600e3);            // Argentina, UTC-3 sin horario de verano
+  var dias=['el domingo','el lunes','el martes','el miércoles','el jueves','el viernes','el sábado'];
+  for(var d=0; d<8; d++){
+    var dia=new Date(Date.UTC(art.getUTCFullYear(),art.getUTCMonth(),art.getUTCDate()+d));
+    var dow=dia.getUTCDay(); if(dow===0||dow===6) continue;
+    for(var i=0;i<REVISION_HORAS.length;i++){
+      var h=REVISION_HORAS[i];
+      var cuando=new Date(dia.getTime()+h*3600e3+3*3600e3); // de vuelta a UTC
+      if(cuando.getTime()<=ahora.getTime()) continue;
+      var que=d===0?'hoy':(d===1?'mañana':dias[dow]);
+      return {at:cuando.toISOString(), txt:que+' a las '+h+' h'};
+    }
+  }
+  return {at:'', txt:'en la próxima revisión'};
+}
+
 function avisarEsperandoAprobacion(c, t){
   if(!aprobOn()) return;
   // Primero el revisor asignado en la tarea; el de configuracion es el respaldo.
@@ -8589,6 +8612,7 @@ function setTicketEstado(clientId,taskId,estado){
     t.revisionAt=new Date().toISOString();
     pedirEntregables(clientId, taskId);
     try{ avisarEsperandoAprobacion(c, t); }catch(e){}
+    try{ var pr=proximaRevision(); t.revisionProxima=pr.at; save(); toast('Queda esperando aprobación. Se revisa '+pr.txt+'.'); }catch(e){}
   }
   // Revisada = luz verde para quien la hizo.
   if(estado==='revisada' && previo!=='revisada'){

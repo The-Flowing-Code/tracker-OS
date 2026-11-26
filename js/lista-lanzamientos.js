@@ -297,7 +297,7 @@ function lzOkModal(clientId){
     +'<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
     +'<div class="modal" style="max-width:620px;width:92%">'
     +'<div style="font-size:15px;font-weight:600;color:var(--strong);margin-bottom:4px">Pedir el OK de lanzamiento · '+esc(c.name||'')+'</div>'
-    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Queda como tarea esperando la aprobación de Angie, y a ella le llega todo ordenado por WhatsApp.</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Queda como tarea esperando la aprobación de Angie, y a ella le llega todo ordenado por WhatsApp. Angie revisa a las 10 y a las 17 h: <b style="color:var(--text)">la próxima revisión es '+esc((typeof proximaRevision==='function')?proximaRevision().txt:'en la próxima ronda')+'</b>.</div>'
     +(f.length?('<div style="font-size:11.5px;color:var(--amberx);margin-bottom:12px">En la lista todavía falta: '+esc(f.join(', '))+'.</div>'):'')
     +'<div style="display:flex;flex-direction:column;gap:10px">'
       +campo('lzok-loom','Loom (obligatorio)','https://www.loom.com/share/…','')
@@ -344,8 +344,10 @@ function lzOkPedir(clientId){
   var mandado=_lzOkAvisar(c, t);
   closeModal();
   try{ showTickets(); }catch(e){}
-  if(typeof toast==='function') toast(mandado?'Pedido. A Angie le llegó por WhatsApp.'
-    :'Pedido: quedó la tarea, pero el WhatsApp no salió desde este navegador. Avisale a Angie.');
+  var prox=(typeof proximaRevision==='function')?proximaRevision():{at:'',txt:'en la próxima revisión'};
+  t.revisionProxima=prox.at; try{ save(); }catch(e){}
+  if(typeof toast==='function') toast((mandado?'Pedido. A Angie le llegó por WhatsApp.'
+    :'Pedido: quedó la tarea, pero el WhatsApp no salió desde este navegador.')+' Lo revisa '+prox.txt+'.');
 }
 
 /* El paquete, en el mismo orden que el Loom. Sale por el mismo canal que los
